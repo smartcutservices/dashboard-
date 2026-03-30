@@ -777,9 +777,8 @@
 
   <script type="module">
     // ========== CONFIGURATION FIREBASE ==========
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+    import { db } from './firebase-init.js';
     import { 
-      getFirestore, 
       collection, 
       addDoc, 
       getDocs, 
@@ -790,20 +789,6 @@
       orderBy,
       onSnapshot 
     } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-
- const firebaseConfig = {
-  apiKey: "AIzaSyBVTWSRyv7mzVhXLj5NHmg_MKKyWYgeBXg",
-  authDomain: "smartcutservices-9ce54.firebaseapp.com",
-  projectId: "smartcutservices-9ce54",
-  storageBucket: "smartcutservices-9ce54.firebasestorage.app",
-  messagingSenderId: "12148835666",
-  appId: "1:12148835666:web:d18d80cedd5a36ec81e68b",
-  measurementId: "G-R8GJXQP7BD"
-};
-
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
     
     const CATEGORIES_COLLECTION = "categories_list";
 
@@ -1062,7 +1047,7 @@
           <div class="category-card" data-id="${cat.id}">
             <div class="category-image">
               ${cat.image ? 
-                `<img src="${this.getImagePath(cat.image)}" alt="${cat.name}" onerror="this.src=''; this.parentElement.innerHTML='<i class=\'fas fa-folder-open text-4xl text-secondary\'></i>';">` : 
+                `<img src="${this.getImagePath(cat.image)}" alt="${cat.name}" class="category-media">` : 
                 `<i class="fas fa-folder-open text-4xl text-secondary"></i>`
               }
             </div>
@@ -1088,6 +1073,8 @@
             </div>
           </div>
         `).join('');
+
+        this.bindBrokenImageFallbacks(this.elements.categoriesGrid);
 
         // Attacher Ã©vÃ©nements
         document.querySelectorAll('.edit-category').forEach(btn => {
@@ -1204,7 +1191,7 @@
                   <div class="line-item" data-line-id="${line.id}">
                     <div class="line-image">
                       ${imageUrl ? 
-                        `<img src="${imageUrl}" alt="${line.lineName}" onerror="this.src=''; this.parentElement.innerHTML='<i class=\'fas fa-image\'></i>';">` : 
+                        `<img src="${imageUrl}" alt="${line.lineName}" class="line-media">` : 
                         `<i class="fas fa-image text-text-tertiary"></i>`
                       }
                     </div>
@@ -1245,6 +1232,7 @@
 
         html += `</div>`;
         this.elements.columnsLinesContainer.innerHTML = html;
+        this.bindBrokenImageFallbacks(this.elements.columnsLinesContainer);
 
         // Attacher Ã©vÃ©nements
         this.attachStructureEvents(categoryId);
@@ -1607,8 +1595,33 @@
       
       getImagePath(filename) {
         if (!filename) return '';
-        if (filename.startsWith('http')) return filename;
-        return `./${filename.split('/').pop()}`;
+
+        const value = String(filename).trim();
+        if (!value) return '';
+        if (/^(https?:|data:|blob:|gs:)/i.test(value)) return value;
+
+        const cleaned = value.replace(/^\.\//, '').replace(/^\/+/, '');
+        return `https://smartcutservices.com/${cleaned}`;
+      }
+
+      bindBrokenImageFallbacks(scope = document) {
+        scope.querySelectorAll('.category-media, .line-media').forEach((img) => {
+          if (img.dataset.fallbackBound === '1') return;
+          img.dataset.fallbackBound = '1';
+          img.addEventListener('error', () => {
+            const wrapper = img.parentElement;
+            if (!wrapper) return;
+
+            img.remove();
+            if (wrapper.querySelector('.fallback-icon')) return;
+
+            const icon = document.createElement('i');
+            icon.className = img.classList.contains('category-media')
+              ? 'fas fa-folder-open text-4xl text-secondary fallback-icon'
+              : 'fas fa-image text-text-tertiary fallback-icon';
+            wrapper.appendChild(icon);
+          });
+        });
       }
       
       updateImagePreview(type) {

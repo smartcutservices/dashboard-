@@ -356,6 +356,12 @@ function denyAccess(mode = 'login') {
 }
 
 export function protectAdminPage() {
+  if (!auth || !db) {
+    console.error('Firebase admin non disponible pour proteger la page.');
+    denyAccess('login');
+    return;
+  }
+
   if (hasAdminSessionFlag()) {
     document.body.dataset.adminAccess = 'restoring';
   }

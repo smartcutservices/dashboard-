@@ -1,5 +1,5 @@
 // ============= FIREBASE INIT - MODULAR V9 =============
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
 import { 
   getFirestore, 
   enableIndexedDbPersistence, 
@@ -32,7 +32,7 @@ let googleProvider = null;
 let storage = null;
 
 try {
-  app = initializeApp(firebaseConfig);
+  app = getApps().length ? getApp() : initializeApp(firebaseConfig);
   db = getFirestore(app);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();

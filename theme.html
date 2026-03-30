@@ -569,7 +569,7 @@
   <div id="toast" class="toast"></div>
   
   <script type="module">
-    import { initializeApp } from 'firebase/app';
+    import { initializeApp, getApps, getApp } from 'firebase/app';
     import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
     
     // Firebase Config
@@ -583,7 +583,7 @@
       measurementId: "G-R8GJXQP7BD"
     };
     
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     
     // Collection et document
