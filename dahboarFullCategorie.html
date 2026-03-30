@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>Smart Cut Services Â· Dashboard CatÃ©gories</title>
+  <title>Smart Cut Services · Dashboard Catégories</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -507,7 +507,7 @@
           </div>
           <div>
           <h1 class="font-semibold text-lg">Smart Cut Services</h1>
-            <p class="text-xs text-text-secondary">CatÃ©gories Manager</p>
+            <p class="text-xs text-text-secondary">Catégories Manager</p>
           </div>
         </div>
         
@@ -519,7 +519,7 @@
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" data-view="categories">
             <i class="fas fa-folder w-5 text-text-secondary"></i>
-            <span class="flex-1">CatÃ©gories</span>
+            <span class="flex-1">Catégories</span>
             <span class="text-xs bg-background px-2 py-1 rounded-full" id="categories-count">0</span>
           </button>
           
@@ -533,7 +533,7 @@
       <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-border">
         <div class="flex items-center gap-3">
           <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-          <span class="text-sm text-text-secondary">Ã©</span>
+          <span class="text-sm text-text-secondary">é</span>
         </div>
       </div>
     </aside>
@@ -551,7 +551,7 @@
         <div class="flex items-center gap-3">
           <button id="addCategoryBtn" class="btn btn-primary">
             <i class="fas fa-plus"></i>
-            <span class="hidden sm:inline">Nouvelle catÃ©gorie</span>
+            <span class="hidden sm:inline">Nouvelle catégorie</span>
           </button>
         </div>
       </header>
@@ -563,7 +563,7 @@
           <!-- Stats -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="stat-card">
-              <p class="text-sm text-text-secondary mb-1">Total catÃ©gories</p>
+              <p class="text-sm text-text-secondary mb-1">Total catégories</p>
               <p class="text-2xl font-semibold" id="stats-total-categories">0</p>
             </div>
             <div class="stat-card">
@@ -583,14 +583,14 @@
           <!-- Graphique simple -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">RÃ©partition des catÃ©gories</h3>
+              <h3 class="font-semibold mb-4">Répartition des catégories</h3>
               <div id="categories-chart" class="space-y-3">
                 <!-- Dynamique -->
               </div>
             </div>
             
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">DerniÃ¨res catÃ©gories</h3>
+              <h3 class="font-semibold mb-4">Dernières catégories</h3>
               <div id="recent-categories" class="space-y-3">
                 <!-- Dynamique -->
               </div>
@@ -601,7 +601,7 @@
         <!-- ========== VIEW: CATEGORIES ========== -->
         <div id="categories-view" class="view hidden">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-semibold">Toutes les catÃ©gories</h2>
+            <h2 class="text-xl font-semibold">Toutes les catégories</h2>
             <div class="flex gap-3">
               <input type="text" id="searchCategory" placeholder="Rechercher..." class="form-input w-64">
             </div>
@@ -609,7 +609,7 @@
 
           <!-- Categories grid -->
           <div id="categories-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- InjectÃ© par JS -->
+            <!-- Injecté par JS -->
           </div>
         </div>
 
@@ -618,24 +618,24 @@
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-semibold">Gestion des colonnes et lignes</h2>
             <select id="structure-category-select" class="form-select w-80">
-              <option value="">Choisir une catÃ©gorie</option>
+              <option value="">Choisir une catégorie</option>
             </select>
           </div>
 
           <!-- Container des colonnes et lignes -->
           <div id="columns-lines-container" class="space-y-4">
-            <!-- InjectÃ© par JS -->
+            <!-- Injecté par JS -->
           </div>
         </div>
       </div>
     </main>
   </div>
 
-  <!-- ========== MODAL CATÃ‰GORIE ========== -->
+  <!-- ========== MODAL CATÉGORIE ========== -->
   <div id="categoryModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
-        <h3 id="categoryModalTitle" class="text-xl font-semibold">Nouvelle catÃ©gorie</h3>
+        <h3 id="categoryModalTitle" class="text-xl font-semibold">Nouvelle catégorie</h3>
         <button class="close-modal btn-icon">
           <i class="fas fa-times"></i>
         </button>
@@ -660,7 +660,7 @@
             </div>
             <div class="flex-1">
               <input type="text" id="categoryImage" class="form-input" placeholder="image.jpg ou URL">
-              <p class="text-xs text-text-secondary mt-1">Nom du fichier ou URL complÃ¨te</p>
+              <p class="text-xs text-text-secondary mt-1">Nom du fichier ou URL complète</p>
             </div>
           </div>
         </div>
@@ -832,7 +832,7 @@
           categoriesChart: document.getElementById('categories-chart'),
           recentCategories: document.getElementById('recent-categories'),
           
-          // CatÃ©gories
+          // Catégories
           categoriesGrid: document.getElementById('categories-grid'),
           searchCategory: document.getElementById('searchCategory'),
           addCategoryBtn: document.getElementById('addCategoryBtn'),
@@ -898,7 +898,7 @@
           }
         });
         
-        // Ajout catÃ©gorie
+        // Ajout catégorie
         this.elements.addCategoryBtn.addEventListener('click', () => this.openCategoryModal());
         
         // Fermeture modals
@@ -918,10 +918,10 @@
         this.elements.columnForm.addEventListener('submit', (e) => this.handleColumnSubmit(e));
         this.elements.lineForm.addEventListener('submit', (e) => this.handleLineSubmit(e));
         
-        // Recherche catÃ©gorie
+        // Recherche catégorie
         this.elements.searchCategory.addEventListener('input', () => this.renderCategories());
         
-        // SÃ©lection catÃ©gorie dans structure
+        // Sélection catégorie dans structure
         this.elements.structureCategorySelect.addEventListener('change', () => this.renderColumnsAndLines());
         
         // Preview images
@@ -946,7 +946,7 @@
         
         const titles = {
           dashboard: 'Tableau de bord',
-          categories: 'CatÃ©gories',
+          categories: 'Catégories',
           structure: 'Gestion des colonnes & lignes'
         };
         this.elements.currentViewTitle.textContent = titles[view];
@@ -954,7 +954,7 @@
         if (view === 'structure') this.updateStructureSelect();
       }
       
-      // ========== CHARGEMENT DES DONNÃ‰ES ==========
+      // ========== CHARGEMENT DES DONNÉES ==========
       
       async loadCategories() {
         try {
@@ -969,7 +969,7 @@
           this.updateStats();
           this.updateStructureSelect();
         } catch (error) {
-          console.error('âŒ Erreur chargement catÃ©gories:', error);
+          console.error('âŒ Erreur chargement catégories:', error);
         }
       }
       
@@ -1037,7 +1037,7 @@
           this.elements.categoriesGrid.innerHTML = `
             <div class="col-span-full text-center py-12">
               <i class="fas fa-folder-open text-4xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">Aucune catÃ©gorie trouvÃ©e</p>
+              <p class="text-text-secondary">Aucune catégorie trouvée</p>
             </div>
           `;
           return;
@@ -1067,7 +1067,7 @@
               <div class="flex justify-between items-center text-xs text-text-secondary">
                 <span><i class="far fa-calendar mr-1"></i>${new Date(cat.createdAt).toLocaleDateString()}</span>
                 <button class="manage-structure text-secondary hover:text-secondary-light" data-id="${cat.id}">
-                  <i class="fas fa-arrow-right"></i> GÃ©rer
+                  <i class="fas fa-arrow-right"></i> Gérer
                 </button>
               </div>
             </div>
@@ -1076,7 +1076,7 @@
 
         this.bindBrokenImageFallbacks(this.elements.categoriesGrid);
 
-        // Attacher Ã©vÃ©nements
+        // Attacher événements
         document.querySelectorAll('.edit-category').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1108,7 +1108,7 @@
           this.elements.columnsLinesContainer.innerHTML = `
             <div class="text-center py-12 bg-white rounded-lg border border-border">
               <i class="fas fa-arrow-up text-4xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">SÃ©lectionnez une catÃ©gorie</p>
+              <p class="text-text-secondary">Sélectionnez une catégorie</p>
             </div>
           `;
           return;
@@ -1121,7 +1121,7 @@
           <div class="bg-white rounded-lg border border-border p-6">
             <div class="flex justify-between items-center mb-6">
               <div>
-                <h3 class="text-xl font-semibold">${category?.name || 'CatÃ©gorie'}</h3>
+                <h3 class="text-xl font-semibold">${category?.name || 'Catégorie'}</h3>
                 ${category?.description ? `<p class="text-sm text-text-secondary">${category.description}</p>` : ''}
               </div>
               <button class="btn btn-primary" onclick="window.dashboard.openColumnModal('${categoryId}')">
@@ -1135,9 +1135,9 @@
           html += `
             <div class="text-center py-8 bg-background rounded-lg">
               <i class="fas fa-layer-group text-3xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">Aucune colonne dans cette catÃ©gorie</p>
+              <p class="text-text-secondary">Aucune colonne dans cette catégorie</p>
               <button class="btn btn-primary mt-4" onclick="window.dashboard.openColumnModal('${categoryId}')">
-                CrÃ©er une premiÃ¨re colonne
+                Créer une première colonne
               </button>
             </div>
           `;
@@ -1234,12 +1234,12 @@
         this.elements.columnsLinesContainer.innerHTML = html;
         this.bindBrokenImageFallbacks(this.elements.columnsLinesContainer);
 
-        // Attacher Ã©vÃ©nements
+        // Attacher événements
         this.attachStructureEvents(categoryId);
       }
       
       attachStructureEvents(categoryId) {
-        // AccordÃ©on
+        // Accordéon
         document.querySelectorAll('.column-header').forEach(header => {
           header.addEventListener('click', (e) => {
             if (e.target.closest('button')) return;
@@ -1269,7 +1269,7 @@
           });
         });
 
-        // Ã‰dition de colonne
+        // Édition de colonne
         document.querySelectorAll('.edit-column-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1285,7 +1285,7 @@
           });
         });
 
-        // Ã‰dition de ligne
+        // Édition de ligne
         document.querySelectorAll('.edit-line-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1305,7 +1305,7 @@
       updateStats() {
         this.elements.statsTotalCategories.textContent = this.categories.length;
         
-        // Ces stats pourraient Ãªtre calculÃ©es en temps rÃ©el avec un vrai comptage
+        // Ces stats pourraient être calculées en temps réel avec un vrai comptage
         this.elements.statsTotalColumns.textContent = '0';
         this.elements.statsTotalLines.textContent = '0';
         this.elements.statsAvgLines.textContent = '0';
@@ -1313,7 +1313,7 @@
         // Graphique simple
         this.renderChart();
         
-        // CatÃ©gories rÃ©centes
+        // Catégories récentes
         this.renderRecentCategories();
       }
       
@@ -1347,7 +1347,7 @@
       
       updateStructureSelect() {
         const select = this.elements.structureCategorySelect;
-        select.innerHTML = '<option value="">Choisir une catÃ©gorie</option>';
+        select.innerHTML = '<option value="">Choisir une catégorie</option>';
         
         this.categories.forEach(cat => {
           const option = document.createElement('option');
@@ -1357,7 +1357,7 @@
         });
       }
       
-      // ========== CRUD CATÃ‰GORIES ==========
+      // ========== CRUD CATÉGORIES ==========
       
       openCategoryModal(id = null) {
         this.resetCategoryForm();
@@ -1369,7 +1369,7 @@
             this.elements.categoryName.value = category.name || '';
             this.elements.categoryImage.value = category.image || '';
             this.elements.categoryDescription.value = category.description || '';
-            this.elements.categoryModalTitle.textContent = 'Modifier la catÃ©gorie';
+            this.elements.categoryModalTitle.textContent = 'Modifier la catégorie';
             
             if (category.image) {
               this.elements.categoryImageImg.src = this.getImagePath(category.image);
@@ -1378,7 +1378,7 @@
             }
           }
         } else {
-          this.elements.categoryModalTitle.textContent = 'Nouvelle catÃ©gorie';
+          this.elements.categoryModalTitle.textContent = 'Nouvelle catégorie';
         }
         
         this.elements.categoryModal.classList.add('active');
@@ -1411,13 +1411,13 @@
         try {
           if (this.elements.categoryId.value) {
             await updateDoc(doc(db, CATEGORIES_COLLECTION, this.elements.categoryId.value), data);
-            this.showToast('CatÃ©gorie modifiÃ©e', 'success');
+            this.showToast('Catégorie modifiée', 'success');
           } else {
             await addDoc(collection(db, CATEGORIES_COLLECTION), {
               ...data,
               createdAt: new Date().toISOString()
             });
-            this.showToast('CatÃ©gorie crÃ©Ã©e', 'success');
+            this.showToast('Catégorie créée', 'success');
           }
           
           this.columnsCache.clear();
@@ -1430,13 +1430,13 @@
       }
       
       async deleteCategory(id) {
-        if (!confirm('Supprimer cette catÃ©gorie ? Cette action supprimera aussi toutes ses colonnes et lignes.')) return;
+        if (!confirm('Supprimer cette catégorie ? Cette action supprimera aussi toutes ses colonnes et lignes.')) return;
         
         try {
           await deleteDoc(doc(db, CATEGORIES_COLLECTION, id));
           this.columnsCache.clear();
           this.linesCache.clear();
-          this.showToast('CatÃ©gorie supprimÃ©e', 'success');
+          this.showToast('Catégorie supprimée', 'success');
         } catch (error) {
           console.error('âŒ Erreur:', error);
           this.showToast('Erreur lors de la suppression', 'error');
@@ -1452,7 +1452,7 @@
         this.elements.columnOrder.value = '0';
         
         if (columnId) {
-          // Mode Ã©dition - on pourrait charger les donnÃ©es depuis le cache
+          // Mode édition - on pourrait charger les données depuis le cache
           this.elements.columnModalTitle.textContent = 'Modifier la colonne';
         } else {
           this.elements.columnModalTitle.textContent = 'Nouvelle colonne';
@@ -1481,13 +1481,13 @@
         try {
           if (columnId) {
             await updateDoc(doc(db, CATEGORIES_COLLECTION, categoryId, 'columns', columnId), data);
-            this.showToast('Colonne modifiÃ©e', 'success');
+            this.showToast('Colonne modifiée', 'success');
           } else {
             await addDoc(collection(db, CATEGORIES_COLLECTION, categoryId, 'columns'), {
               ...data,
               createdAt: new Date().toISOString()
             });
-            this.showToast('Colonne crÃ©Ã©e', 'success');
+            this.showToast('Colonne créée', 'success');
           }
           
           this.columnsCache.delete(categoryId);
@@ -1506,7 +1506,7 @@
           await deleteDoc(doc(db, CATEGORIES_COLLECTION, categoryId, 'columns', columnId));
           this.columnsCache.delete(categoryId);
           this.linesCache.clear();
-          this.showToast('Colonne supprimÃ©e', 'success');
+          this.showToast('Colonne supprimée', 'success');
           this.renderColumnsAndLines();
         } catch (error) {
           console.error('âŒ Erreur:', error);
@@ -1559,13 +1559,13 @@
         try {
           if (lineId) {
             await updateDoc(doc(db, CATEGORIES_COLLECTION, categoryId, 'columns', columnId, 'lines', lineId), data);
-            this.showToast('Ligne modifiÃ©e', 'success');
+            this.showToast('Ligne modifiée', 'success');
           } else {
             await addDoc(collection(db, CATEGORIES_COLLECTION, categoryId, 'columns', columnId, 'lines'), {
               ...data,
               createdAt: new Date().toISOString()
             });
-            this.showToast('Ligne crÃ©Ã©e', 'success');
+            this.showToast('Ligne créée', 'success');
           }
           
           this.linesCache.delete(`${categoryId}_${columnId}`);
@@ -1583,7 +1583,7 @@
         try {
           await deleteDoc(doc(db, CATEGORIES_COLLECTION, categoryId, 'columns', columnId, 'lines', lineId));
           this.linesCache.delete(`${categoryId}_${columnId}`);
-          this.showToast('Ligne supprimÃ©e', 'success');
+          this.showToast('Ligne supprimée', 'success');
           this.renderColumnsAndLines();
         } catch (error) {
           console.error('âŒ Erreur:', error);
@@ -1687,7 +1687,7 @@
 
     // ========== INITIALISATION ==========
     const dashboard = new CategoriesDashboard();
-    window.dashboard = dashboard; // Pour accÃ¨s global
+    window.dashboard = dashboard; // Pour accès global
   </script>
   <script src="./dashboard-nav-bubble.js"></script>
   <script type="module" src="./admin-access.js"></script>

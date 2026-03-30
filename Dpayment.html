@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>Smart Cut Services Â· Dashboard Paiements Pro</title>
+  <title>Smart Cut Services · Dashboard Paiements Pro</title>
   
   <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -517,7 +517,7 @@
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors tab-btn" data-tab="settings">
             <i class="fas fa-cog w-5 text-text-secondary"></i>
-            <span>ParamÃ¨tres</span>
+            <span>Paramètres</span>
           </button>
 
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors tab-btn" data-tab="notifications">
@@ -530,7 +530,7 @@
       <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-border">
         <div class="flex items-center gap-3">
           <div class="w-2 h-2 rounded-full" id="connection-status" style="background: var(--success);"></div>
-          <span class="text-sm text-text-secondary" id="connection-text">Ã©</span>
+          <span class="text-sm text-text-secondary" id="connection-text">é</span>
         </div>
       </div>
     </aside>
@@ -594,7 +594,7 @@
                 </div>
                 
                 <div class="flex justify-between items-center mt-2">
-                  <span>ApprouvÃ©es</span>
+                  <span>Approuvées</span>
                   <span class="font-semibold" id="chartApproved">0</span>
                 </div>
                 <div class="w-full bg-background rounded-full h-2">
@@ -602,7 +602,7 @@
                 </div>
                 
                 <div class="flex justify-between items-center mt-2">
-                  <span>RejetÃ©es</span>
+                  <span>Rejetées</span>
                   <span class="font-semibold" id="chartRejected">0</span>
                 </div>
                 <div class="w-full bg-background rounded-full h-2">
@@ -612,9 +612,9 @@
             </div>
             
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">DerniÃ¨res commandes</h3>
+              <h3 class="font-semibold mb-4">Dernières commandes</h3>
               <div id="recentOrders" class="space-y-3">
-                <!-- InjectÃ© par JS -->
+                <!-- Injecté par JS -->
               </div>
             </div>
           </div>
@@ -640,8 +640,8 @@
               <option value="all">Tous les statuts</option>
               <option value="pending">En attente</option>
               <option value="review">En examen</option>
-              <option value="approved">ApprouvÃ©</option>
-              <option value="rejected">RejetÃ©</option>
+              <option value="approved">Approuvé</option>
+              <option value="rejected">Rejeté</option>
             </select>
             
             <select id="orderFulfillmentFilter" class="form-select w-48">
@@ -673,7 +673,7 @@
                     <th>Client</th>
                     <th>Email</th>
                     <th>Montant</th>
-                    <th>MÃ©thode</th>
+                    <th>Méthode</th>
                     <th>Statut</th>
                     <th>Suivi client</th>
                     <th>Code unique</th>
@@ -686,7 +686,7 @@
             
             <div id="ordersEmpty" class="hidden text-center py-12">
               <i class="fas fa-shopping-cart text-4xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">Aucune commande trouvÃ©e</p>
+              <p class="text-text-secondary">Aucune commande trouvée</p>
             </div>
           </div>
         </div>
@@ -707,7 +707,7 @@
 
         <!-- ========== TAB PDF ========== -->
         <div id="tab-pdf" class="tab-content hidden">
-          <h2 class="text-xl font-semibold mb-6">Configuration du PDF de reÃ§u</h2>
+          <h2 class="text-xl font-semibold mb-6">Configuration du PDF de reçu</h2>
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Configuration -->
@@ -737,7 +737,7 @@
                 </div>
                 
                 <div>
-                  <label class="block text-sm text-text-secondary mb-1">TÃ©lÃ©phone</label>
+                  <label class="block text-sm text-text-secondary mb-1">Téléphone</label>
                   <input type="text" id="companyPhone" class="form-input" value="+509 00 00 0000">
                 </div>
                 
@@ -765,9 +765,9 @@
               </div>
             </div>
 
-            <!-- AperÃ§u PDF -->
+            <!-- Aperçu PDF -->
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">AperÃ§u du PDF</h3>
+              <h3 class="font-semibold mb-4">Aperçu du PDF</h3>
               
               <div id="pdfPreview" class="pdf-preview">
                 <div class="pdf-header" style="border-bottom-color: var(--pdf-primary, #C6A75E);">
@@ -783,7 +783,7 @@
                 </div>
                 
                 <div class="text-center mb-4">
-                  <h3 class="font-bold text-xl">REÃ‡U DE PAIEMENT</h3>
+                  <h3 class="font-bold text-xl">REÇU DE PAIEMENT</h3>
                   <p id="previewDate" class="text-sm text-text-secondary"></p>
                 </div>
                 
@@ -803,7 +803,7 @@
                     <span id="previewEmail" class="text-sm">jean.dupont@email.com</span>
                   </div>
                   <div class="flex justify-between mb-2">
-                    <span>TÃ©lÃ©phone:</span>
+                    <span>Téléphone:</span>
                     <span id="previewPhoneClient" class="text-sm">+509 38 48 1234</span>
                   </div>
                   <div class="flex justify-between mb-2">
@@ -812,7 +812,7 @@
                   </div>
                   <div class="flex justify-between mb-2">
                     <span>Statut:</span>
-                    <span class="badge badge-approved">ApprouvÃ©</span>
+                    <span class="badge badge-approved">Approuvé</span>
                   </div>
                 </div>
                 
@@ -839,11 +839,11 @@
         <div id="tab-settings" class="tab-content hidden">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Configuration gÃ©nÃ©rale</h3>
+              <h3 class="font-semibold mb-4">Configuration générale</h3>
               
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm text-text-secondary mb-1">DurÃ©e de vÃ©rification</label>
+                  <label class="block text-sm text-text-secondary mb-1">Durée de vérification</label>
                   <div class="flex items-center gap-2">
                     <input type="number" id="verificationHours" class="form-input w-24" value="12" min="1" max="72">
                     <span class="text-text-secondary">heures</span>
@@ -852,7 +852,7 @@
                 
                 <div>
                   <label class="block text-sm text-text-secondary mb-1">Message d'expiration</label>
-                  <textarea id="expiredMessage" class="form-input" rows="3">Le dÃ©lai de vÃ©rification est dÃ©passÃ©. Contactez le support.</textarea>
+                  <textarea id="expiredMessage" class="form-input" rows="3">Le délai de vérification est dépassé. Contactez le support.</textarea>
                 </div>
               </div>
             </div>
@@ -870,7 +870,7 @@
                     <input type="checkbox" id="dashboardNotifToggle">
                     <span class="text-sm">Activer notifications nouvelles commandes</span>
                   </label>
-                  <p id="dashboardNotifStatus" class="text-sm text-text-secondary mb-2">Notifications navigateur: non activÃ©es</p>
+                  <p id="dashboardNotifStatus" class="text-sm text-text-secondary mb-2">Notifications navigateur: non activées</p>
                   <button id="enableDashboardNotifBtn" class="btn btn-secondary">
                     <i class="fas fa-bell"></i>
                     Activer les notifications navigateur
@@ -891,9 +891,9 @@
         <!-- ========== TAB NOTIFICATIONS ========== -->
         <div id="tab-notifications" class="tab-content hidden">
           <div class="content-card p-6">
-            <h3 class="font-semibold mb-4">Envoyer une notification personnalisÃ©e</h3>
+            <h3 class="font-semibold mb-4">Envoyer une notification personnalisée</h3>
             <p class="text-sm text-text-secondary mb-4">
-              Cette notification sera envoyÃ©e aux utilisateurs ayant autorisÃ© les notifications.
+              Cette notification sera envoyée aux utilisateurs ayant autorisé les notifications.
             </p>
             <div class="space-y-4">
               <div>
@@ -921,7 +921,7 @@
     </main>
   </div>
 
-  <!-- MODAL: Ajout/Ã‰dition moyen de paiement -->
+  <!-- MODAL: Ajout/Édition moyen de paiement -->
   <div id="methodModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
@@ -944,7 +944,7 @@
             <input type="text" id="accountName" class="form-input" required>
           </div>
           <div>
-            <label class="block text-sm text-text-secondary mb-1">TÃ©lÃ©phone *</label>
+            <label class="block text-sm text-text-secondary mb-1">Téléphone *</label>
             <input type="text" id="phoneNumber" class="form-input" required>
           </div>
           <div>
@@ -960,14 +960,14 @@
 
         <div>
           <div class="flex items-center justify-between mb-2">
-            <label class="block text-sm text-text-secondary">Ã‰tapes du paiement</label>
+            <label class="block text-sm text-text-secondary">Étapes du paiement</label>
             <button type="button" id="addStepBtn" class="btn btn-secondary">
               <i class="fas fa-plus"></i>
-              Ajouter une Ã©tape
+              Ajouter une étape
             </button>
           </div>
           <p class="text-xs text-text-secondary mb-3">
-            RÃ©organisez les Ã©tapes par glisser-dÃ©poser.
+            Réorganisez les étapes par glisser-déposer.
           </p>
           <div id="stepsBuilder" class="space-y-2"></div>
         </div>
@@ -989,11 +989,11 @@
     </div>
   </div>
 
-  <!-- MODAL: DÃ©tails commande -->
+  <!-- MODAL: Détails commande -->
   <div id="orderDetailModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xl font-semibold">DÃ©tails de la commande</h3>
+        <h3 class="text-xl font-semibold">Détails de la commande</h3>
         <button id="closeOrderModal" class="btn-icon">
           <i class="fas fa-times"></i>
         </button>
@@ -1067,7 +1067,7 @@
     const PDF_CONFIG = "pdfConfig";
     const SETTINGS = "settings";
 
-    // ========== Ã‰TAT ==========
+    // ========== ÉTAT ==========
     let clients = [];
     let orders = [];
     let methods = [];
@@ -1172,7 +1172,7 @@
       customNotifUrl: document.getElementById('customNotifUrl'),
       sendCustomNotifBtn: document.getElementById('sendCustomNotifBtn'),
       
-      // Modal mÃ©thode
+      // Modal méthode
       methodModal: document.getElementById('methodModal'),
       modalTitle: document.getElementById('modalTitle'),
       methodId: document.getElementById('methodId'),
@@ -1233,9 +1233,9 @@
       const texts = { 
         pending: 'En attente', 
         review: 'En examen', 
-        approved: 'ApprouvÃ©', 
-        rejected: 'RejetÃ©',
-        expired: 'ExpirÃ©'
+        approved: 'Approuvé', 
+        rejected: 'Rejeté',
+        expired: 'Expiré'
       };
       return texts[status] || status;
     }
@@ -1371,7 +1371,7 @@
       });
     }
 
-    // ========== CHARGEMENT DES DONNÃ‰ES ==========
+    // ========== CHARGEMENT DES DONNÉES ==========
     
     async function loadClients() {
       try {
@@ -1421,7 +1421,7 @@
               seenOrderIds.add(o.id);
               dashboardNotifier.notify(
                 'Nouvelle commande',
-                `Commande reÃ§ue ${o.uniqueCode || o.id}.`,
+                `Commande reçue ${o.uniqueCode || o.id}.`,
                 { url: './Dpayment.html', tag: `dashboard_order_${o.id}` }
               );
             }
@@ -1445,7 +1445,7 @@
         renderMethods();
         return methods;
       } catch (error) {
-        console.error('âŒ Erreur chargement mÃ©thodes:', error);
+        console.error('âŒ Erreur chargement méthodes:', error);
         return [];
       }
     }
@@ -1472,12 +1472,12 @@
           elements.notificationEmail.value = settings.notificationEmail || '';
         }
       } catch (error) {
-        console.error('âŒ Erreur chargement paramÃ¨tres:', error);
+        console.error('âŒ Erreur chargement paramètres:', error);
       }
     }
 
     async function loadAllData() {
-      showToast('Chargement des donnÃ©es...', 'info');
+      showToast('Chargement des données...', 'info');
       await loadClients();
       await loadOrders();
       await loadMethods();
@@ -1506,7 +1506,7 @@
             orders: 'Commandes',
             methods: 'Moyens de paiement',
             pdf: 'Gestion PDF',
-            settings: 'ParamÃ¨tres',
+            settings: 'Paramètres',
             notifications: 'Notifications'
           };
           elements.currentTabTitle.textContent = titles[tabName];
@@ -1521,26 +1521,26 @@
       }
       if (!('Notification' in window)) {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes: activÃ©es, mais navigateur non supportÃ©'
-          : 'Notifications commandes: dÃ©sactivÃ©es (navigateur non supportÃ©)';
+          ? 'Notifications commandes: activées, mais navigateur non supporté'
+          : 'Notifications commandes: désactivées (navigateur non supporté)';
         elements.enableDashboardNotifBtn.disabled = true;
         return;
       }
       const p = Notification.permission;
       if (p === 'granted') {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes: activÃ©es'
-          : 'Notifications commandes: dÃ©sactivÃ©es';
+          ? 'Notifications commandes: activées'
+          : 'Notifications commandes: désactivées';
         elements.enableDashboardNotifBtn.disabled = !enabled;
       } else if (p === 'denied') {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes activÃ©es, mais bloquÃ©es par le navigateur'
-          : 'Notifications commandes dÃ©sactivÃ©es';
+          ? 'Notifications commandes activées, mais bloquées par le navigateur'
+          : 'Notifications commandes désactivées';
         elements.enableDashboardNotifBtn.disabled = true;
       } else {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes activÃ©es, permission navigateur requise'
-          : 'Notifications commandes dÃ©sactivÃ©es';
+          ? 'Notifications commandes activées, permission navigateur requise'
+          : 'Notifications commandes désactivées';
         elements.enableDashboardNotifBtn.disabled = !enabled;
       }
     }
@@ -1549,9 +1549,9 @@
       const enabled = !!elements.dashboardNotifToggle?.checked;
       dashboardNotifier.setEnabled(enabled);
       if (!enabled) {
-        showToast('Notifications commandes dÃ©sactivÃ©es', 'info');
+        showToast('Notifications commandes désactivées', 'info');
       } else {
-        showToast('Notifications commandes activÃ©es', 'success');
+        showToast('Notifications commandes activées', 'success');
       }
       updateDashboardNotificationStatus();
     }
@@ -1560,11 +1560,11 @@
       try {
         const permission = await dashboardNotifier.requestPermission();
         if (permission === 'granted') {
-          showToast('Notifications navigateur activÃ©es', 'success');
+          showToast('Notifications navigateur activées', 'success');
         } else if (permission === 'denied') {
-          showToast('Notifications bloquÃ©es par le navigateur', 'error');
+          showToast('Notifications bloquées par le navigateur', 'error');
         } else {
-          showToast('Activation annulÃ©e', 'info');
+          showToast('Activation annulée', 'info');
         }
       } catch (error) {
         console.error('âŒ Erreur activation notifications dashboard:', error);
@@ -1589,7 +1589,7 @@
         elements.clientsList.innerHTML = `
           <div class="col-span-full text-center py-12">
             <i class="fas fa-users text-4xl text-text-tertiary mb-3"></i>
-            <p class="text-text-secondary">Aucun client trouvÃ©</p>
+            <p class="text-text-secondary">Aucun client trouvé</p>
           </div>
         `;
         return;
@@ -1617,7 +1617,7 @@
             
             <div class="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p class="text-text-secondary">TÃ©lÃ©phone</p>
+                <p class="text-text-secondary">Téléphone</p>
                 <p>${client.phone || '-'}</p>
               </div>
               <div>
@@ -1625,7 +1625,7 @@
                 <p>${clientOrders.length}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Ã‚ge</p>
+                <p class="text-text-secondary">Âge</p>
                 <p>${clientAge}</p>
               </div>
               <div>
@@ -1633,7 +1633,7 @@
                 <p>${clientSexe}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Total dÃ©pensÃ©</p>
+                <p class="text-text-secondary">Total dépensé</p>
                 <p class="font-semibold">${formatPrice(totalSpent)}</p>
               </div>
               <div>
@@ -1706,11 +1706,11 @@
                   <i class="fas fa-eye"></i>
                 </button>
                 ${order.status === 'approved' ? `
-                  <button class="download-pdf btn-icon text-success" data-id="${order.id}" data-client-id="${order.clientId}" title="TÃ©lÃ©charger PDF">
+                  <button class="download-pdf btn-icon text-success" data-id="${order.id}" data-client-id="${order.clientId}" title="Télécharger PDF">
                     <i class="fas fa-file-pdf"></i>
                   </button>
                 ` : ''}
-                <button class="delete-order btn-icon text-danger" data-id="${order.id}" data-client-id="${order.clientId}" title="Supprimer dÃ©finitivement">
+                <button class="delete-order btn-icon text-danger" data-id="${order.id}" data-client-id="${order.clientId}" title="Supprimer définitivement">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -1791,7 +1791,7 @@
       elements.approvedBar.style.width = (approved / total * 100) + '%';
       elements.rejectedBar.style.width = (rejected / total * 100) + '%';
 
-      // DerniÃ¨res commandes
+      // Dernières commandes
       const recent = orders.slice(0, 5);
       elements.recentOrders.innerHTML = recent.map(order => `
         <div class="flex justify-between items-center p-2 hover:bg-background rounded">
@@ -1877,13 +1877,13 @@
       updatePdfPreview();
     }
 
-    // ========== GÃ‰NÃ‰RATION PDF ==========
+    // ========== GÉNÉRATION PDF ==========
     
     async function generateOrderPdf(orderId, clientId) {
       try {
         const order = orders.find(o => o.id === orderId && o.clientId === clientId);
         if (!order) {
-          showToast('Commande non trouvÃ©e', 'error');
+          showToast('Commande non trouvée', 'error');
           return;
         }
 
@@ -1895,7 +1895,7 @@
         const primaryColor = pdfConfig?.primaryColor || '#C6A75E';
         const rgb = hexToRgb(primaryColor);
         
-        // En-tÃªte
+        // En-tête
         doc.setFillColor(rgb.r, rgb.g, rgb.b);
         doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F');
         
@@ -1912,7 +1912,7 @@
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('REÃ‡U DE PAIEMENT', 20, 60);
+        doc.text('REÇU DE PAIEMENT', 20, 60);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -1941,7 +1941,7 @@
         doc.setFont('helvetica', 'normal');
         doc.text(`Nom: ${order.customerName || client?.name || 'N/A'}`, 20, 120);
         doc.text(`Email: ${order.customerEmail || client?.email || '-'}`, 20, 130);
-        doc.text(`TÃ©lÃ©phone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
+        doc.text(`Téléphone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
         doc.text(`Adresse: ${order.customerAddress || client?.address || '-'}`, 20, 150);
         doc.text(`Ville: ${order.customerCity || client?.city || '-'}`, 20, 160);
         
@@ -1950,7 +1950,7 @@
         const delivery = order.delivery || null;
         if (delivery) {
           const deliveryLabel = delivery.method === 'home'
-            ? 'Livraison Ã  domicile'
+            ? 'Livraison à domicile'
             : delivery.method === 'pickup'
               ? 'Retrait en point de vente'
               : delivery.method === 'meetup'
@@ -1970,7 +1970,7 @@
           y += 8;
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text(`MÃ©thode: ${deliveryLabel}`, 20, y);
+          doc.text(`Méthode: ${deliveryLabel}`, 20, y);
           y += 6;
           if (deliveryTarget) {
             doc.text(`Zone/Point: ${deliveryTarget}`.slice(0, 110), 20, y);
@@ -1981,7 +1981,7 @@
             y += 6;
           }
           if (delivery.phone || delivery.whatsapp) {
-            const contact = [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
+            const contact = [delivery.phone ? `Tél: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
             doc.text(contact.slice(0, 110), 20, y);
             y += 6;
           }
@@ -2004,25 +2004,25 @@
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`MÃ©thode: ${order.methodName || 'N/A'}`, 20, y + 10);
+        doc.text(`Méthode: ${order.methodName || 'N/A'}`, 20, y + 10);
         
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
         doc.text(`Montant: ${formatPrice(getOrderComputedAmount(order))}`, 20, y + 24);
 
-        // Produits commandÃ©s
+        // Produits commandés
         y = y + 36;
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Produits commandÃ©s', 20, y);
+        doc.text('Produits commandés', 20, y);
         y += 7;
 
         if (orderItems.length === 0) {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
-          doc.text('Aucun dÃ©tail produit enregistrÃ©.', 20, y);
+          doc.text('Aucun détail produit enregistré.', 20, y);
           y += 6;
         } else {
           orderItems.forEach((item, index) => {
@@ -2044,7 +2044,7 @@
             y += 4.5;
 
             doc.setFont('helvetica', 'normal');
-            doc.text(`QtÃ©: ${qty} | PU: ${formatPrice(unitPrice)} | Total: ${formatPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
+            doc.text(`Qté: ${qty} | PU: ${formatPrice(unitPrice)} | Total: ${formatPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
             y += 4.2;
 
             if (options && options !== '-') {
@@ -2080,15 +2080,15 @@
         // Pied de page
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text('Ce document est un reÃ§u officiel de paiement.', 20, 280);
-        doc.text(`Code de vÃ©rification: ${order.uniqueCode || 'N/A'}`, 20, 285);
+        doc.text('Ce document est un reçu officiel de paiement.', 20, 280);
+        doc.text(`Code de vérification: ${order.uniqueCode || 'N/A'}`, 20, 285);
         
         doc.save(`recu-${order.uniqueCode || order.id}.pdf`);
-        showToast('PDF gÃ©nÃ©rÃ© avec succÃ¨s !', 'success');
+        showToast('PDF généré avec succès !', 'success');
         
       } catch (error) {
-        console.error('âŒ Erreur gÃ©nÃ©ration PDF:', error);
-        showToast('Erreur lors de la gÃ©nÃ©ration du PDF', 'error');
+        console.error('âŒ Erreur génération PDF:', error);
+        showToast('Erreur lors de la génération du PDF', 'error');
       }
     }
 
@@ -2105,7 +2105,7 @@
       const delivery = order.delivery || null;
       const deliveryLabel = delivery
         ? (delivery.method === 'home'
-          ? 'Livraison Ã  domicile'
+          ? 'Livraison à domicile'
           : delivery.method === 'pickup'
             ? 'Retrait en point de vente'
             : delivery.method === 'meetup'
@@ -2122,7 +2122,7 @@
               : '')
         : '';
       const deliveryContact = delivery
-        ? [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ')
+        ? [delivery.phone ? `Tél: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ')
         : '';
       const deliveryFee = Number(delivery?.totalFee || 0);
       
@@ -2138,7 +2138,7 @@
               <p>${order.customerEmail || client?.email || '-'}</p>
             </div>
             <div>
-              <p class="text-xs text-text-secondary">TÃ©lÃ©phone</p>
+              <p class="text-xs text-text-secondary">Téléphone</p>
               <p>${order.customerPhone || client?.phone || '-'}</p>
             </div>
             <div>
@@ -2157,7 +2157,7 @@
             ${delivery ? `
               <div class="bg-background rounded-lg border border-border p-3 space-y-2 text-sm">
                 <div>
-                  <span class="text-text-secondary">MÃ©thode:</span>
+                  <span class="text-text-secondary">Méthode:</span>
                   <span class="font-medium">${escapeHtml(deliveryLabel || 'Livraison')}</span>
                 </div>
                 ${deliveryTarget ? `
@@ -2191,12 +2191,12 @@
                   </div>
                 ` : ''}
               </div>
-            ` : '<p class="text-sm text-text-secondary">Aucune donnÃ©e de livraison.</p>'}
+            ` : '<p class="text-sm text-text-secondary">Aucune donnée de livraison.</p>'}
           </div>
           
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <p class="text-xs text-text-secondary">MÃ©thode</p>
+              <p class="text-xs text-text-secondary">Méthode</p>
               <p>${method?.name || order.methodName || 'N/A'}</p>
             </div>
             <div>
@@ -2209,7 +2209,7 @@
             <p class="text-xs text-text-secondary mb-2">Produits (${getOrderItems(order).length})</p>
             <div class="bg-background rounded-lg border border-border divide-y">
               ${getOrderItems(order).length === 0 ? `
-                <div class="p-3 text-sm text-text-secondary">Aucun dÃ©tail produit enregistrÃ©.</div>
+                <div class="p-3 text-sm text-text-secondary">Aucun détail produit enregistré.</div>
               ` : getOrderItems(order).map((item, idx) => `
                 <div class="p-3">
                   <div class="flex items-start justify-between gap-3">
@@ -2220,11 +2220,11 @@
                     <div class="flex-1">
                       <p class="font-medium">${escapeHtml(item?.name || 'Produit')}</p>
                       <p class="text-xs text-text-secondary">
-                        QtÃ©: ${Number(item?.quantity) || 1}
-                        Â· PU: ${formatPrice(Number(item?.price) || 0)}
-                        Â· Total: ${formatPrice((Number(item?.quantity) || 1) * (Number(item?.price) || 0))}
-                        ${item?.productId ? ` Â· ID: ${escapeHtml(item.productId)}` : ''}
-                        ${item?.sku ? ` Â· SKU: ${escapeHtml(item.sku)}` : ''}
+                        Qté: ${Number(item?.quantity) || 1}
+                        · PU: ${formatPrice(Number(item?.price) || 0)}
+                        · Total: ${formatPrice((Number(item?.quantity) || 1) * (Number(item?.price) || 0))}
+                        ${item?.productId ? ` · ID: ${escapeHtml(item.productId)}` : ''}
+                        ${item?.sku ? ` · SKU: ${escapeHtml(item.sku)}` : ''}
                       </p>
                       <p class="text-xs text-text-secondary mt-1">
                         Options: ${escapeHtml(formatItemOptions(item))}
@@ -2333,8 +2333,8 @@
           await sendBroadcastNotification({
             type: 'order_status',
             title: status === 'approved'
-              ? 'Commande approuvÃ©e'
-              : (status === 'rejected' ? 'Commande rejetÃ©e' : 'Commande en examen'),
+              ? 'Commande approuvée'
+              : (status === 'rejected' ? 'Commande rejetée' : 'Commande en examen'),
             body: `Votre commande ${order?.uniqueCode || id} est maintenant: ${getStatusText(status)}.`,
             target: 'user',
             targetUid,
@@ -2350,8 +2350,8 @@
         await loadOrders();
         
       } catch (error) {
-        console.error('âŒ Erreur mise Ã  jour statut:', error);
-        showToast('Erreur lors de la mise Ã  jour', 'error');
+        console.error('âŒ Erreur mise à jour statut:', error);
+        showToast('Erreur lors de la mise à jour', 'error');
       }
     }
 
@@ -2369,7 +2369,7 @@
         if (targetUid) {
           await sendBroadcastNotification({
             type: 'order_tracking',
-            title: 'Suivi de commande mis Ã  jour',
+            title: 'Suivi de commande mis à jour',
             body: `Votre commande ${order?.uniqueCode || id} est maintenant: ${getFulfillmentStatusText(fulfillmentStatus)}.`,
             target: 'user',
             targetUid,
@@ -2382,8 +2382,8 @@
         elements.orderModal.style.display = 'none';
         await loadOrders();
       } catch (error) {
-        console.error('âŒ Erreur mise Ã  jour suivi commande:', error);
-        showToast('Erreur lors de la mise Ã  jour du suivi', 'error');
+        console.error('âŒ Erreur mise à jour suivi commande:', error);
+        showToast('Erreur lors de la mise à jour du suivi', 'error');
       }
     }
 
@@ -2422,26 +2422,26 @@
           url,
           createdBy: 'dashboard_payment'
         });
-        showToast('Notification envoyÃ©e', 'success');
+        showToast('Notification envoyée', 'success');
         elements.customNotifTitle.value = '';
         elements.customNotifBody.value = '';
         elements.customNotifUrl.value = '';
       } catch (error) {
         console.error('âŒ Erreur envoi notification:', error);
-        showToast('Erreur lors de lâ€™envoi', 'error');
+        showToast('Erreur lors de l’envoi', 'error');
       }
     }
 
     async function deleteOrder(id, clientId) {
       const confirmed = confirm(
-        'Supprimer dÃ©finitivement cette commande de la base de donnÃ©es ?\n\n' +
-        'Cette action est irrÃ©versible.'
+        'Supprimer définitivement cette commande de la base de données ?\n\n' +
+        'Cette action est irréversible.'
       );
       if (!confirmed) return;
 
       try {
         await deleteDoc(doc(db, CLIENTS, clientId, 'orders', id));
-        showToast('Commande supprimÃ©e dÃ©finitivement', 'success');
+        showToast('Commande supprimée définitivement', 'success');
         if (currentOrderId === id && currentClientId === clientId) {
           elements.orderModal.style.display = 'none';
         }
@@ -2452,7 +2452,7 @@
       }
     }
 
-    // ========== CRUD MÃ‰THODES ==========
+    // ========== CRUD MÉTHODES ==========
 
     function getDefaultStepByType(type = 'payment') {
       if (type === 'form') {
@@ -2464,7 +2464,7 @@
           fields: [
             { type: 'text', name: 'fullName', label: 'Nom complet', required: true },
             { type: 'email', name: 'email', label: 'Email', required: true },
-            { type: 'text', name: 'phone', label: 'TÃ©lÃ©phone', required: true }
+            { type: 'text', name: 'phone', label: 'Téléphone', required: true }
           ]
         };
       }
@@ -2472,15 +2472,15 @@
         return {
           type: 'proof',
           title: 'Confirmez votre paiement',
-          message: 'TÃ©lÃ©chargez une capture de votre transaction.',
+          message: 'Téléchargez une capture de votre transaction.',
           buttonText: 'Soumettre ma demande'
         };
       }
       if (type === 'confirmation') {
         return {
           type: 'confirmation',
-          title: 'Demande envoyÃ©e',
-          message: 'Votre demande est en cours de vÃ©rification.',
+          title: 'Demande envoyée',
+          message: 'Votre demande est en cours de vérification.',
           buttonText: 'Fermer'
         };
       }
@@ -2488,15 +2488,15 @@
         return {
           type: 'custom',
           title: 'Information',
-          content: '<p>Contenu personnalisÃ©</p>',
+          content: '<p>Contenu personnalisé</p>',
           buttonText: 'Continuer'
         };
       }
       return {
         type: 'payment',
         title: 'Effectuez le paiement',
-        instruction: 'Payez aux coordonnÃ©es suivantes :',
-        buttonText: 'J\'ai payÃ©'
+        instruction: 'Payez aux coordonnées suivantes :',
+        buttonText: 'J\'ai payé'
       };
     }
 
@@ -2517,7 +2517,7 @@
       if (methodStepsDraft.length === 0) {
         elements.stepsBuilder.innerHTML = `
           <div class="text-sm text-text-secondary py-3 px-3 bg-background rounded-lg border border-border">
-            Aucune Ã©tape. Ajoutez au moins une Ã©tape.
+            Aucune étape. Ajoutez au moins une étape.
           </div>
         `;
         return;
@@ -2537,7 +2537,7 @@
             <div class="flex items-center justify-between gap-2 mb-3">
               <div class="flex items-center gap-2">
                 <div class="step-number">${index + 1}</div>
-                <span class="text-sm font-medium">Ã‰tape ${index + 1}</span>
+                <span class="text-sm font-medium">Étape ${index + 1}</span>
               </div>
               <button type="button" class="btn-icon text-danger remove-step-btn" data-step-index="${index}" title="Supprimer">
                 <i class="fas fa-trash"></i>
@@ -2552,7 +2552,7 @@
                   <option value="payment" ${step.type === 'payment' ? 'selected' : ''}>Paiement</option>
                   <option value="proof" ${step.type === 'proof' ? 'selected' : ''}>Preuve</option>
                   <option value="confirmation" ${step.type === 'confirmation' ? 'selected' : ''}>Confirmation</option>
-                  <option value="custom" ${step.type === 'custom' ? 'selected' : ''}>PersonnalisÃ©e</option>
+                  <option value="custom" ${step.type === 'custom' ? 'selected' : ''}>Personnalisée</option>
                 </select>
               </div>
               <div>
@@ -2722,7 +2722,7 @@
     async function deleteMethod(id) {
       if (!confirm('Supprimer ce moyen de paiement ?')) return;
       await deleteDoc(doc(db, PAYMENT_METHODS, id));
-      showToast('Moyen supprimÃ©', 'success');
+      showToast('Moyen supprimé', 'success');
     }
 
     async function saveMethod(e) {
@@ -2744,20 +2744,20 @@
         return;
       }
       if (!Array.isArray(methodData.steps) || methodData.steps.length === 0) {
-        showToast('Ajoutez au moins une Ã©tape de paiement', 'error');
+        showToast('Ajoutez au moins une étape de paiement', 'error');
         return;
       }
 
       try {
         if (elements.methodId.value) {
           await updateDoc(doc(db, PAYMENT_METHODS, elements.methodId.value), methodData);
-          showToast('Moyen mis Ã  jour', 'success');
+          showToast('Moyen mis à jour', 'success');
         } else {
           await addDoc(collection(db, PAYMENT_METHODS), {
             ...methodData,
             createdAt: new Date().toISOString()
           });
-          showToast('Moyen ajoutÃ©', 'success');
+          showToast('Moyen ajouté', 'success');
         }
         closeMethodModal();
       } catch (error) {
@@ -2792,7 +2792,7 @@
         
         pdfConfig = config;
         applyPdfConfig();
-        showToast('Configuration PDF enregistrÃ©e', 'success');
+        showToast('Configuration PDF enregistrée', 'success');
         
       } catch (error) {
         console.error('âŒ Erreur:', error);
@@ -2819,7 +2819,7 @@
           await updateDoc(doc(db, SETTINGS, snapshot.docs[0].id), settingsData);
         }
         
-        showToast('ParamÃ¨tres enregistrÃ©s', 'success');
+        showToast('Paramètres enregistrés', 'success');
         
       } catch (error) {
         console.error('âŒ Erreur:', error);
@@ -2827,7 +2827,7 @@
       }
     }
 
-    // ========== Ã‰VÃ‰NEMENTS ==========
+    // ========== ÉVÉNEMENTS ==========
     
     function setupEventListeners() {
       // Sidebar
@@ -2841,7 +2841,7 @@
         }
       });
       
-      // MÃ©thodes
+      // Méthodes
       elements.addMethodBtn.addEventListener('click', () => openMethodModal(false));
       elements.closeModalBtn.addEventListener('click', closeMethodModal);
       elements.cancelMethod.addEventListener('click', closeMethodModal);
@@ -2964,7 +2964,7 @@
           const testOrder = orders[0];
           generateOrderPdf(testOrder.id, testOrder.clientId);
         } else {
-          // CrÃ©er un exemple pour tester
+          // Créer un exemple pour tester
           const testOrderExample = {
             id: 'test',
             clientId: 'test',
@@ -2982,7 +2982,7 @@
         }
       });
       
-      // ParamÃ¨tres
+      // Paramètres
       elements.saveSettingsBtn.addEventListener('click', saveSettings);
       elements.dashboardNotifToggle.addEventListener('change', toggleDashboardNotifications);
       elements.enableDashboardNotifBtn.addEventListener('click', enableDashboardNotifications);
@@ -3000,7 +3000,7 @@
       updateDashboardNotificationStatus();
       document.addEventListener('visibilitychange', updateDashboardNotificationStatus);
       
-      // Ã‰couter en temps rÃ©el les changements
+      // Écouter en temps réel les changements
       onSnapshot(collection(db, CLIENTS), async () => {
         await loadClients();
         await loadOrders();
