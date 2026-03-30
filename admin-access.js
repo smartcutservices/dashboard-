@@ -4,6 +4,7 @@ import { doc, getDoc, query, collection, where, limit, getDocs } from 'https://w
 
 const ADMIN_ROLE = 'admin';
 const ADMIN_GATE_ID = 'smartcut-admin-gate';
+const ADMIN_SESSION_KEY = 'smartcut-admin-session';
 
 async function loadAdminProfile(uid) {
   if (!uid) return null;
@@ -34,6 +35,30 @@ async function loadAdminProfile(uid) {
 function isAdminProfile(profile) {
   if (!profile) return false;
   return profile.role === ADMIN_ROLE || profile.dashboardAccess === true;
+}
+
+function setAdminSessionFlag() {
+  try {
+    sessionStorage.setItem(ADMIN_SESSION_KEY, 'granted');
+  } catch (error) {
+    console.warn('Session admin non memorisee:', error);
+  }
+}
+
+function clearAdminSessionFlag() {
+  try {
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  } catch (error) {
+    console.warn('Session admin non nettoyee:', error);
+  }
+}
+
+function hasAdminSessionFlag() {
+  try {
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === 'granted';
+  } catch (error) {
+    return false;
+  }
 }
 
 function ensureGate() {
@@ -184,6 +209,11 @@ function ensureGate() {
   return gate;
 }
 
+function removeGate() {
+  const gate = document.getElementById(ADMIN_GATE_ID);
+  if (gate) gate.remove();
+}
+
 function updateGateState({ mode = 'login' } = {}) {
   const gate = ensureGate();
   const copy = gate.querySelector('#admin-gate-copy');
@@ -260,10 +290,7 @@ async function handleAdminLogin(event) {
     errorBox.textContent = '';
   }
 
-  if (copy) {
-    copy.textContent = 'Connexion admin en cours...';
-  }
-
+  if (copy) copy.textContent = 'Connexion admin en cours...';
   if (loginBtn) {
     loginBtn.disabled = true;
     loginBtn.textContent = 'Connexion...';
@@ -275,6 +302,7 @@ async function handleAdminLogin(event) {
     const profile = await loadAdminProfile(credential.user?.uid);
 
     if (!isAdminProfile(profile)) {
+      clearAdminSessionFlag();
       try {
         await signOut(auth);
       } catch (signOutError) {
@@ -285,17 +313,14 @@ async function handleAdminLogin(event) {
         errorBox.style.display = 'block';
         errorBox.textContent = 'Ce compte ne peut pas ouvrir le dashboard admin.';
       }
-
       if (copy) {
         copy.textContent = 'Ce compte est connecte, mais il n a pas les droits admin pour ce dashboard.';
       }
-
       if (loginBtn) {
         loginBtn.disabled = false;
         loginBtn.textContent = 'Se connecter';
         loginBtn.style.opacity = '1';
       }
-
       return;
     }
 
@@ -318,30 +343,50 @@ async function handleAdminLogin(event) {
 }
 
 function allowAccess(profile) {
+  setAdminSessionFlag();
   document.body.dataset.adminAccess = 'granted';
   document.dispatchEvent(new CustomEvent('adminAccessGranted', { detail: { profile } }));
-  const gate = document.getElementById(ADMIN_GATE_ID);
-  if (gate) gate.remove();
+  removeGate();
 }
 
 function denyAccess(mode = 'login') {
+  clearAdminSessionFlag();
   document.body.dataset.adminAccess = 'blocked';
   updateGateState({ mode });
 }
 
 export function protectAdminPage() {
-  updateGateState({ mode: 'checking' });
+  if (hasAdminSessionFlag()) {
+    document.body.dataset.adminAccess = 'restoring';
+  }
+
+  let resolved = false;
+  let loginGateTimer = null;
+
+  if (!hasAdminSessionFlag()) {
+    loginGateTimer = window.setTimeout(() => {
+      if (!resolved) {
+        denyAccess('login');
+      }
+    }, 220);
+  }
 
   onAuthStateChanged(auth, async (user) => {
+    resolved = true;
+    if (loginGateTimer) {
+      clearTimeout(loginGateTimer);
+      loginGateTimer = null;
+    }
+
     if (!user?.uid) {
       denyAccess('login');
       return;
     }
 
-    updateGateState({ mode: 'checking' });
     const profile = await loadAdminProfile(user.uid);
 
     if (!isAdminProfile(profile)) {
+      clearAdminSessionFlag();
       try {
         await signOut(auth);
       } catch (error) {
