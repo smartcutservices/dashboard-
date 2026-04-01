@@ -379,6 +379,105 @@ function renderItems(order) {
   `;
 }
 
+function normalizeOptionLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getSelectedOptionValue(item, labels = []) {
+  const normalizedLabels = labels.map((label) => normalizeOptionLabel(label));
+  const options = Array.isArray(item?.selectedOptions) ? item.selectedOptions : [];
+  const match = options.find((option) => normalizedLabels.includes(normalizeOptionLabel(option?.label)));
+  return match?.value || '';
+}
+
+function inferFileKind(fileName = '', url = '') {
+  const target = `${fileName} ${url}`.toLowerCase();
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\?|$)/.test(target)) return 'image';
+  if (/\.pdf(\?|$)/.test(target)) return 'pdf';
+  return 'file';
+}
+
+function buildPrintableAssets(order) {
+  const items = Array.isArray(order?.items) ? order.items : [];
+  return items
+    .map((item, index) => {
+      const fileUrl = getSelectedOptionValue(item, ['URL fichier', 'Url fichier', 'Lien fichier']);
+      if (!fileUrl) return null;
+
+      const fileName = getSelectedOptionValue(item, ['Fichier', 'Nom du fichier']) || `fichier-impression-${index + 1}`;
+      const storagePath = getSelectedOptionValue(item, ['Chemin storage', 'Storage path']);
+      const kind = inferFileKind(fileName, fileUrl);
+
+      return {
+        id: `${order.id}_${index}`,
+        itemName: item?.name || `Fichier ${index + 1}`,
+        fileName,
+        fileUrl,
+        storagePath,
+        kind
+      };
+    })
+    .filter(Boolean);
+}
+
+async function downloadOrderAsset(url, fileName) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Impossible de telecharger ce fichier.');
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = fileName || 'telechargement';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+function renderPrintingFiles(order) {
+  const assets = buildPrintableAssets(order);
+  if (!assets.length) {
+    return '';
+  }
+
+  return `
+    <div class="detail-section">
+      <strong>Fichiers d'impression</strong>
+      <div style="display:grid;gap:0.85rem;margin-top:0.8rem;">
+        ${assets.map((asset) => `
+          <article style="display:grid;grid-template-columns:1fr auto;gap:0.85rem;align-items:center;padding:0.95rem 1rem;border-radius:18px;border:1px solid var(--border);background:#fff;">
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
+                <strong style="margin:0;color:var(--text);font-size:0.95rem;">${escapeHtml(asset.itemName)}</strong>
+                ${renderBadge(asset.kind === 'pdf' ? 'PDF' : asset.kind === 'image' ? 'Image' : 'Fichier', '#2563eb')}
+              </div>
+              <div class="muted" style="margin-top:0.3rem;word-break:break-word;">${escapeHtml(asset.fileName)}</div>
+              ${asset.storagePath ? `<div class="muted" style="font-size:0.78rem;margin-top:0.22rem;word-break:break-word;">${escapeHtml(asset.storagePath)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+              <button class="btn btn-secondary order-file-download" type="button" data-file-url="${escapeHtml(asset.fileUrl)}" data-file-name="${escapeHtml(asset.fileName)}">
+                <i class="fas fa-download"></i>
+                Telecharger
+              </button>
+              <a class="btn btn-secondary" href="${escapeHtml(asset.fileUrl)}" target="_blank" rel="noopener noreferrer">
+                <i class="fas fa-up-right-from-square"></i>
+                Ouvrir
+              </a>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function renderOrderDetail() {
   const order = state.orders.find((entry) => entry.id === state.activeOrderId);
   if (!order) {
@@ -465,6 +564,8 @@ function renderOrderDetail() {
         </div>
       </div>
 
+      ${renderPrintingFiles(order)}
+
       <div class="detail-section">
         <strong>Infos internes</strong>
         <div class="detail-grid" style="margin-top:0.75rem;">
@@ -499,6 +600,23 @@ function renderOrderDetail() {
   });
   saveNoteButton?.addEventListener('click', async () => {
     await saveLogisticsNote(order, noteField?.value || '');
+  });
+  elements.orderDetailRoot.querySelectorAll('.order-file-download').forEach((button) => {
+    button.addEventListener('click', async () => {
+      try {
+        button.disabled = true;
+        const originalHtml = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Telechargement...';
+        await downloadOrderAsset(button.dataset.fileUrl || '', button.dataset.fileName || '');
+        showToast('Fichier telecharge.');
+        button.innerHTML = originalHtml;
+      } catch (error) {
+        console.error('Erreur telechargement fichier commande:', error);
+        showToast(error.message || 'Impossible de telecharger ce fichier.', 'error');
+      } finally {
+        button.disabled = false;
+      }
+    });
   });
 }
 
