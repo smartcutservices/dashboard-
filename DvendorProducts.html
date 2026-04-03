@@ -1001,7 +1001,7 @@
     // ========== CONFIGURATION FIREBASE ==========
     import { uploadImageFile } from './firebase-storage.js';
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
     import { NotificationComponent } from './notification.js';
     import { 
       getFirestore, 
@@ -1032,6 +1032,7 @@
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const googleProvider = new GoogleAuthProvider();
     const dashboardNotifier = new NotificationComponent({ mode: 'dashboard', defaultUrl: './DvendorProducts.html' });
     dashboardNotifier.init();
     const VENDOR_SESSION_KEY = 'smartcut-vendor-session';
@@ -1190,6 +1191,10 @@
                     <i class="fas fa-store"></i>
                     Se connecter
                   </button>
+                  <button id="vendor-gate-google" type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:.6rem;border:1px solid #E2E8F0;background:#fff;color:#1E293B;border-radius:.6rem;padding:.9rem 1.15rem;font-weight:700;cursor:pointer;">
+                    <i class="fab fa-google"></i>
+                    Continuer avec Google
+                  </button>
                   <a href="./vendor-application.html" style="display:inline-flex;align-items:center;gap:.6rem;text-decoration:none;border:1px solid #E2E8F0;background:#fff;color:#1E293B;border-radius:.6rem;padding:.85rem 1.1rem;font-weight:700;">
                     <i class="fas fa-arrow-left"></i>
                     Retour candidature vendeur
@@ -1201,8 +1206,12 @@
         `;
 
         const form = document.getElementById('vendor-gate-form');
+        const googleButton = document.getElementById('vendor-gate-google');
         if (form) {
           form.addEventListener('submit', (event) => this.handleVendorLogin(event));
+        }
+        if (googleButton) {
+          googleButton.addEventListener('click', () => this.handleVendorGoogleLogin());
         }
       }
 
@@ -1270,6 +1279,61 @@
             loginButton.disabled = false;
             loginButton.style.opacity = '1';
             loginButton.innerHTML = '<i class="fas fa-store"></i> Se connecter';
+          }
+        }
+      }
+
+      async handleVendorGoogleLogin() {
+        const errorBox = document.getElementById('vendor-gate-error');
+        const googleButton = document.getElementById('vendor-gate-google');
+
+        if (errorBox) {
+          errorBox.style.display = 'none';
+          errorBox.textContent = '';
+        }
+        if (googleButton) {
+          googleButton.disabled = true;
+          googleButton.style.opacity = '0.7';
+          googleButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verification...';
+        }
+
+        try {
+          const credential = await signInWithPopup(auth, googleProvider);
+          const vendorProfile = await this.loadVendorProfile(credential.user?.uid);
+
+          if (!this.isApprovedVendorProfile(vendorProfile)) {
+            this.clearVendorSessionFlag();
+            try {
+              await signOut(auth);
+            } catch (signOutError) {
+              console.error('Erreur deconnexion vendeur Google refuse:', signOutError);
+            }
+            if (errorBox) {
+              errorBox.style.display = 'block';
+              errorBox.textContent = 'Ce compte Google est connecte, mais il n est pas encore approuve comme vendeur.';
+            }
+            return;
+          }
+
+          this.vendorContext = {
+            uid: credential.user.uid,
+            ...(vendorProfile || {})
+          };
+          this.setVendorSessionFlag();
+          window.location.reload();
+        } catch (error) {
+          console.error('Erreur connexion Google vendeur:', error);
+          if (errorBox) {
+            errorBox.style.display = 'block';
+            errorBox.textContent = error?.code === 'auth/popup-closed-by-user'
+              ? 'La fenetre Google a ete fermee avant la connexion.'
+              : 'Connexion Google vendeur impossible pour le moment.';
+          }
+        } finally {
+          if (googleButton) {
+            googleButton.disabled = false;
+            googleButton.style.opacity = '1';
+            googleButton.innerHTML = '<i class="fab fa-google"></i> Continuer avec Google';
           }
         }
       }
