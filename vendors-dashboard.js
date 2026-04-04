@@ -37,6 +37,7 @@ class VendorsDashboard {
     this.applications = [];
     this.vendorProducts = [];
     this.commissionRules = [];
+    this.categories = [];
     this.vendors = [];
     this.vendorSalesSummaries = [];
     this.formSettings = DEFAULT_FORM_SETTINGS;
@@ -51,10 +52,11 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, vendorSnapshot, ordersData, formSettingsSnap] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
+      getDocs(query(collection(db, 'categories_list'), orderBy('name'))),
       getDocs(query(collection(db, 'vendors'), orderBy('updatedAt', 'desc'))),
       loadAllOrdersWithClients(),
       getDoc(doc(db, ...FORM_SETTINGS_REF))
@@ -65,6 +67,7 @@ class VendorsDashboard {
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.active !== false)
       .sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')));
+    this.categories = categorySnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendors = vendorSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.status === 'active');
@@ -97,6 +100,20 @@ class VendorsDashboard {
   getCategoryCommissionRule(category) {
     const normalized = this.normalizeCategory(category);
     return this.commissionRules.find((item) => this.normalizeCategory(item.category) === normalized) || null;
+  }
+
+  getCategoryNameById(categoryId) {
+    const match = this.categories.find((item) => item.id === categoryId);
+    return String(match?.name || '').trim();
+  }
+
+  resolveProductCategory(item) {
+    return String(
+      item?.category ||
+      item?.categoryName ||
+      this.getCategoryNameById(item?.categoryId) ||
+      ''
+    ).trim();
   }
 
   getCounts() {
@@ -468,7 +485,8 @@ class VendorsDashboard {
   renderProductReview(item) {
     const meta = this.productStatusMeta(item.status);
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
-    const categoryRule = this.getCategoryCommissionRule(item.category);
+    const resolvedCategory = this.resolveProductCategory(item);
+    const categoryRule = this.getCategoryCommissionRule(resolvedCategory);
     const commissionValue = item.commissionRule?.categoryRate ?? item.commissionRule?.rate ?? (categoryRule ? (Number(categoryRule.rate) || 0) : '');
     const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
     const commissionHint = item.commissionRule?.source === 'product_override'
@@ -482,7 +500,7 @@ class VendorsDashboard {
             <div class="application-top">
               <div>
                 <h3>${item.name || 'Produit vendeur'}</h3>
-                <p>${item.vendorName || 'Vendeur'} · ${item.category || 'Categorie non definie'}</p>
+                <p>${item.vendorName || 'Vendeur'} · ${resolvedCategory || 'Categorie non definie'}</p>
               </div>
               <div class="badge" style="color:${meta.color}; background:${meta.bg};">${meta.label}</div>
             </div>
@@ -663,10 +681,11 @@ class VendorsDashboard {
     const now = new Date().toISOString();
     const commissionInput = document.getElementById(`productCommission-${id}`);
     const commissionRate = Number.parseFloat(commissionInput?.value || '');
-    const categoryRule = this.getCategoryCommissionRule(current.category);
+    const resolvedCategory = this.resolveProductCategory(current);
+    const categoryRule = this.getCategoryCommissionRule(resolvedCategory);
     const normalizedCommission = Number.isFinite(commissionRate)
       ? {
-          category: current.category || '',
+          category: resolvedCategory || '',
           categoryRate: commissionRate,
           source: 'product_override',
           updatedAt: now,
@@ -675,7 +694,7 @@ class VendorsDashboard {
       : (current.commissionRule || (
           categoryRule
             ? {
-                category: categoryRule.category || current.category || '',
+                category: categoryRule.category || resolvedCategory || '',
                 categoryRate: Number(categoryRule.rate) || 0,
                 source: 'vendorCommissionRules',
                 updatedAt: now,
@@ -693,6 +712,7 @@ class VendorsDashboard {
 
     await setDoc(doc(db, 'vendorProducts', id), {
       status,
+      category: resolvedCategory || current.category || '',
       commissionRule: normalizedCommission,
       adminReviewNote,
       reviewedAt: now,
