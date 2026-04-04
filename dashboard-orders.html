@@ -132,6 +132,189 @@
       margin-bottom: 1.25rem;
     }
 
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .analytics-stack {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .chart-panel {
+      padding: 1.25rem;
+    }
+
+    .chart-panel h3 {
+      margin: 0;
+      font-size: 1.08rem;
+    }
+
+    .chart-panel p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .chart-bars {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      align-items: end;
+      gap: 0.8rem;
+      min-height: 240px;
+      margin-top: 1.25rem;
+    }
+
+    .chart-bar-col {
+      display: grid;
+      gap: 0.55rem;
+      justify-items: center;
+    }
+
+    .chart-bar-track {
+      width: 100%;
+      max-width: 46px;
+      height: 180px;
+      border-radius: 999px;
+      background: rgba(198, 167, 94, 0.12);
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .chart-bar-fill {
+      width: 100%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #d8bb79 0%, #c6a75e 100%);
+      min-height: 8px;
+    }
+
+    .chart-bar-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .chart-bar-value {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .donut-wrap {
+      display: grid;
+      gap: 1rem;
+      justify-items: center;
+      margin-top: 1.2rem;
+    }
+
+    .donut-chart {
+      width: 210px;
+      height: 210px;
+      border-radius: 999px;
+      position: relative;
+      background: conic-gradient(#e9dcc1 0deg, #e9dcc1 360deg);
+      box-shadow: inset 0 0 0 1px rgba(31, 30, 28, 0.06);
+    }
+
+    .donut-chart::after {
+      content: '';
+      position: absolute;
+      inset: 28px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.96);
+      box-shadow: inset 0 0 0 1px rgba(31, 30, 28, 0.05);
+    }
+
+    .donut-center {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      z-index: 1;
+      padding: 0 2rem;
+    }
+
+    .donut-center strong {
+      display: block;
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .donut-center span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.84rem;
+      margin-top: 0.35rem;
+    }
+
+    .legend-list {
+      width: 100%;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.7rem;
+      align-items: center;
+      font-size: 0.92rem;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+    }
+
+    .legend-bar {
+      position: relative;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(198, 167, 94, 0.12);
+      overflow: hidden;
+    }
+
+    .legend-bar span {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: 999px;
+    }
+
+    .top-products-list {
+      display: grid;
+      gap: 0.85rem;
+      margin-top: 1.1rem;
+    }
+
+    .top-product-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.85rem 0.95rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--border);
+    }
+
+    .top-product-row strong {
+      display: block;
+      margin-bottom: 0.22rem;
+      font-size: 0.95rem;
+    }
+
+    .top-product-row span {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
     .stat-card {
       padding: 1.15rem;
     }
@@ -365,6 +548,10 @@
       .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .analytics-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 900px) {
@@ -378,6 +565,15 @@
 
       .stats-grid {
         grid-template-columns: 1fr;
+      }
+
+      .chart-bars {
+        gap: 0.5rem;
+      }
+
+      .chart-bar-track {
+        max-width: 38px;
+        height: 150px;
       }
 
       .detail-grid,
@@ -422,6 +618,50 @@
         <span>Livrees</span>
         <strong id="statDelivered">0</strong>
       </article>
+      <article class="stat-card">
+        <span>Chiffre d'affaires</span>
+        <strong id="statRevenue">0 HTG</strong>
+      </article>
+      <article class="stat-card">
+        <span>Ventes confirmees</span>
+        <strong id="statConfirmedSales">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Panier moyen</span>
+        <strong id="statAverageTicket">0 HTG</strong>
+      </article>
+      <article class="stat-card">
+        <span>Clients actifs</span>
+        <strong id="statActiveClients">0</strong>
+      </article>
+    </section>
+
+    <section class="analytics-grid">
+      <article class="panel chart-panel">
+        <h3>Evolution des ventes</h3>
+        <p>Progression glissante sur les 7 derniers jours, basee sur les commandes confirmees.</p>
+        <div id="salesTrendChart" class="chart-bars"></div>
+      </article>
+      <div class="analytics-stack">
+        <article class="panel chart-panel">
+          <h3>Repartition des paiements</h3>
+          <p>Diagramme des statuts de paiement observes sur l'ensemble des commandes.</p>
+          <div class="donut-wrap">
+            <div id="paymentStatusDonut" class="donut-chart">
+              <div class="donut-center">
+                <strong id="paymentStatusDonutValue">0</strong>
+                <span>commandes</span>
+              </div>
+            </div>
+            <div id="paymentStatusLegend" class="legend-list"></div>
+          </div>
+        </article>
+        <article class="panel chart-panel">
+          <h3>Produits les plus vendus</h3>
+          <p>Classement des produits qui portent actuellement le plus de chiffre d'affaires.</p>
+          <div id="topProductsList" class="top-products-list"></div>
+        </article>
+      </div>
     </section>
 
     <section class="grid">

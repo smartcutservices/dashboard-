@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>Smart Cut Services · Dashboard Paiements Pro</title>
+  <title>Smart Cut Services Â· Dashboard Paiements Pro</title>
   
   <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -517,7 +517,7 @@
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors tab-btn" data-tab="settings">
             <i class="fas fa-cog w-5 text-text-secondary"></i>
-            <span>Paramètres</span>
+            <span>ParamÃ¨tres</span>
           </button>
 
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors tab-btn" data-tab="notifications">
@@ -530,7 +530,7 @@
       <div class="absolute bottom-0 left-0 right-0 p-6 border-t border-border">
         <div class="flex items-center gap-3">
           <div class="w-2 h-2 rounded-full" id="connection-status" style="background: var(--success);"></div>
-          <span class="text-sm text-text-secondary" id="connection-text">é</span>
+          <span class="text-sm text-text-secondary" id="connection-text">Ã©</span>
         </div>
       </div>
     </aside>
@@ -594,7 +594,7 @@
                 </div>
                 
                 <div class="flex justify-between items-center mt-2">
-                  <span>Approuvées</span>
+                  <span>ApprouvÃ©es</span>
                   <span class="font-semibold" id="chartApproved">0</span>
                 </div>
                 <div class="w-full bg-background rounded-full h-2">
@@ -602,7 +602,7 @@
                 </div>
                 
                 <div class="flex justify-between items-center mt-2">
-                  <span>Rejetées</span>
+                  <span>RejetÃ©es</span>
                   <span class="font-semibold" id="chartRejected">0</span>
                 </div>
                 <div class="w-full bg-background rounded-full h-2">
@@ -612,9 +612,9 @@
             </div>
             
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Dernières commandes</h3>
+              <h3 class="font-semibold mb-4">DerniÃ¨res commandes</h3>
               <div id="recentOrders" class="space-y-3">
-                <!-- Injecté par JS -->
+                <!-- InjectÃ© par JS -->
               </div>
             </div>
           </div>
@@ -640,16 +640,16 @@
               <option value="all">Tous les statuts</option>
               <option value="pending">En attente</option>
               <option value="review">En examen</option>
-              <option value="approved">Approuvé</option>
-              <option value="rejected">Rejeté</option>
+              <option value="approved">ApprouvÃ©</option>
+              <option value="rejected">RejetÃ©</option>
             </select>
             
             <select id="orderFulfillmentFilter" class="form-select w-48">
               <option value="all">Tout le suivi client</option>
-              <option value="ordered">Commandé</option>
-              <option value="shipped">Expédié</option>
+              <option value="ordered">CommandÃ©</option>
+              <option value="shipped">ExpÃ©diÃ©</option>
               <option value="in_delivery">En cours de livraison</option>
-              <option value="delivered">Livré</option>
+              <option value="delivered">LivrÃ©</option>
             </select>
             
             <select id="orderClientFilter" class="form-select w-48">
@@ -673,7 +673,7 @@
                     <th>Client</th>
                     <th>Email</th>
                     <th>Montant</th>
-                    <th>Méthode</th>
+                    <th>MÃ©thode</th>
                     <th>Statut</th>
                     <th>Suivi client</th>
                     <th>Code unique</th>
@@ -686,7 +686,7 @@
             
             <div id="ordersEmpty" class="hidden text-center py-12">
               <i class="fas fa-shopping-cart text-4xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">Aucune commande trouvée</p>
+              <p class="text-text-secondary">Aucune commande trouvÃ©e</p>
             </div>
           </div>
         </div>
@@ -707,7 +707,7 @@
 
         <!-- ========== TAB PDF ========== -->
         <div id="tab-pdf" class="tab-content hidden">
-          <h2 class="text-xl font-semibold mb-6">Configuration du PDF de reçu</h2>
+          <h2 class="text-xl font-semibold mb-6">Configuration du PDF de reÃ§u</h2>
 
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Configuration -->
@@ -737,7 +737,7 @@
                 </div>
                 
                 <div>
-                  <label class="block text-sm text-text-secondary mb-1">Téléphone</label>
+                  <label class="block text-sm text-text-secondary mb-1">TÃ©lÃ©phone</label>
                   <input type="text" id="companyPhone" class="form-input" value="+509 00 00 0000">
                 </div>
                 
@@ -765,9 +765,9 @@
               </div>
             </div>
 
-            <!-- Aperçu PDF -->
+            <!-- AperÃ§u PDF -->
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Aperçu du PDF</h3>
+              <h3 class="font-semibold mb-4">AperÃ§u du PDF</h3>
               
               <div id="pdfPreview" class="pdf-preview">
                 <div class="pdf-header" style="border-bottom-color: var(--pdf-primary, #C6A75E);">
@@ -783,7 +783,7 @@
                 </div>
                 
                 <div class="text-center mb-4">
-                  <h3 class="font-bold text-xl">REÇU DE PAIEMENT</h3>
+                  <h3 class="font-bold text-xl">REÃ‡U DE PAIEMENT</h3>
                   <p id="previewDate" class="text-sm text-text-secondary"></p>
                 </div>
                 
@@ -803,7 +803,7 @@
                     <span id="previewEmail" class="text-sm">jean.dupont@email.com</span>
                   </div>
                   <div class="flex justify-between mb-2">
-                    <span>Téléphone:</span>
+                    <span>TÃ©lÃ©phone:</span>
                     <span id="previewPhoneClient" class="text-sm">+509 38 48 1234</span>
                   </div>
                   <div class="flex justify-between mb-2">
@@ -812,7 +812,7 @@
                   </div>
                   <div class="flex justify-between mb-2">
                     <span>Statut:</span>
-                    <span class="badge badge-approved">Approuvé</span>
+                    <span class="badge badge-approved">ApprouvÃ©</span>
                   </div>
                 </div>
                 
@@ -839,11 +839,11 @@
         <div id="tab-settings" class="tab-content hidden">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Configuration générale</h3>
+              <h3 class="font-semibold mb-4">Configuration gÃ©nÃ©rale</h3>
               
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm text-text-secondary mb-1">Durée de vérification</label>
+                  <label class="block text-sm text-text-secondary mb-1">DurÃ©e de vÃ©rification</label>
                   <div class="flex items-center gap-2">
                     <input type="number" id="verificationHours" class="form-input w-24" value="12" min="1" max="72">
                     <span class="text-text-secondary">heures</span>
@@ -852,7 +852,7 @@
                 
                 <div>
                   <label class="block text-sm text-text-secondary mb-1">Message d'expiration</label>
-                  <textarea id="expiredMessage" class="form-input" rows="3">Le délai de vérification est dépassé. Contactez le support.</textarea>
+                  <textarea id="expiredMessage" class="form-input" rows="3">Le dÃ©lai de vÃ©rification est dÃ©passÃ©. Contactez le support.</textarea>
                 </div>
               </div>
             </div>
@@ -870,7 +870,7 @@
                     <input type="checkbox" id="dashboardNotifToggle">
                     <span class="text-sm">Activer notifications nouvelles commandes</span>
                   </label>
-                  <p id="dashboardNotifStatus" class="text-sm text-text-secondary mb-2">Notifications navigateur: non activées</p>
+                  <p id="dashboardNotifStatus" class="text-sm text-text-secondary mb-2">Notifications navigateur: non activÃ©es</p>
                   <button id="enableDashboardNotifBtn" class="btn btn-secondary">
                     <i class="fas fa-bell"></i>
                     Activer les notifications navigateur
@@ -891,9 +891,9 @@
         <!-- ========== TAB NOTIFICATIONS ========== -->
         <div id="tab-notifications" class="tab-content hidden">
           <div class="content-card p-6">
-            <h3 class="font-semibold mb-4">Envoyer une notification personnalisée</h3>
+            <h3 class="font-semibold mb-4">Envoyer une notification personnalisÃ©e</h3>
             <p class="text-sm text-text-secondary mb-4">
-              Cette notification sera envoyée aux utilisateurs ayant autorisé les notifications.
+              Cette notification sera envoyÃ©e aux utilisateurs ayant autorisÃ© les notifications.
             </p>
             <div class="space-y-4">
               <div>
@@ -921,7 +921,7 @@
     </main>
   </div>
 
-  <!-- MODAL: Ajout/Édition moyen de paiement -->
+  <!-- MODAL: Ajout/Ã‰dition moyen de paiement -->
   <div id="methodModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
@@ -940,12 +940,22 @@
             <input type="text" id="methodName" class="form-input" required>
           </div>
           <div>
-            <label class="block text-sm text-text-secondary mb-1">Compte *</label>
-            <input type="text" id="accountName" class="form-input" required>
+            <label class="block text-sm text-text-secondary mb-1">Type de paiement *</label>
+            <select id="methodProvider" class="form-select">
+              <option value="manual">Paiement manuel</option>
+              <option value="moncash">MonCash</option>
+            </select>
+            <p id="methodProviderHelp" class="text-xs text-text-secondary mt-1">
+              Le mode manuel affiche des Ã©tapes personnalisÃ©es et des coordonnÃ©es de paiement.
+            </p>
           </div>
-          <div>
-            <label class="block text-sm text-text-secondary mb-1">Téléphone *</label>
-            <input type="text" id="phoneNumber" class="form-input" required>
+          <div id="manualAccountField">
+            <label class="block text-sm text-text-secondary mb-1">Compte *</label>
+            <input type="text" id="accountName" class="form-input">
+          </div>
+          <div id="manualPhoneField">
+            <label class="block text-sm text-text-secondary mb-1">TÃ©lÃ©phone *</label>
+            <input type="text" id="phoneNumber" class="form-input">
           </div>
           <div>
             <label class="block text-sm text-text-secondary mb-1">Logo</label>
@@ -953,25 +963,28 @@
           </div>
         </div>
         
-        <div>
+        <div id="moncashNotice" class="hidden text-sm text-text-secondary py-3 px-4 bg-background rounded-xl border border-border">
+          Cette mÃ©thode utilisera MonCash via Firebase Functions. Les coordonnÃ©es manuelles et les Ã©tapes personnalisÃ©es ne sont pas nÃ©cessaires.
+        </div>
+        
+        <div id="manualInstructionsBlock">
           <label class="block text-sm text-text-secondary mb-1">Instructions</label>
           <textarea id="instructions" class="form-input" rows="2"></textarea>
         </div>
 
-        <div>
+        <div id="manualStepsBlock">
           <div class="flex items-center justify-between mb-2">
-            <label class="block text-sm text-text-secondary">Étapes du paiement</label>
+            <label class="block text-sm text-text-secondary">Ã‰tapes du paiement</label>
             <button type="button" id="addStepBtn" class="btn btn-secondary">
               <i class="fas fa-plus"></i>
-              Ajouter une étape
+              Ajouter une Ã©tape
             </button>
           </div>
           <p class="text-xs text-text-secondary mb-3">
-            Réorganisez les étapes par glisser-déposer.
+            RÃ©organisez les Ã©tapes par glisser-dÃ©poser.
           </p>
           <div id="stepsBuilder" class="space-y-2"></div>
         </div>
-        
         <label class="flex items-center gap-2">
           <input type="checkbox" id="isActive" checked>
           <span class="text-sm">Actif</span>
@@ -989,11 +1002,11 @@
     </div>
   </div>
 
-  <!-- MODAL: Détails commande -->
+  <!-- MODAL: DÃ©tails commande -->
   <div id="orderDetailModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
-        <h3 class="text-xl font-semibold">Détails de la commande</h3>
+        <h3 class="text-xl font-semibold">DÃ©tails de la commande</h3>
         <button id="closeOrderModal" class="btn-icon">
           <i class="fas fa-times"></i>
         </button>
@@ -1067,7 +1080,7 @@
     const PDF_CONFIG = "pdfConfig";
     const SETTINGS = "settings";
 
-    // ========== ÉTAT ==========
+    // ========== Ã‰TAT ==========
     let clients = [];
     let orders = [];
     let methods = [];
@@ -1172,16 +1185,23 @@
       customNotifUrl: document.getElementById('customNotifUrl'),
       sendCustomNotifBtn: document.getElementById('sendCustomNotifBtn'),
       
-      // Modal méthode
+      // Modal mÃ©thode
       methodModal: document.getElementById('methodModal'),
       modalTitle: document.getElementById('modalTitle'),
       methodId: document.getElementById('methodId'),
       methodName: document.getElementById('methodName'),
+      methodProvider: document.getElementById('methodProvider'),
+      methodProviderHelp: document.getElementById('methodProviderHelp'),
       accountName: document.getElementById('accountName'),
       phoneNumber: document.getElementById('phoneNumber'),
+      manualAccountField: document.getElementById('manualAccountField'),
+      manualPhoneField: document.getElementById('manualPhoneField'),
       methodImage: document.getElementById('methodImage'),
+      moncashNotice: document.getElementById('moncashNotice'),
       instructions: document.getElementById('instructions'),
+      manualInstructionsBlock: document.getElementById('manualInstructionsBlock'),
       stepsBuilder: document.getElementById('stepsBuilder'),
+      manualStepsBlock: document.getElementById('manualStepsBlock'),
       addStepBtn: document.getElementById('addStepBtn'),
       isActive: document.getElementById('isActive'),
       saveMethod: document.querySelector('#methodForm button[type="submit"]'),
@@ -1228,24 +1248,68 @@
         maximumFractionDigits: 0
       }).format(price || 0);
     }
-    
+    function getMethodProvider(method = {}) {
+      const rawProvider = String(method.provider || method.gateway || method.slug || '').trim().toLowerCase();
+      if (rawProvider === 'moncash') return 'moncash';
+
+      const rawName = String(method.name || '').trim().toLowerCase();
+      if (rawName.includes('moncash')) return 'moncash';
+
+      return 'manual';
+    }
+
+    function isMoncashProvider(provider = 'manual') {
+      return String(provider || '').trim().toLowerCase() === 'moncash';
+    }
+
+    function getDefaultManualSteps() {
+      return [
+        getDefaultStepByType('form'),
+        getDefaultStepByType('payment'),
+        getDefaultStepByType('proof'),
+        getDefaultStepByType('confirmation')
+      ];
+    }
+
+    function updateMethodFormByProvider() {
+      const provider = elements.methodProvider?.value || 'manual';
+      const moncash = isMoncashProvider(provider);
+
+      elements.manualAccountField?.classList.toggle('hidden', moncash);
+      elements.manualPhoneField?.classList.toggle('hidden', moncash);
+      elements.manualInstructionsBlock?.classList.toggle('hidden', moncash);
+      elements.manualStepsBlock?.classList.toggle('hidden', moncash);
+      elements.moncashNotice?.classList.toggle('hidden', !moncash);
+
+      if (elements.methodProviderHelp) {
+        elements.methodProviderHelp.textContent = moncash
+          ? 'MonCash redirige le client vers un paiement en ligne et confirme la commande automatiquement.'
+          : 'Le mode manuel affiche des Ã©tapes personnalisÃ©es et des coordonnÃ©es de paiement.';
+      }
+
+      if (!moncash && (!Array.isArray(methodStepsDraft) || methodStepsDraft.length === 0)) {
+        methodStepsDraft = getDefaultManualSteps();
+        renderStepsBuilder();
+      }
+    }
+
     function getStatusText(status) {
       const texts = { 
         pending: 'En attente', 
         review: 'En examen', 
-        approved: 'Approuvé', 
-        rejected: 'Rejeté',
-        expired: 'Expiré'
+        approved: 'ApprouvÃ©', 
+        rejected: 'RejetÃ©',
+        expired: 'ExpirÃ©'
       };
       return texts[status] || status;
     }
 
     function getFulfillmentStatusText(status) {
       const texts = {
-        ordered: 'Commandé',
-        shipped: 'Expédié',
+        ordered: 'CommandÃ©',
+        shipped: 'ExpÃ©diÃ©',
         in_delivery: 'En cours de livraison',
-        delivered: 'Livré'
+        delivered: 'LivrÃ©'
       };
       return texts[status] || texts.ordered;
     }
@@ -1277,10 +1341,10 @@
     function renderFulfillmentStepper(order) {
       const status = getNormalizedFulfillmentStatus(order);
       const steps = [
-        { key: 'ordered', label: 'Commandé' },
-        { key: 'shipped', label: 'Expédié' },
+        { key: 'ordered', label: 'CommandÃ©' },
+        { key: 'shipped', label: 'ExpÃ©diÃ©' },
         { key: 'in_delivery', label: 'En cours de livraison' },
-        { key: 'delivered', label: 'Livré' }
+        { key: 'delivered', label: 'LivrÃ©' }
       ];
       const currentIndex = Math.max(steps.findIndex((step) => step.key === status), 0);
       const color = getFulfillmentStatusColor(status);
@@ -1371,7 +1435,7 @@
       });
     }
 
-    // ========== CHARGEMENT DES DONNÉES ==========
+    // ========== CHARGEMENT DES DONNÃ‰ES ==========
     
     async function loadClients() {
       try {
@@ -1381,7 +1445,7 @@
         updateClientFilter();
         return clients;
       } catch (error) {
-        console.error('âŒ Erreur chargement clients:', error);
+        console.error('Ã¢ÂÅ’ Erreur chargement clients:', error);
         showToast('Erreur chargement clients', 'error');
         return [];
       }
@@ -1405,7 +1469,7 @@
               });
             });
           } catch (error) {
-            console.error(`âŒ Erreur chargement commandes pour client ${client.id}:`, error);
+            console.error(`Ã¢ÂÅ’ Erreur chargement commandes pour client ${client.id}:`, error);
           }
         }
         
@@ -1421,7 +1485,7 @@
               seenOrderIds.add(o.id);
               dashboardNotifier.notify(
                 'Nouvelle commande',
-                `Commande reçue ${o.uniqueCode || o.id}.`,
+                `Commande reÃ§ue ${o.uniqueCode || o.id}.`,
                 { url: './Dpayment.html', tag: `dashboard_order_${o.id}` }
               );
             }
@@ -1432,7 +1496,7 @@
         updateDashboard();
         return orders;
       } catch (error) {
-        console.error('âŒ Erreur chargement commandes:', error);
+        console.error('Ã¢ÂÅ’ Erreur chargement commandes:', error);
         showToast('Erreur chargement commandes', 'error');
         return [];
       }
@@ -1441,11 +1505,21 @@
     async function loadMethods() {
       try {
         const snapshot = await getDocs(collection(db, PAYMENT_METHODS));
-        methods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        methods = snapshot.docs.map((docSnapshot) => {
+          const data = docSnapshot.data();
+          const provider = getMethodProvider(data);
+          return {
+            id: docSnapshot.id,
+            ...data,
+            provider,
+            gateway: data.gateway || provider,
+            slug: data.slug || provider
+          };
+        });
         renderMethods();
         return methods;
       } catch (error) {
-        console.error('âŒ Erreur chargement méthodes:', error);
+        console.error('Ã¢ÂÅ’ Erreur chargement mÃ©thodes:', error);
         return [];
       }
     }
@@ -1458,7 +1532,7 @@
           applyPdfConfig();
         }
       } catch (error) {
-        console.error('âŒ Erreur chargement config PDF:', error);
+        console.error('Ã¢ÂÅ’ Erreur chargement config PDF:', error);
       }
     }
 
@@ -1472,12 +1546,12 @@
           elements.notificationEmail.value = settings.notificationEmail || '';
         }
       } catch (error) {
-        console.error('âŒ Erreur chargement paramètres:', error);
+        console.error('Ã¢ÂÅ’ Erreur chargement paramÃ¨tres:', error);
       }
     }
 
     async function loadAllData() {
-      showToast('Chargement des données...', 'info');
+      showToast('Chargement des donnÃ©es...', 'info');
       await loadClients();
       await loadOrders();
       await loadMethods();
@@ -1506,7 +1580,7 @@
             orders: 'Commandes',
             methods: 'Moyens de paiement',
             pdf: 'Gestion PDF',
-            settings: 'Paramètres',
+            settings: 'ParamÃ¨tres',
             notifications: 'Notifications'
           };
           elements.currentTabTitle.textContent = titles[tabName];
@@ -1521,26 +1595,26 @@
       }
       if (!('Notification' in window)) {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes: activées, mais navigateur non supporté'
-          : 'Notifications commandes: désactivées (navigateur non supporté)';
+          ? 'Notifications commandes: activÃ©es, mais navigateur non supportÃ©'
+          : 'Notifications commandes: dÃ©sactivÃ©es (navigateur non supportÃ©)';
         elements.enableDashboardNotifBtn.disabled = true;
         return;
       }
       const p = Notification.permission;
       if (p === 'granted') {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes: activées'
-          : 'Notifications commandes: désactivées';
+          ? 'Notifications commandes: activÃ©es'
+          : 'Notifications commandes: dÃ©sactivÃ©es';
         elements.enableDashboardNotifBtn.disabled = !enabled;
       } else if (p === 'denied') {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes activées, mais bloquées par le navigateur'
-          : 'Notifications commandes désactivées';
+          ? 'Notifications commandes activÃ©es, mais bloquÃ©es par le navigateur'
+          : 'Notifications commandes dÃ©sactivÃ©es';
         elements.enableDashboardNotifBtn.disabled = true;
       } else {
         elements.dashboardNotifStatus.textContent = enabled
-          ? 'Notifications commandes activées, permission navigateur requise'
-          : 'Notifications commandes désactivées';
+          ? 'Notifications commandes activÃ©es, permission navigateur requise'
+          : 'Notifications commandes dÃ©sactivÃ©es';
         elements.enableDashboardNotifBtn.disabled = !enabled;
       }
     }
@@ -1549,9 +1623,9 @@
       const enabled = !!elements.dashboardNotifToggle?.checked;
       dashboardNotifier.setEnabled(enabled);
       if (!enabled) {
-        showToast('Notifications commandes désactivées', 'info');
+        showToast('Notifications commandes dÃ©sactivÃ©es', 'info');
       } else {
-        showToast('Notifications commandes activées', 'success');
+        showToast('Notifications commandes activÃ©es', 'success');
       }
       updateDashboardNotificationStatus();
     }
@@ -1560,14 +1634,14 @@
       try {
         const permission = await dashboardNotifier.requestPermission();
         if (permission === 'granted') {
-          showToast('Notifications navigateur activées', 'success');
+          showToast('Notifications navigateur activÃ©es', 'success');
         } else if (permission === 'denied') {
-          showToast('Notifications bloquées par le navigateur', 'error');
+          showToast('Notifications bloquÃ©es par le navigateur', 'error');
         } else {
-          showToast('Activation annulée', 'info');
+          showToast('Activation annulÃ©e', 'info');
         }
       } catch (error) {
-        console.error('âŒ Erreur activation notifications dashboard:', error);
+        console.error('Ã¢ÂÅ’ Erreur activation notifications dashboard:', error);
         showToast('Erreur activation notifications', 'error');
       } finally {
         updateDashboardNotificationStatus();
@@ -1589,7 +1663,7 @@
         elements.clientsList.innerHTML = `
           <div class="col-span-full text-center py-12">
             <i class="fas fa-users text-4xl text-text-tertiary mb-3"></i>
-            <p class="text-text-secondary">Aucun client trouvé</p>
+            <p class="text-text-secondary">Aucun client trouvÃ©</p>
           </div>
         `;
         return;
@@ -1617,7 +1691,7 @@
             
             <div class="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p class="text-text-secondary">Téléphone</p>
+                <p class="text-text-secondary">TÃ©lÃ©phone</p>
                 <p>${client.phone || '-'}</p>
               </div>
               <div>
@@ -1625,7 +1699,7 @@
                 <p>${clientOrders.length}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Âge</p>
+                <p class="text-text-secondary">Ã‚ge</p>
                 <p>${clientAge}</p>
               </div>
               <div>
@@ -1633,7 +1707,7 @@
                 <p>${clientSexe}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Total dépensé</p>
+                <p class="text-text-secondary">Total dÃ©pensÃ©</p>
                 <p class="font-semibold">${formatPrice(totalSpent)}</p>
               </div>
               <div>
@@ -1706,11 +1780,11 @@
                   <i class="fas fa-eye"></i>
                 </button>
                 ${order.status === 'approved' ? `
-                  <button class="download-pdf btn-icon text-success" data-id="${order.id}" data-client-id="${order.clientId}" title="Télécharger PDF">
+                  <button class="download-pdf btn-icon text-success" data-id="${order.id}" data-client-id="${order.clientId}" title="TÃ©lÃ©charger PDF">
                     <i class="fas fa-file-pdf"></i>
                   </button>
                 ` : ''}
-                <button class="delete-order btn-icon text-danger" data-id="${order.id}" data-client-id="${order.clientId}" title="Supprimer définitivement">
+                <button class="delete-order btn-icon text-danger" data-id="${order.id}" data-client-id="${order.clientId}" title="Supprimer dÃ©finitivement">
                   <i class="fas fa-trash"></i>
                 </button>
               </div>
@@ -1750,15 +1824,25 @@
             </div>
             <div>
               <h3 class="font-medium">${method.name}</h3>
-              <span class="badge ${method.isActive ? 'badge-approved' : 'badge-pending'}">
-                ${method.isActive ? 'Actif' : 'Inactif'}
-              </span>
+              <div class="flex flex-wrap gap-2 mt-1">
+                <span class="badge ${method.isActive ? 'badge-approved' : 'badge-pending'}">
+                  ${method.isActive ? 'Actif' : 'Inactif'}
+                </span>
+                <span class="badge ${getMethodProvider(method) === 'moncash' ? 'badge-approved' : 'badge-pending'}">
+                  ${getMethodProvider(method) === 'moncash' ? 'MonCash' : 'Manuel'}
+                </span>
+              </div>
             </div>
           </div>
           
           <div class="text-sm">
-            <p class="text-text-secondary">${method.accountName}</p>
-            <p class="text-text-secondary">${method.phoneNumber}</p>
+            ${getMethodProvider(method) === 'moncash' ? `
+              <p class="text-text-secondary">Paiement en ligne sÃ©curisÃ© via MonCash</p>
+              <p class="text-text-secondary">Validation automatique aprÃ¨s confirmation</p>
+            ` : `
+              <p class="text-text-secondary">${method.accountName || '-'}</p>
+              <p class="text-text-secondary">${method.phoneNumber || '-'}</p>
+            `}
           </div>
         </div>
       `).join('');
@@ -1791,7 +1875,7 @@
       elements.approvedBar.style.width = (approved / total * 100) + '%';
       elements.rejectedBar.style.width = (rejected / total * 100) + '%';
 
-      // Dernières commandes
+      // DerniÃ¨res commandes
       const recent = orders.slice(0, 5);
       elements.recentOrders.innerHTML = recent.map(order => `
         <div class="flex justify-between items-center p-2 hover:bg-background rounded">
@@ -1877,13 +1961,13 @@
       updatePdfPreview();
     }
 
-    // ========== GÉNÉRATION PDF ==========
+    // ========== GÃ‰NÃ‰RATION PDF ==========
     
     async function generateOrderPdf(orderId, clientId) {
       try {
         const order = orders.find(o => o.id === orderId && o.clientId === clientId);
         if (!order) {
-          showToast('Commande non trouvée', 'error');
+          showToast('Commande non trouvÃ©e', 'error');
           return;
         }
 
@@ -1895,7 +1979,7 @@
         const primaryColor = pdfConfig?.primaryColor || '#C6A75E';
         const rgb = hexToRgb(primaryColor);
         
-        // En-tête
+        // En-tÃªte
         doc.setFillColor(rgb.r, rgb.g, rgb.b);
         doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F');
         
@@ -1912,7 +1996,7 @@
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('REÇU DE PAIEMENT', 20, 60);
+        doc.text('REÃ‡U DE PAIEMENT', 20, 60);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -1941,7 +2025,7 @@
         doc.setFont('helvetica', 'normal');
         doc.text(`Nom: ${order.customerName || client?.name || 'N/A'}`, 20, 120);
         doc.text(`Email: ${order.customerEmail || client?.email || '-'}`, 20, 130);
-        doc.text(`Téléphone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
+        doc.text(`TÃ©lÃ©phone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
         doc.text(`Adresse: ${order.customerAddress || client?.address || '-'}`, 20, 150);
         doc.text(`Ville: ${order.customerCity || client?.city || '-'}`, 20, 160);
         
@@ -1950,7 +2034,7 @@
         const delivery = order.delivery || null;
         if (delivery) {
           const deliveryLabel = delivery.method === 'home'
-            ? 'Livraison à domicile'
+            ? 'Livraison Ã  domicile'
             : delivery.method === 'pickup'
               ? 'Retrait en point de vente'
               : delivery.method === 'meetup'
@@ -1970,7 +2054,7 @@
           y += 8;
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text(`Méthode: ${deliveryLabel}`, 20, y);
+          doc.text(`MÃ©thode: ${deliveryLabel}`, 20, y);
           y += 6;
           if (deliveryTarget) {
             doc.text(`Zone/Point: ${deliveryTarget}`.slice(0, 110), 20, y);
@@ -1981,7 +2065,7 @@
             y += 6;
           }
           if (delivery.phone || delivery.whatsapp) {
-            const contact = [delivery.phone ? `Tél: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
+            const contact = [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
             doc.text(contact.slice(0, 110), 20, y);
             y += 6;
           }
@@ -2004,25 +2088,25 @@
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Méthode: ${order.methodName || 'N/A'}`, 20, y + 10);
+        doc.text(`MÃ©thode: ${order.methodName || 'N/A'}`, 20, y + 10);
         
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
         doc.text(`Montant: ${formatPrice(getOrderComputedAmount(order))}`, 20, y + 24);
 
-        // Produits commandés
+        // Produits commandÃ©s
         y = y + 36;
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Produits commandés', 20, y);
+        doc.text('Produits commandÃ©s', 20, y);
         y += 7;
 
         if (orderItems.length === 0) {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
-          doc.text('Aucun détail produit enregistré.', 20, y);
+          doc.text('Aucun dÃ©tail produit enregistrÃ©.', 20, y);
           y += 6;
         } else {
           orderItems.forEach((item, index) => {
@@ -2044,7 +2128,7 @@
             y += 4.5;
 
             doc.setFont('helvetica', 'normal');
-            doc.text(`Qté: ${qty} | PU: ${formatPrice(unitPrice)} | Total: ${formatPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
+            doc.text(`QtÃ©: ${qty} | PU: ${formatPrice(unitPrice)} | Total: ${formatPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
             y += 4.2;
 
             if (options && options !== '-') {
@@ -2080,15 +2164,15 @@
         // Pied de page
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text('Ce document est un reçu officiel de paiement.', 20, 280);
-        doc.text(`Code de vérification: ${order.uniqueCode || 'N/A'}`, 20, 285);
+        doc.text('Ce document est un reÃ§u officiel de paiement.', 20, 280);
+        doc.text(`Code de vÃ©rification: ${order.uniqueCode || 'N/A'}`, 20, 285);
         
         doc.save(`recu-${order.uniqueCode || order.id}.pdf`);
-        showToast('PDF généré avec succès !', 'success');
+        showToast('PDF gÃ©nÃ©rÃ© avec succÃ¨s !', 'success');
         
       } catch (error) {
-        console.error('âŒ Erreur génération PDF:', error);
-        showToast('Erreur lors de la génération du PDF', 'error');
+        console.error('Ã¢ÂÅ’ Erreur gÃ©nÃ©ration PDF:', error);
+        showToast('Erreur lors de la gÃ©nÃ©ration du PDF', 'error');
       }
     }
 
@@ -2105,7 +2189,7 @@
       const delivery = order.delivery || null;
       const deliveryLabel = delivery
         ? (delivery.method === 'home'
-          ? 'Livraison à domicile'
+          ? 'Livraison Ã  domicile'
           : delivery.method === 'pickup'
             ? 'Retrait en point de vente'
             : delivery.method === 'meetup'
@@ -2122,7 +2206,7 @@
               : '')
         : '';
       const deliveryContact = delivery
-        ? [delivery.phone ? `Tél: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ')
+        ? [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ')
         : '';
       const deliveryFee = Number(delivery?.totalFee || 0);
       
@@ -2138,7 +2222,7 @@
               <p>${order.customerEmail || client?.email || '-'}</p>
             </div>
             <div>
-              <p class="text-xs text-text-secondary">Téléphone</p>
+              <p class="text-xs text-text-secondary">TÃ©lÃ©phone</p>
               <p>${order.customerPhone || client?.phone || '-'}</p>
             </div>
             <div>
@@ -2157,7 +2241,7 @@
             ${delivery ? `
               <div class="bg-background rounded-lg border border-border p-3 space-y-2 text-sm">
                 <div>
-                  <span class="text-text-secondary">Méthode:</span>
+                  <span class="text-text-secondary">MÃ©thode:</span>
                   <span class="font-medium">${escapeHtml(deliveryLabel || 'Livraison')}</span>
                 </div>
                 ${deliveryTarget ? `
@@ -2191,12 +2275,12 @@
                   </div>
                 ` : ''}
               </div>
-            ` : '<p class="text-sm text-text-secondary">Aucune donnée de livraison.</p>'}
+            ` : '<p class="text-sm text-text-secondary">Aucune donnÃ©e de livraison.</p>'}
           </div>
           
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <p class="text-xs text-text-secondary">Méthode</p>
+              <p class="text-xs text-text-secondary">MÃ©thode</p>
               <p>${method?.name || order.methodName || 'N/A'}</p>
             </div>
             <div>
@@ -2209,7 +2293,7 @@
             <p class="text-xs text-text-secondary mb-2">Produits (${getOrderItems(order).length})</p>
             <div class="bg-background rounded-lg border border-border divide-y">
               ${getOrderItems(order).length === 0 ? `
-                <div class="p-3 text-sm text-text-secondary">Aucun détail produit enregistré.</div>
+                <div class="p-3 text-sm text-text-secondary">Aucun dÃ©tail produit enregistrÃ©.</div>
               ` : getOrderItems(order).map((item, idx) => `
                 <div class="p-3">
                   <div class="flex items-start justify-between gap-3">
@@ -2220,11 +2304,11 @@
                     <div class="flex-1">
                       <p class="font-medium">${escapeHtml(item?.name || 'Produit')}</p>
                       <p class="text-xs text-text-secondary">
-                        Qté: ${Number(item?.quantity) || 1}
-                        · PU: ${formatPrice(Number(item?.price) || 0)}
-                        · Total: ${formatPrice((Number(item?.quantity) || 1) * (Number(item?.price) || 0))}
-                        ${item?.productId ? ` · ID: ${escapeHtml(item.productId)}` : ''}
-                        ${item?.sku ? ` · SKU: ${escapeHtml(item.sku)}` : ''}
+                        QtÃ©: ${Number(item?.quantity) || 1}
+                        Â· PU: ${formatPrice(Number(item?.price) || 0)}
+                        Â· Total: ${formatPrice((Number(item?.quantity) || 1) * (Number(item?.price) || 0))}
+                        ${item?.productId ? ` Â· ID: ${escapeHtml(item.productId)}` : ''}
+                        ${item?.sku ? ` Â· SKU: ${escapeHtml(item.sku)}` : ''}
                       </p>
                       <p class="text-xs text-text-secondary mt-1">
                         Options: ${escapeHtml(formatItemOptions(item))}
@@ -2277,10 +2361,10 @@
               <div class="flex-1">
                 <label class="block text-xs text-text-secondary mb-1">Mettre a jour le suivi client</label>
                 <select id="orderFulfillmentStatus" class="form-select w-full">
-                  <option value="ordered" ${getNormalizedFulfillmentStatus(order) === 'ordered' ? 'selected' : ''}>Commandé</option>
-                  <option value="shipped" ${getNormalizedFulfillmentStatus(order) === 'shipped' ? 'selected' : ''}>Expédié</option>
+                  <option value="ordered" ${getNormalizedFulfillmentStatus(order) === 'ordered' ? 'selected' : ''}>CommandÃ©</option>
+                  <option value="shipped" ${getNormalizedFulfillmentStatus(order) === 'shipped' ? 'selected' : ''}>ExpÃ©diÃ©</option>
                   <option value="in_delivery" ${getNormalizedFulfillmentStatus(order) === 'in_delivery' ? 'selected' : ''}>En cours de livraison</option>
-                  <option value="delivered" ${getNormalizedFulfillmentStatus(order) === 'delivered' ? 'selected' : ''}>Livré</option>
+                  <option value="delivered" ${getNormalizedFulfillmentStatus(order) === 'delivered' ? 'selected' : ''}>LivrÃ©</option>
                 </select>
               </div>
               <button id="saveFulfillmentStatusBtn" class="btn btn-primary">
@@ -2333,8 +2417,8 @@
           await sendBroadcastNotification({
             type: 'order_status',
             title: status === 'approved'
-              ? 'Commande approuvée'
-              : (status === 'rejected' ? 'Commande rejetée' : 'Commande en examen'),
+              ? 'Commande approuvÃ©e'
+              : (status === 'rejected' ? 'Commande rejetÃ©e' : 'Commande en examen'),
             body: `Votre commande ${order?.uniqueCode || id} est maintenant: ${getStatusText(status)}.`,
             target: 'user',
             targetUid,
@@ -2350,8 +2434,8 @@
         await loadOrders();
         
       } catch (error) {
-        console.error('âŒ Erreur mise à jour statut:', error);
-        showToast('Erreur lors de la mise à jour', 'error');
+        console.error('Ã¢ÂÅ’ Erreur mise Ã  jour statut:', error);
+        showToast('Erreur lors de la mise Ã  jour', 'error');
       }
     }
 
@@ -2369,7 +2453,7 @@
         if (targetUid) {
           await sendBroadcastNotification({
             type: 'order_tracking',
-            title: 'Suivi de commande mis à jour',
+            title: 'Suivi de commande mis Ã  jour',
             body: `Votre commande ${order?.uniqueCode || id} est maintenant: ${getFulfillmentStatusText(fulfillmentStatus)}.`,
             target: 'user',
             targetUid,
@@ -2382,8 +2466,8 @@
         elements.orderModal.style.display = 'none';
         await loadOrders();
       } catch (error) {
-        console.error('âŒ Erreur mise à jour suivi commande:', error);
-        showToast('Erreur lors de la mise à jour du suivi', 'error');
+        console.error('Ã¢ÂÅ’ Erreur mise Ã  jour suivi commande:', error);
+        showToast('Erreur lors de la mise Ã  jour du suivi', 'error');
       }
     }
 
@@ -2422,37 +2506,37 @@
           url,
           createdBy: 'dashboard_payment'
         });
-        showToast('Notification envoyée', 'success');
+        showToast('Notification envoyÃ©e', 'success');
         elements.customNotifTitle.value = '';
         elements.customNotifBody.value = '';
         elements.customNotifUrl.value = '';
       } catch (error) {
-        console.error('âŒ Erreur envoi notification:', error);
-        showToast('Erreur lors de l’envoi', 'error');
+        console.error('Ã¢ÂÅ’ Erreur envoi notification:', error);
+        showToast('Erreur lors de lâ€™envoi', 'error');
       }
     }
 
     async function deleteOrder(id, clientId) {
       const confirmed = confirm(
-        'Supprimer définitivement cette commande de la base de données ?\n\n' +
-        'Cette action est irréversible.'
+        'Supprimer dÃ©finitivement cette commande de la base de donnÃ©es ?\n\n' +
+        'Cette action est irrÃ©versible.'
       );
       if (!confirmed) return;
 
       try {
         await deleteDoc(doc(db, CLIENTS, clientId, 'orders', id));
-        showToast('Commande supprimée définitivement', 'success');
+        showToast('Commande supprimÃ©e dÃ©finitivement', 'success');
         if (currentOrderId === id && currentClientId === clientId) {
           elements.orderModal.style.display = 'none';
         }
         await loadOrders();
       } catch (error) {
-        console.error('âŒ Erreur suppression commande:', error);
+        console.error('Ã¢ÂÅ’ Erreur suppression commande:', error);
         showToast('Erreur lors de la suppression', 'error');
       }
     }
 
-    // ========== CRUD MÉTHODES ==========
+    // ========== CRUD MÃ‰THODES ==========
 
     function getDefaultStepByType(type = 'payment') {
       if (type === 'form') {
@@ -2464,7 +2548,7 @@
           fields: [
             { type: 'text', name: 'fullName', label: 'Nom complet', required: true },
             { type: 'email', name: 'email', label: 'Email', required: true },
-            { type: 'text', name: 'phone', label: 'Téléphone', required: true }
+            { type: 'text', name: 'phone', label: 'TÃ©lÃ©phone', required: true }
           ]
         };
       }
@@ -2472,15 +2556,15 @@
         return {
           type: 'proof',
           title: 'Confirmez votre paiement',
-          message: 'Téléchargez une capture de votre transaction.',
+          message: 'TÃ©lÃ©chargez une capture de votre transaction.',
           buttonText: 'Soumettre ma demande'
         };
       }
       if (type === 'confirmation') {
         return {
           type: 'confirmation',
-          title: 'Demande envoyée',
-          message: 'Votre demande est en cours de vérification.',
+          title: 'Demande envoyÃ©e',
+          message: 'Votre demande est en cours de vÃ©rification.',
           buttonText: 'Fermer'
         };
       }
@@ -2488,15 +2572,15 @@
         return {
           type: 'custom',
           title: 'Information',
-          content: '<p>Contenu personnalisé</p>',
+          content: '<p>Contenu personnalisÃ©</p>',
           buttonText: 'Continuer'
         };
       }
       return {
         type: 'payment',
         title: 'Effectuez le paiement',
-        instruction: 'Payez aux coordonnées suivantes :',
-        buttonText: 'J\'ai payé'
+        instruction: 'Payez aux coordonnÃ©es suivantes :',
+        buttonText: 'J\'ai payÃ©'
       };
     }
 
@@ -2517,7 +2601,7 @@
       if (methodStepsDraft.length === 0) {
         elements.stepsBuilder.innerHTML = `
           <div class="text-sm text-text-secondary py-3 px-3 bg-background rounded-lg border border-border">
-            Aucune étape. Ajoutez au moins une étape.
+            Aucune Ã©tape. Ajoutez au moins une Ã©tape.
           </div>
         `;
         return;
@@ -2537,7 +2621,7 @@
             <div class="flex items-center justify-between gap-2 mb-3">
               <div class="flex items-center gap-2">
                 <div class="step-number">${index + 1}</div>
-                <span class="text-sm font-medium">Étape ${index + 1}</span>
+                <span class="text-sm font-medium">Ã‰tape ${index + 1}</span>
               </div>
               <button type="button" class="btn-icon text-danger remove-step-btn" data-step-index="${index}" title="Supprimer">
                 <i class="fas fa-trash"></i>
@@ -2552,7 +2636,7 @@
                   <option value="payment" ${step.type === 'payment' ? 'selected' : ''}>Paiement</option>
                   <option value="proof" ${step.type === 'proof' ? 'selected' : ''}>Preuve</option>
                   <option value="confirmation" ${step.type === 'confirmation' ? 'selected' : ''}>Confirmation</option>
-                  <option value="custom" ${step.type === 'custom' ? 'selected' : ''}>Personnalisée</option>
+                  <option value="custom" ${step.type === 'custom' ? 'selected' : ''}>PersonnalisÃ©e</option>
                 </select>
               </div>
               <div>
@@ -2632,8 +2716,10 @@
       elements.methodModal.style.display = 'flex';
       
       if (editMode && methodData) {
+        const provider = getMethodProvider(methodData);
         elements.methodId.value = methodData.id;
         elements.methodName.value = methodData.name || '';
+        elements.methodProvider.value = provider;
         elements.accountName.value = methodData.accountName || '';
         elements.phoneNumber.value = methodData.phoneNumber || '';
         elements.methodImage.value = methodData.image || '';
@@ -2643,6 +2729,7 @@
           ? methodData.steps.map((step) => normalizeStep(step))
           : [];
         renderStepsBuilder();
+        updateMethodFormByProvider();
       } else {
         resetMethodForm();
       }
@@ -2656,18 +2743,15 @@
     function resetMethodForm() {
       elements.methodId.value = '';
       elements.methodName.value = '';
+      elements.methodProvider.value = 'manual';
       elements.accountName.value = '';
       elements.phoneNumber.value = '';
       elements.methodImage.value = '';
       elements.instructions.value = '';
       elements.isActive.checked = true;
-      methodStepsDraft = [
-        getDefaultStepByType('form'),
-        getDefaultStepByType('payment'),
-        getDefaultStepByType('proof'),
-        getDefaultStepByType('confirmation')
-      ];
+      methodStepsDraft = getDefaultManualSteps();
       renderStepsBuilder();
+      updateMethodFormByProvider();
     }
 
     function attachOrderEvents() {
@@ -2722,46 +2806,55 @@
     async function deleteMethod(id) {
       if (!confirm('Supprimer ce moyen de paiement ?')) return;
       await deleteDoc(doc(db, PAYMENT_METHODS, id));
-      showToast('Moyen supprimé', 'success');
+      showToast('Moyen supprimÃ©', 'success');
     }
 
     async function saveMethod(e) {
       e.preventDefault();
       
+      const provider = elements.methodProvider.value || 'manual';
+      const moncash = isMoncashProvider(provider);
       const methodData = {
         name: elements.methodName.value.trim(),
-        accountName: elements.accountName.value.trim(),
-        phoneNumber: elements.phoneNumber.value.trim(),
+        provider,
+        gateway: provider,
+        slug: provider,
+        accountName: moncash ? null : (elements.accountName.value.trim() || null),
+        phoneNumber: moncash ? null : (elements.phoneNumber.value.trim() || null),
         image: elements.methodImage.value.trim() || null,
-        instructions: elements.instructions.value.trim(),
-        steps: collectStepsFromBuilder(),
+        instructions: moncash ? 'Paiement MonCash sÃ©curisÃ©.' : elements.instructions.value.trim(),
+        steps: moncash ? [] : collectStepsFromBuilder(),
         isActive: elements.isActive.checked,
         updatedAt: new Date().toISOString()
       };
 
-      if (!methodData.name || !methodData.accountName || !methodData.phoneNumber) {
+      if (!methodData.name) {
         showToast('Champs obligatoires', 'error');
         return;
       }
-      if (!Array.isArray(methodData.steps) || methodData.steps.length === 0) {
-        showToast('Ajoutez au moins une étape de paiement', 'error');
+      if (!moncash && (!methodData.accountName || !methodData.phoneNumber)) {
+        showToast('Compte et tÃ©lÃ©phone requis pour un paiement manuel', 'error');
+        return;
+      }
+      if (!moncash && (!Array.isArray(methodData.steps) || methodData.steps.length === 0)) {
+        showToast('Ajoutez au moins une Ã©tape de paiement', 'error');
         return;
       }
 
       try {
         if (elements.methodId.value) {
           await updateDoc(doc(db, PAYMENT_METHODS, elements.methodId.value), methodData);
-          showToast('Moyen mis à jour', 'success');
+          showToast('Moyen mis Ã  jour', 'success');
         } else {
           await addDoc(collection(db, PAYMENT_METHODS), {
             ...methodData,
             createdAt: new Date().toISOString()
           });
-          showToast('Moyen ajouté', 'success');
+          showToast('Moyen ajoutÃ©', 'success');
         }
         closeMethodModal();
       } catch (error) {
-        console.error('âŒ Erreur:', error);
+        console.error('Erreur:', error);
         showToast('Erreur lors de la sauvegarde', 'error');
       }
     }
@@ -2792,10 +2885,10 @@
         
         pdfConfig = config;
         applyPdfConfig();
-        showToast('Configuration PDF enregistrée', 'success');
+        showToast('Configuration PDF enregistrÃ©e', 'success');
         
       } catch (error) {
-        console.error('âŒ Erreur:', error);
+        console.error('Ã¢ÂÅ’ Erreur:', error);
         showToast('Erreur lors de la sauvegarde', 'error');
       }
     }
@@ -2819,15 +2912,15 @@
           await updateDoc(doc(db, SETTINGS, snapshot.docs[0].id), settingsData);
         }
         
-        showToast('Paramètres enregistrés', 'success');
+        showToast('ParamÃ¨tres enregistrÃ©s', 'success');
         
       } catch (error) {
-        console.error('âŒ Erreur:', error);
+        console.error('Ã¢ÂÅ’ Erreur:', error);
         showToast('Erreur lors de la sauvegarde', 'error');
       }
     }
 
-    // ========== ÉVÉNEMENTS ==========
+    // ========== Ã‰VÃ‰NEMENTS ==========
     
     function setupEventListeners() {
       // Sidebar
@@ -2841,10 +2934,11 @@
         }
       });
       
-      // Méthodes
+      // MÃ©thodes
       elements.addMethodBtn.addEventListener('click', () => openMethodModal(false));
       elements.closeModalBtn.addEventListener('click', closeMethodModal);
       elements.cancelMethod.addEventListener('click', closeMethodModal);
+      elements.methodProvider.addEventListener('change', updateMethodFormByProvider);
       elements.addStepBtn.addEventListener('click', () => {
         methodStepsDraft.push(getDefaultStepByType('payment'));
         renderStepsBuilder();
@@ -2964,7 +3058,7 @@
           const testOrder = orders[0];
           generateOrderPdf(testOrder.id, testOrder.clientId);
         } else {
-          // Créer un exemple pour tester
+          // CrÃ©er un exemple pour tester
           const testOrderExample = {
             id: 'test',
             clientId: 'test',
@@ -2982,7 +3076,7 @@
         }
       });
       
-      // Paramètres
+      // ParamÃ¨tres
       elements.saveSettingsBtn.addEventListener('click', saveSettings);
       elements.dashboardNotifToggle.addEventListener('change', toggleDashboardNotifications);
       elements.enableDashboardNotifBtn.addEventListener('click', enableDashboardNotifications);
@@ -3000,7 +3094,7 @@
       updateDashboardNotificationStatus();
       document.addEventListener('visibilitychange', updateDashboardNotificationStatus);
       
-      // Écouter en temps réel les changements
+      // Ã‰couter en temps rÃ©el les changements
       onSnapshot(collection(db, CLIENTS), async () => {
         await loadClients();
         await loadOrders();
@@ -3015,4 +3109,5 @@
   <script type="module" src="./admin-access.js"></script>
 </body>
 </html>
+
 

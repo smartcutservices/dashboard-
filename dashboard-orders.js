@@ -1,5 +1,6 @@
 import { db } from './firebase-init.js';
 import { sendBroadcastNotification } from './notification.js';
+import { buildAdminSalesSummary } from './vendor-analytics.js';
 import {
   collection,
   doc,
@@ -31,6 +32,15 @@ const elements = {
   statPendingOrders: document.getElementById('statPendingOrders'),
   statInDelivery: document.getElementById('statInDelivery'),
   statDelivered: document.getElementById('statDelivered'),
+  statRevenue: document.getElementById('statRevenue'),
+  statConfirmedSales: document.getElementById('statConfirmedSales'),
+  statAverageTicket: document.getElementById('statAverageTicket'),
+  statActiveClients: document.getElementById('statActiveClients'),
+  salesTrendChart: document.getElementById('salesTrendChart'),
+  paymentStatusDonut: document.getElementById('paymentStatusDonut'),
+  paymentStatusDonutValue: document.getElementById('paymentStatusDonutValue'),
+  paymentStatusLegend: document.getElementById('paymentStatusLegend'),
+  topProductsList: document.getElementById('topProductsList'),
   searchInput: document.getElementById('searchInput'),
   paymentStatusFilter: document.getElementById('paymentStatusFilter'),
   fulfillmentStatusFilter: document.getElementById('fulfillmentStatusFilter'),
@@ -103,6 +113,7 @@ function getPaymentStatusText(status) {
     pending: 'En attente',
     review: 'En examen',
     approved: 'Approuve',
+    paid: 'Paye',
     rejected: 'Rejete',
     expired: 'Expire'
   };
@@ -114,6 +125,7 @@ function getPaymentStatusColor(status) {
     pending: '#d97706',
     review: '#2563eb',
     approved: '#0f9f6e',
+    paid: '#0f9f6e',
     rejected: '#dc2626',
     expired: '#64748b'
   };
@@ -264,11 +276,97 @@ function renderStats() {
   const pendingOrders = state.orders.filter((order) => order.status === 'pending').length;
   const inDelivery = state.orders.filter((order) => getFulfillmentStatus(order) === 'in_delivery').length;
   const delivered = state.orders.filter((order) => getFulfillmentStatus(order) === 'delivered').length;
+  const sales = buildAdminSalesSummary({ orders: state.orders });
 
   elements.statTotalOrders.textContent = String(totalOrders);
   elements.statPendingOrders.textContent = String(pendingOrders);
   elements.statInDelivery.textContent = String(inDelivery);
   elements.statDelivered.textContent = String(delivered);
+  elements.statRevenue.textContent = formatPrice(sales.confirmedRevenue);
+  elements.statConfirmedSales.textContent = String(sales.confirmedOrders);
+  elements.statAverageTicket.textContent = formatPrice(sales.averageTicket);
+  elements.statActiveClients.textContent = String(sales.activeClients);
+  renderSalesTrendChart(sales.timeline);
+  renderPaymentStatusChart(sales.statusBreakdown);
+  renderTopProducts(sales.topProducts);
+}
+
+function renderSalesTrendChart(timeline = []) {
+  if (!elements.salesTrendChart) return;
+
+  if (!timeline.length) {
+    elements.salesTrendChart.innerHTML = '<div class="empty-state" style="grid-column:1 / -1;padding:1rem 0;">Aucune vente confirmee pour tracer une evolution.</div>';
+    return;
+  }
+
+  const maxAmount = Math.max(...timeline.map((entry) => Number(entry.amount) || 0), 1);
+  elements.salesTrendChart.innerHTML = timeline.map((entry) => {
+    const height = Math.max(8, Math.round(((Number(entry.amount) || 0) / maxAmount) * 100));
+    return `
+      <div class="chart-bar-col">
+        <div class="chart-bar-value">${formatPrice(entry.amount)}</div>
+        <div class="chart-bar-track">
+          <div class="chart-bar-fill" style="height:${height}%;"></div>
+        </div>
+        <div class="chart-bar-label">${escapeHtml(entry.label)}<br><span style="font-size:0.74rem;">${entry.orders} cmd</span></div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPaymentStatusChart(breakdown = []) {
+  if (!elements.paymentStatusDonut || !elements.paymentStatusLegend || !elements.paymentStatusDonutValue) return;
+
+  const total = breakdown.reduce((sum, entry) => sum + (entry.value || 0), 0);
+  elements.paymentStatusDonutValue.textContent = String(total);
+
+  if (!total) {
+    elements.paymentStatusDonut.style.background = 'conic-gradient(#e9dcc1 0deg, #e9dcc1 360deg)';
+    elements.paymentStatusLegend.innerHTML = '<div class="empty-state" style="padding:0.5rem 0;">Aucune commande disponible.</div>';
+    return;
+  }
+
+  let angle = 0;
+  const segments = breakdown.map((entry) => {
+    const ratio = (entry.value || 0) / total;
+    const nextAngle = angle + (ratio * 360);
+    const segment = `${entry.color} ${angle.toFixed(2)}deg ${nextAngle.toFixed(2)}deg`;
+    angle = nextAngle;
+    return segment;
+  });
+  elements.paymentStatusDonut.style.background = `conic-gradient(${segments.join(', ')})`;
+
+  elements.paymentStatusLegend.innerHTML = breakdown.map((entry) => `
+    <div class="legend-row">
+      <span class="legend-dot" style="background:${entry.color};"></span>
+      <div>
+        <div style="display:flex;justify-content:space-between;gap:0.8rem;">
+          <span>${escapeHtml(entry.label)}</span>
+          <strong>${entry.value}</strong>
+        </div>
+        <div class="legend-bar"><span style="width:${Math.max(0, Math.min(100, Math.round((entry.ratio || 0) * 100)))}%;background:${entry.color};"></span></div>
+      </div>
+      <span>${Math.round((entry.ratio || 0) * 100)}%</span>
+    </div>
+  `).join('');
+}
+
+function renderTopProducts(products = []) {
+  if (!elements.topProductsList) return;
+  if (!products.length) {
+    elements.topProductsList.innerHTML = '<div class="empty-state" style="padding:1rem 0;">Aucune vente produit pour le moment.</div>';
+    return;
+  }
+
+  elements.topProductsList.innerHTML = products.map((product, index) => `
+    <article class="top-product-row">
+      <div>
+        <strong>${index + 1}. ${escapeHtml(product.name || 'Produit')}</strong>
+        <span>${product.quantity || 0} unite(s) vendue(s)</span>
+      </div>
+      <div style="text-align:right;font-weight:700;">${formatPrice(product.amount)}</div>
+    </article>
+  `).join('');
 }
 
 function renderOrdersTable() {
