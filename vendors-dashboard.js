@@ -150,6 +150,25 @@ class VendorsDashboard {
     }
   }
 
+  getProductStockLabel(item = {}) {
+    const variations = Array.isArray(item.variations) ? item.variations : [];
+    const variationStocks = variations
+      .map((variation) => Number(variation?.stock))
+      .filter((value) => Number.isFinite(value));
+
+    if (variationStocks.length > 0) {
+      const totalVariationStock = variationStocks.reduce((sum, value) => sum + value, 0);
+      return `${totalVariationStock} (${variations.length} variation${variations.length > 1 ? 's' : ''})`;
+    }
+
+    const directStock = Number(item.stock);
+    if (Number.isFinite(directStock)) {
+      return String(directStock);
+    }
+
+    return '-';
+  }
+
   render() {
     const counts = this.getCounts();
     this.root.innerHTML = `
@@ -487,6 +506,7 @@ class VendorsDashboard {
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
     const resolvedCategory = this.resolveProductCategory(item);
     const categoryRule = this.getCategoryCommissionRule(resolvedCategory);
+    const stockLabel = this.getProductStockLabel(item);
     const commissionValue = item.commissionRule?.categoryRate ?? item.commissionRule?.rate ?? (categoryRule ? (Number(categoryRule.rate) || 0) : '');
     const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
     const commissionHint = item.commissionRule?.source === 'product_override'
@@ -506,7 +526,7 @@ class VendorsDashboard {
             </div>
             <div class="application-grid">
               <div><strong>Prix</strong><span>${item.price ? `${item.price} HTG` : '-'}</span></div>
-              <div><strong>Stock</strong><span>${Number.isFinite(item.stock) ? item.stock : '-'}</span></div>
+              <div><strong>Stock</strong><span>${stockLabel}</span></div>
               <div><strong>Livraison</strong><span>${item.deliveryMode || '-'}</span></div>
               <div><strong>Commission</strong><span>${commissionLabel}</span></div>
             </div>
