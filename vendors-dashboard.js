@@ -468,7 +468,12 @@ class VendorsDashboard {
   renderProductReview(item) {
     const meta = this.productStatusMeta(item.status);
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
-    const commissionValue = item.commissionRule?.categoryRate ?? item.commissionRule?.rate ?? '';
+    const categoryRule = this.getCategoryCommissionRule(item.category);
+    const commissionValue = item.commissionRule?.categoryRate ?? item.commissionRule?.rate ?? (categoryRule ? (Number(categoryRule.rate) || 0) : '');
+    const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
+    const commissionHint = item.commissionRule?.source === 'product_override'
+      ? 'Commission specifique a ce produit'
+      : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee');
     return `
       <div class="application-card">
         <div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;">
@@ -485,7 +490,11 @@ class VendorsDashboard {
               <div><strong>Prix</strong><span>${item.price ? `${item.price} HTG` : '-'}</span></div>
               <div><strong>Stock</strong><span>${Number.isFinite(item.stock) ? item.stock : '-'}</span></div>
               <div><strong>Livraison</strong><span>${item.deliveryMode || '-'}</span></div>
-              <div><strong>Commission</strong><span>${commissionValue !== '' ? `${commissionValue}%` : 'A definir'}</span></div>
+              <div><strong>Commission</strong><span>${commissionLabel}</span></div>
+            </div>
+            <div class="application-copy" style="padding-top:0;">
+              <strong>Source commission</strong>
+              <p>${commissionHint}</p>
             </div>
             ${item.shortDescription ? `<div class="application-copy"><strong>Description</strong><p>${item.shortDescription}</p></div>` : ''}
             ${item.adminReviewNote ? `<div class="application-copy admin-note"><strong>Note admin produit</strong><p>${item.adminReviewNote}</p></div>` : ''}
@@ -659,6 +668,7 @@ class VendorsDashboard {
       ? {
           category: current.category || '',
           categoryRate: commissionRate,
+          source: 'product_override',
           updatedAt: now,
           updatedBy: 'dashboard_admin'
         }
