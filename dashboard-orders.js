@@ -522,21 +522,55 @@ function buildPrintableAssets(order) {
     .filter(Boolean);
 }
 
-async function downloadOrderAsset(url, fileName) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Impossible de telecharger ce fichier.');
+function triggerDirectAssetDownload(url, fileName) {
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName || 'telechargement';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return 'direct';
+  } catch (error) {
+    console.warn('Lien de telechargement direct indisponible, ouverture du fichier.', error);
   }
 
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = objectUrl;
-  link.download = fileName || 'telechargement';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  const popup = window.open(url, '_blank', 'noopener,noreferrer');
+  if (!popup) {
+    throw new Error('Impossible de lancer le telechargement. Ouvre le fichier manuellement.');
+  }
+
+  return 'open';
+}
+
+async function downloadOrderAsset(url, fileName) {
+  if (!url) {
+    throw new Error('Fichier introuvable pour cette commande.');
+  }
+
+  try {
+    const response = await fetch(url, { mode: 'cors' });
+    if (!response.ok) {
+      throw new Error('Impossible de telecharger ce fichier.');
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName || 'telechargement';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    return 'blob';
+  } catch (error) {
+    console.warn('Telechargement blob impossible, ouverture directe du fichier.', error);
+  }
+
+  return triggerDirectAssetDownload(url, fileName);
 }
 
 function renderPrintingFiles(order) {
@@ -700,17 +734,17 @@ function renderOrderDetail() {
     await saveLogisticsNote(order, noteField?.value || '');
   });
   elements.orderDetailRoot.querySelectorAll('.order-file-download').forEach((button) => {
-    button.addEventListener('click', async () => {
-      try {
-        button.disabled = true;
-        const originalHtml = button.innerHTML;
-        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Telechargement...';
-        await downloadOrderAsset(button.dataset.fileUrl || '', button.dataset.fileName || '');
-        showToast('Fichier telecharge.');
-        button.innerHTML = originalHtml;
-      } catch (error) {
-        console.error('Erreur telechargement fichier commande:', error);
-        showToast(error.message || 'Impossible de telecharger ce fichier.', 'error');
+      button.addEventListener('click', async () => {
+        try {
+          button.disabled = true;
+          const originalHtml = button.innerHTML;
+          button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Telechargement...';
+          const result = await downloadOrderAsset(button.dataset.fileUrl || '', button.dataset.fileName || '');
+          showToast(result === 'open' ? 'Fichier ouvert dans un nouvel onglet.' : 'Fichier telecharge.');
+          button.innerHTML = originalHtml;
+        } catch (error) {
+          console.error('Erreur telechargement fichier commande:', error);
+          showToast(error.message || 'Impossible de telecharger ce fichier.', 'error');
       } finally {
         button.disabled = false;
       }
