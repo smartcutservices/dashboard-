@@ -2588,18 +2588,21 @@
       
       updateStats() {
         const total = this.products.length;
-        const inStock = this.products.filter(p => {
-          if (p.variations?.length) {
-            return p.variations.some(v => v.stock > 0);
+        const getProductTotalStock = (product) => {
+          if (product?.variations?.length) {
+            return product.variations.reduce((sum, variation) => sum + (Number(variation?.stock) || 0), 0);
           }
-          return p.stock > 0;
-        }).length;
+          return Number(product?.stock) || 0;
+        };
+
+        const inStock = this.products.reduce((sum, product) => sum + getProductTotalStock(product), 0);
+        const outStock = this.products.filter((product) => getProductTotalStock(product) <= 0).length;
         
         const withVariations = this.products.filter(p => p.variations?.length > 0).length;
         
         this.elements.statsTotalProducts.textContent = total;
         this.elements.statsInStock.textContent = inStock;
-        this.elements.statsOutStock.textContent = total - inStock;
+        this.elements.statsOutStock.textContent = outStock;
         this.elements.statsWithVariations.textContent = withVariations;
         
         // Produits récents

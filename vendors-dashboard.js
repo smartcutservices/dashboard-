@@ -102,6 +102,11 @@ class VendorsDashboard {
     return this.commissionRules.find((item) => this.normalizeCategory(item.category) === normalized) || null;
   }
 
+  getCommissionRateValue(value) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   getCategoryNameById(categoryId) {
     const match = this.categories.find((item) => item.id === categoryId);
     return String(match?.name || '').trim();
@@ -114,6 +119,49 @@ class VendorsDashboard {
       this.getCategoryNameById(item?.categoryId) ||
       ''
     ).trim();
+  }
+
+  resolveProductCommissionState(item = {}) {
+    const resolvedCategory = this.resolveProductCategory(item);
+    const categoryFromId = this.getCategoryNameById(item?.categoryId);
+    const categoryRule =
+      this.getCategoryCommissionRule(resolvedCategory) ||
+      this.getCategoryCommissionRule(categoryFromId);
+
+    const existingRule = item?.commissionRule && typeof item.commissionRule === 'object'
+      ? item.commissionRule
+      : null;
+
+    const explicitRate =
+      this.getCommissionRateValue(existingRule?.categoryRate) ??
+      this.getCommissionRateValue(existingRule?.rate) ??
+      this.getCommissionRateValue(item?.commissionRate) ??
+      this.getCommissionRateValue(item?.categoryRate);
+
+    const categoryRate = this.getCommissionRateValue(categoryRule?.rate);
+    const effectiveRate = explicitRate ?? categoryRate;
+
+    const effectiveRule = effectiveRate === null
+      ? null
+      : {
+          ...(existingRule || {}),
+          category: String(
+            existingRule?.category ||
+            resolvedCategory ||
+            categoryRule?.category ||
+            categoryFromId ||
+            ''
+          ).trim(),
+          categoryRate: effectiveRate,
+          source: existingRule?.source || (explicitRate !== null ? 'product_override' : 'vendorCommissionRules')
+        };
+
+    return {
+      resolvedCategory,
+      categoryRule,
+      effectiveRate,
+      effectiveRule
+    };
   }
 
   getCounts() {
@@ -504,12 +552,11 @@ class VendorsDashboard {
   renderProductReview(item) {
     const meta = this.productStatusMeta(item.status);
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
-    const resolvedCategory = this.resolveProductCategory(item);
-    const categoryRule = this.getCategoryCommissionRule(resolvedCategory);
+    const { resolvedCategory, categoryRule, effectiveRate, effectiveRule } = this.resolveProductCommissionState(item);
     const stockLabel = this.getProductStockLabel(item);
-    const commissionValue = item.commissionRule?.categoryRate ?? item.commissionRule?.rate ?? (categoryRule ? (Number(categoryRule.rate) || 0) : '');
+    const commissionValue = effectiveRate ?? '';
     const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
-    const commissionHint = item.commissionRule?.source === 'product_override'
+    const commissionHint = effectiveRule?.source === 'product_override'
       ? 'Commission specifique a ce produit'
       : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee');
     return `
@@ -701,17 +748,17 @@ class VendorsDashboard {
     const now = new Date().toISOString();
     const commissionInput = document.getElementById(`productCommission-${id}`);
     const commissionRate = Number.parseFloat(commissionInput?.value || '');
-    const resolvedCategory = this.resolveProductCategory(current);
-    const categoryRule = this.getCategoryCommissionRule(resolvedCategory);
+    const { resolvedCategory, categoryRule, effectiveRule } = this.resolveProductCommissionState(current);
     const normalizedCommission = Number.isFinite(commissionRate)
       ? {
-          category: resolvedCategory || '',
+          ...(effectiveRule || {}),
+          category: resolvedCategory || effectiveRule?.category || '',
           categoryRate: commissionRate,
           source: 'product_override',
           updatedAt: now,
           updatedBy: 'dashboard_admin'
         }
-      : (current.commissionRule || (
+      : (effectiveRule || current.commissionRule || (
           categoryRule
             ? {
                 category: categoryRule.category || resolvedCategory || '',
