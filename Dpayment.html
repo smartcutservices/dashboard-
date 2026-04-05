@@ -1564,28 +1564,44 @@
 
     // ========== TABS ==========
     function setupTabs() {
+      const activateTab = (tabName) => {
+        if (!tabName) return;
+        const targetBtn = Array.from(elements.tabBtns).find((btn) => btn.dataset.tab === tabName);
+        const targetPanel = document.getElementById(`tab-${tabName}`);
+        if (!targetBtn || !targetPanel) return;
+
+        elements.tabBtns.forEach(b => b.classList.remove('active', 'bg-background'));
+        targetBtn.classList.add('active', 'bg-background');
+
+        elements.tabContents.forEach(content => content.classList.add('hidden'));
+        targetPanel.classList.remove('hidden');
+
+        const titles = {
+          dashboard: 'Tableau de bord',
+          clients: 'Clients',
+          orders: 'Commandes',
+          methods: 'Moyens de paiement',
+          pdf: 'Gestion PDF',
+          settings: 'Paramètres',
+          notifications: 'Notifications'
+        };
+        elements.currentTabTitle.textContent = titles[tabName] || 'Paiement';
+      };
+
       elements.tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
           const tabName = btn.dataset.tab;
-          
-          elements.tabBtns.forEach(b => b.classList.remove('active', 'bg-background'));
-          btn.classList.add('active', 'bg-background');
-          
-          elements.tabContents.forEach(content => content.classList.add('hidden'));
-          document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-          
-          const titles = {
-            dashboard: 'Tableau de bord',
-            clients: 'Clients',
-            orders: 'Commandes',
-            methods: 'Moyens de paiement',
-            pdf: 'Gestion PDF',
-            settings: 'ParamÃ¨tres',
-            notifications: 'Notifications'
-          };
-          elements.currentTabTitle.textContent = titles[tabName];
+          activateTab(tabName);
+          const nextUrl = new URL(window.location.href);
+          nextUrl.searchParams.set('tab', tabName);
+          window.history.replaceState({}, '', nextUrl.toString());
         });
       });
+
+      const initialTab = new URL(window.location.href).searchParams.get('tab') || '';
+      if (initialTab) {
+        activateTab(initialTab);
+      }
     }
 
     function updateDashboardNotificationStatus() {

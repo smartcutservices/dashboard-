@@ -70,6 +70,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-credit-card'
   },
   {
+    id: 'clients',
+    label: 'Clients',
+    description: 'Base clients, historique et acces rapide aux fiches client.',
+    href: './Dpayment.html?tab=clients',
+    icon: 'fa-users'
+  },
+  {
     id: 'orders',
     label: 'Commandes',
     description: 'Pilotage des commandes et futur suivi de progression client.',
