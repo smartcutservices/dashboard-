@@ -211,6 +211,44 @@
       margin-top: 0.7rem;
     }
 
+    .paper-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.9);
+      padding: 0.9rem;
+      display: grid;
+      gap: 0.8rem;
+      margin-top: 0.85rem;
+    }
+
+    .paper-card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.8rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .paper-card-fields {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 0.7rem;
+      align-items: center;
+      flex: 1 1 320px;
+    }
+
+    .paper-card-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .dimension-list {
+      display: grid;
+      gap: 0.7rem;
+    }
+
     .mini-input {
       width: 100%;
       border: 1px solid var(--border);
@@ -263,6 +301,11 @@
       color: #991b1b;
     }
 
+    .btn-small {
+      padding: 0.68rem 0.9rem;
+      font-size: 0.82rem;
+    }
+
     .hint {
       font-size: 0.82rem;
       color: var(--muted);
@@ -272,7 +315,8 @@
       .shell { padding: 1rem; }
       .config-grid,
       .field-grid,
-      .option-row { grid-template-columns: 1fr; }
+      .option-row,
+      .paper-card-fields { grid-template-columns: 1fr; }
     }
   </style>
 </head>
