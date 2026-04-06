@@ -53,9 +53,7 @@
       position: relative;
       overflow: hidden;
       border-radius: 1.5rem;
-      background:
-        radial-gradient(circle at 18% 12%, rgba(198,167,94,0.16), transparent 26%),
-        linear-gradient(180deg, #15120f, #0f0d0b);
+      background: #e9e4db;
       color: #f8f5ef;
       min-height: 300px;
     }
@@ -68,7 +66,8 @@
 
     .preview-slide {
       min-width: 100%;
-      padding: 1rem;
+      min-height: 300px;
+      padding: 0;
       display: flex;
       align-items: stretch;
     }
@@ -76,23 +75,21 @@
     .preview-poster {
       position: relative;
       width: 100%;
-      min-height: 250px;
-      border-radius: 1.25rem;
+      min-height: 300px;
+      border-radius: 0;
       overflow: hidden;
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
-      box-shadow: 0 22px 60px rgba(0,0,0,0.22);
-      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: none;
+      border: none;
     }
 
     .preview-poster::before {
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.18)),
-        linear-gradient(0deg, rgba(0,0,0,0.58), rgba(0,0,0,0.06) 42%);
+      background: transparent;
     }
 
     .preview-caption {
