@@ -1,4 +1,4 @@
-import { db } from './firebase-init.js';
+import { auth, db } from './firebase-init.js';
 import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js';
 import {
   collection,
@@ -9,6 +9,8 @@ import {
   query,
   setDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 
 const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
 const DEFAULT_FORM_SETTINGS = {
@@ -40,6 +42,9 @@ class VendorsDashboard {
     this.categories = [];
     this.vendors = [];
     this.vendorSalesSummaries = [];
+    this.vendorPayouts = [];
+    this.allOrders = [];
+    this.allClients = [];
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.activeSection = 'applications';
     this.init();
@@ -52,12 +57,13 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, payoutSnapshot, ordersData, formSettingsSnap] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
       getDocs(query(collection(db, 'categories_list'), orderBy('name'))),
       getDocs(query(collection(db, 'vendors'), orderBy('updatedAt', 'desc'))),
+      getDocs(query(collection(db, 'vendorPayouts'), orderBy('requestedAt', 'desc'))),
       loadAllOrdersWithClients(),
       getDoc(doc(db, ...FORM_SETTINGS_REF))
     ]);
@@ -71,6 +77,9 @@ class VendorsDashboard {
     this.vendors = vendorSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.status === 'active');
+    this.vendorPayouts = payoutSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    this.allClients = Array.isArray(ordersData?.clients) ? ordersData.clients : [];
+    this.allOrders = Array.isArray(ordersData?.orders) ? ordersData.orders : [];
     this.formSettings = formSettingsSnap.exists()
       ? {
           ...DEFAULT_FORM_SETTINGS,
@@ -83,7 +92,7 @@ class VendorsDashboard {
     this.vendorSalesSummaries = this.vendors.map((vendor) => buildVendorSalesSummary({
       vendorId: vendor.id,
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
-      orders: ordersData.orders,
+      orders: this.allOrders,
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id))
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);
   }
@@ -172,7 +181,9 @@ class VendorsDashboard {
       rejected: this.applications.filter((item) => item.status === 'rejected').length,
       productPending: this.vendorProducts.filter((item) => item.status === 'pending_review' || !item.status).length,
       productActive: this.vendorProducts.filter((item) => item.status === 'active').length,
-      productRejected: this.vendorProducts.filter((item) => item.status === 'rejected').length
+      productRejected: this.vendorProducts.filter((item) => item.status === 'rejected').length,
+      payoutRequests: this.vendorPayouts.filter((item) => ['requested', 'pending', 'approved'].includes(String(item.status || '').toLowerCase())).length,
+      payoutPaid: this.vendorPayouts.filter((item) => String(item.status || '').toLowerCase() === 'paid').length
     };
   }
 
@@ -198,6 +209,21 @@ class VendorsDashboard {
     }
   }
 
+  payoutStatusMeta(status) {
+    switch (String(status || '').toLowerCase()) {
+      case 'paid':
+        return { label: 'Paye', color: '#14532D', bg: 'rgba(20, 83, 45, 0.12)' };
+      case 'approved':
+        return { label: 'Approuve', color: '#1D4ED8', bg: 'rgba(29, 78, 216, 0.12)' };
+      case 'rejected':
+        return { label: 'Rejete', color: '#7F1D1D', bg: 'rgba(127, 29, 29, 0.12)' };
+      case 'pending':
+        return { label: 'En attente', color: '#92400E', bg: 'rgba(146, 64, 14, 0.12)' };
+      default:
+        return { label: 'Demande recue', color: '#6D28D9', bg: 'rgba(109, 40, 217, 0.12)' };
+    }
+  }
+
   getProductStockLabel(item = {}) {
     const variations = Array.isArray(item.variations) ? item.variations : [];
     const variationStocks = variations
@@ -217,6 +243,134 @@ class VendorsDashboard {
     return '-';
   }
 
+  getVendorDisplayName(vendor = {}) {
+    return String(vendor?.shopName || vendor?.vendorName || vendor?.applicantName || 'Vendeur').trim();
+  }
+
+  formatDateTime(value) {
+    const ms = Date.parse(String(value || ''));
+    if (!Number.isFinite(ms)) return '-';
+    return new Date(ms).toLocaleString('fr-FR');
+  }
+
+  toDateInputValue(value) {
+    const ms = Date.parse(String(value || ''));
+    if (!Number.isFinite(ms)) return '';
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+
+  getOrderRefPath(order = {}) {
+    const clientId = String(order?.clientId || order?.clientUid || '').trim();
+    const orderId = String(order?.id || '').trim();
+    if (!clientId || !orderId) return '';
+    return `clients/${clientId}/orders/${orderId}`;
+  }
+
+  getVendorProductIds(vendorId) {
+    return new Set(
+      this.vendorProducts
+        .filter((item) => String(item.vendorId || '') === String(vendorId || ''))
+        .map((item) => item.id)
+    );
+  }
+
+  getVendorPayoutEntries(vendorId) {
+    return this.vendorPayouts
+      .filter((item) => String(item.vendorId || '') === String(vendorId || ''))
+      .sort((a, b) => Date.parse(String(b?.requestedAt || b?.createdAt || '')) - Date.parse(String(a?.requestedAt || a?.createdAt || '')));
+  }
+
+  createVendorCoveredRef(refPath, vendorId) {
+    const normalizedPath = String(refPath || '').trim();
+    const normalizedVendorId = String(vendorId || '').trim();
+    if (!normalizedPath) return '';
+    if (!normalizedVendorId) return normalizedPath;
+    return `${normalizedPath}::${normalizedVendorId}`;
+  }
+
+  buildVendorOutstandingSummary(vendor = {}) {
+    const vendorId = String(vendor?.id || vendor?.vendorId || '').trim();
+    if (!vendorId) {
+      return buildVendorSalesSummary({
+        vendorId: '',
+        vendorName: 'Vendeur',
+        orders: [],
+        vendorProductIds: new Set()
+      });
+    }
+
+    const vendorProductIds = this.getVendorProductIds(vendorId);
+    const settledRefs = new Set();
+    const settledOrderIds = new Set();
+
+    this.getVendorPayoutEntries(vendorId).forEach((entry) => {
+      if (String(entry?.status || '').toLowerCase() !== 'paid') return;
+      const coveredRefs = Array.isArray(entry?.coveredVendorRefs) && entry.coveredVendorRefs.length
+        ? entry.coveredVendorRefs
+        : (Array.isArray(entry?.coveredOrderRefs) ? entry.coveredOrderRefs : []);
+      coveredRefs.forEach((refPath) => {
+        const normalized = String(refPath || '').trim();
+        if (normalized) settledRefs.add(normalized);
+      });
+      (Array.isArray(entry?.coveredOrderIds) ? entry.coveredOrderIds : []).forEach((orderId) => {
+        const normalized = String(orderId || '').trim();
+        if (normalized) settledOrderIds.add(normalized);
+      });
+    });
+
+    const outstandingOrders = this.allOrders.filter((order) => {
+      const refPath = this.getOrderRefPath(order);
+      const vendorRef = this.createVendorCoveredRef(refPath, vendorId);
+      if (refPath && (settledRefs.has(refPath) || settledRefs.has(vendorRef))) return false;
+      if (settledOrderIds.has(String(order?.id || '').trim())) return false;
+      return true;
+    });
+
+    return buildVendorSalesSummary({
+      vendorId,
+      vendorName: this.getVendorDisplayName(vendor),
+      orders: outstandingOrders,
+      vendorProductIds
+    });
+  }
+
+  buildVendorPayoutOverview() {
+    const requestStatuses = new Set(['requested', 'pending', 'approved']);
+    const openRequests = this.vendorPayouts
+      .filter((item) => requestStatuses.has(String(item.status || '').toLowerCase()))
+      .sort((a, b) => Date.parse(String(b?.requestedAt || b?.createdAt || '')) - Date.parse(String(a?.requestedAt || a?.createdAt || '')));
+    const paidPayouts = this.vendorPayouts
+      .filter((item) => String(item.status || '').toLowerCase() === 'paid')
+      .sort((a, b) => Date.parse(String(b?.paidAt || b?.reviewedAt || b?.requestedAt || '')) - Date.parse(String(a?.paidAt || a?.reviewedAt || a?.requestedAt || '')));
+
+    const vendorBalances = this.vendors.map((vendor) => {
+      const outstanding = this.buildVendorOutstandingSummary(vendor);
+      const payouts = this.getVendorPayoutEntries(vendor.id);
+      const openRequest = payouts.find((entry) => requestStatuses.has(String(entry.status || '').toLowerCase())) || null;
+      const lastPaid = payouts.find((entry) => String(entry.status || '').toLowerCase() === 'paid') || null;
+      return {
+        vendor,
+        outstanding,
+        openRequest,
+        lastPaid
+      };
+    }).sort((a, b) => {
+      const aHasRequest = a.openRequest ? 1 : 0;
+      const bHasRequest = b.openRequest ? 1 : 0;
+      if (aHasRequest !== bHasRequest) return bHasRequest - aHasRequest;
+      return (b.outstanding?.vendorNetAmount || 0) - (a.outstanding?.vendorNetAmount || 0);
+    });
+
+    return {
+      openRequests,
+      paidPayouts,
+      vendorBalances,
+      totalOutstandingNet: vendorBalances.reduce((sum, entry) => sum + Number(entry?.outstanding?.vendorNetAmount || 0), 0),
+      totalOpenRequestsNet: openRequests.reduce((sum, entry) => sum + Number(entry?.netAmount || 0), 0),
+      totalPaidNet: paidPayouts.reduce((sum, entry) => sum + Number(entry?.netAmount || 0), 0)
+    };
+  }
+
   render() {
     const counts = this.getCounts();
     this.root.innerHTML = `
@@ -234,6 +388,7 @@ class VendorsDashboard {
         ${this.renderStat('Produits en revue', counts.productPending, 'fa-box-open')}
         ${this.renderStat('Produits actifs', counts.productActive, 'fa-store')}
         ${this.renderStat('Produits refuses', counts.productRejected, 'fa-circle-xmark')}
+        ${this.renderStat('Demandes de paiement', counts.payoutRequests, 'fa-wallet')}
       </section>
 
       <section class="vendors-workspace">
@@ -316,7 +471,7 @@ class VendorsDashboard {
                 <h2>Performance vendeurs</h2>
               </div>
             </div>
-            <p>Cette vue admin expose les ventes estimees par vendeur a partir des commandes existantes, avec brut, commission et net sans payout automatique.</p>
+            <p>Cette vue admin expose les ventes par vendeur avec brut, commission et net. Le suivi des decaissements et des demandes de paiement se gere dans le module Decaissements.</p>
             ${this.vendorSalesSummaries.length === 0 ? `
               <div class="empty-state">
                 <i class="fas fa-chart-line"></i>
@@ -327,6 +482,17 @@ class VendorsDashboard {
                 ${this.vendorSalesSummaries.map((item) => this.renderVendorSalesSummary(item)).join('')}
               </div>
             `}
+          </section>
+
+          <section class="panel vendors-section-panel ${this.activeSection === 'payouts' ? 'is-active' : ''}" data-section-panel="payouts">
+            <div class="panel-head">
+              <div>
+                <small>Decaissements</small>
+                <h2>Payer les vendeurs</h2>
+              </div>
+            </div>
+            <p>Traitez ici les demandes de decaissement, visualisez le brut et le net de chaque store, puis genereez un rapport PDF apres paiement.</p>
+            ${this.renderPayoutWorkspace()}
           </section>
 
           <section class="panel vendors-section-panel ${this.activeSection === 'overview' ? 'is-active' : ''}" data-section-panel="overview">
@@ -343,6 +509,7 @@ class VendorsDashboard {
               ${this.renderRoadmap('3', 'Produits', 'Les produits vendeurs soumis sont geres dans leur propre espace de revue admin.')}
               ${this.renderRoadmap('4', 'Commissions', 'Les taux par categorie sont modifies dans une section dediee.')}
               ${this.renderRoadmap('5', 'Performance', 'Les ventes et revenus vendeur restent visibles dans un espace separe pour l analyse.')}
+              ${this.renderRoadmap('6', 'Decaissements', 'Les demandes vendeur, paiements admin, historique et rapports PDF sont centralises dans une section dediee.')}
             </div>
           </section>
         </div>
@@ -357,7 +524,8 @@ class VendorsDashboard {
       { id: 'form', icon: 'fa-pen-ruler', label: 'Formulaire', meta: `${this.formSettings.fields.length} champ(s)` },
       { id: 'products', icon: 'fa-box-open', label: 'Produits', meta: `${this.vendorProducts.length} soumission(s)` },
       { id: 'commissions', icon: 'fa-percent', label: 'Commissions', meta: `${this.commissionRules.length} regle(s)` },
-      { id: 'performance', icon: 'fa-chart-line', label: 'Performance', meta: `${this.vendorSalesSummaries.length} vendeur(s)` }
+      { id: 'performance', icon: 'fa-chart-line', label: 'Performance', meta: `${this.vendorSalesSummaries.length} vendeur(s)` },
+      { id: 'payouts', icon: 'fa-wallet', label: 'Decaissements', meta: `${this.vendorPayouts.filter((item) => ['requested', 'pending', 'approved'].includes(String(item.status || '').toLowerCase())).length} demande(s)` }
     ];
 
     return sections.map((section) => `
@@ -618,6 +786,183 @@ class VendorsDashboard {
     `;
   }
 
+  renderPayoutWorkspace() {
+    const overview = this.buildVendorPayoutOverview();
+    const openRequests = overview.openRequests;
+    const paidPayouts = overview.paidPayouts;
+    const vendorBalances = overview.vendorBalances;
+
+    return `
+      <div class="applications" style="margin-top:1.2rem;">
+        <div class="application-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+          <div class="application-card">
+            <strong>Demandes ouvertes</strong>
+            <p style="margin-top:.45rem;font-size:1.2rem;font-weight:800;color:#f6f1e8;">${openRequests.length}</p>
+          </div>
+          <div class="application-card">
+            <strong>Net a decaisser</strong>
+            <p style="margin-top:.45rem;font-size:1.2rem;font-weight:800;color:#f6f1e8;">${this.formatPrice(overview.totalOutstandingNet)}</p>
+          </div>
+          <div class="application-card">
+            <strong>Net demande</strong>
+            <p style="margin-top:.45rem;font-size:1.2rem;font-weight:800;color:#f6f1e8;">${this.formatPrice(overview.totalOpenRequestsNet)}</p>
+          </div>
+          <div class="application-card">
+            <strong>Deja decaisse</strong>
+            <p style="margin-top:.45rem;font-size:1.2rem;font-weight:800;color:#f6f1e8;">${this.formatPrice(overview.totalPaidNet)}</p>
+          </div>
+        </div>
+
+        <div class="application-copy">
+          <strong>Demandes de decaissement</strong>
+          <p>Les vendeurs peuvent demander un decaissement tous les 30 jours. Ici, vous pouvez mettre la demande en attente, l approuver, la rejeter ou payer le vendeur apres verification.</p>
+        </div>
+
+        ${openRequests.length ? openRequests.map((entry) => this.renderPayoutRequestCard(entry)).join('') : `
+          <div class="empty-state">
+            <i class="fas fa-wallet"></i>
+            <p>Aucune demande de decaissement en cours pour le moment.</p>
+          </div>
+        `}
+
+        <div class="application-copy">
+          <strong>Soldes vendeurs</strong>
+          <p>Le net disponible tient compte des commissions et retire automatiquement les commandes deja couvertes par un decaissement paye.</p>
+        </div>
+
+        ${vendorBalances.length ? `
+          <div class="applications">
+            ${vendorBalances.map((entry) => this.renderVendorBalanceCard(entry)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <i class="fas fa-store"></i>
+            <p>Aucun vendeur actif pour le moment.</p>
+          </div>
+        `}
+
+        <div class="application-copy">
+          <strong>Historique des paiements</strong>
+          <p>Chaque decaissement paye garde son rapport, sa periode, son montant net et les informations du vendeur pour toute future verification.</p>
+        </div>
+
+        ${paidPayouts.length ? `
+          <div class="applications">
+            ${paidPayouts.slice(0, 24).map((entry) => this.renderPaidPayoutCard(entry)).join('')}
+          </div>
+        ` : `
+          <div class="empty-state">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <p>Aucun decaissement paye n a encore ete enregistre.</p>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  renderPayoutRequestCard(entry = {}) {
+    const meta = this.payoutStatusMeta(entry.status);
+    const requestId = String(entry.id || '').trim();
+    const canPay = ['requested', 'pending', 'approved'].includes(String(entry.status || '').toLowerCase());
+    const defaultDateFrom = this.toDateInputValue(entry.periodStart);
+    const defaultDateTo = this.toDateInputValue(entry.periodEnd);
+
+    return `
+      <div class="application-card">
+        <div class="application-top">
+          <div>
+            <h3>${this.escape(entry.shopName || entry.vendorName || 'Store vendeur')}</h3>
+            <p>${this.escape(entry.fullName || `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || 'Vendeur')} Â· ${this.escape(entry.phone || 'Telephone indisponible')}</p>
+          </div>
+          <div class="badge" style="color:${meta.color}; background:${meta.bg};">${meta.label}</div>
+        </div>
+
+        <div class="application-grid">
+          <div><strong>Rapport</strong><span>${this.escape(entry.reportNumber || requestId || '-')}</span></div>
+          <div><strong>Date demande</strong><span>${this.escape(this.formatDateTime(entry.requestedAt || entry.createdAt))}</span></div>
+          <div><strong>Montant brut</strong><span>${this.formatPrice(entry.grossAmount || 0)}</span></div>
+          <div><strong>Commission</strong><span>${this.formatPrice(entry.commissionAmount || 0)}</span></div>
+          <div><strong>Montant net</strong><span>${this.formatPrice(entry.netAmount || 0)}</span></div>
+          <div><strong>Commandes</strong><span>${Number(entry.orderCount || 0)}</span></div>
+        </div>
+
+        <div class="application-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+          <div>
+            <strong>Periode de debut</strong>
+            <input id="payout-date-from-${requestId}" type="date" value="${this.escape(defaultDateFrom)}" style="${this.adminInputStyle()}">
+          </div>
+          <div>
+            <strong>Periode de fin</strong>
+            <input id="payout-date-to-${requestId}" type="date" value="${this.escape(defaultDateTo)}" style="${this.adminInputStyle()}">
+          </div>
+        </div>
+
+        <div class="application-copy">
+          <strong>Informations vendeur</strong>
+          <p>${this.escape(entry.address || 'Adresse non renseignee')} ${entry.email ? `Â· ${this.escape(entry.email)}` : ''}</p>
+        </div>
+
+        <div class="actions">
+          <button type="button" data-payout-status="pending" data-payout-id="${this.escape(requestId)}">Mettre en attente</button>
+          <button type="button" data-payout-status="approved" data-payout-id="${this.escape(requestId)}" class="approve">Approuver</button>
+          <button type="button" data-payout-status="rejected" data-payout-id="${this.escape(requestId)}" class="reject">Rejeter</button>
+          ${canPay ? `<button type="button" data-pay-payout="${this.escape(requestId)}" data-vendor-id="${this.escape(entry.vendorId || '')}" class="approve">Payer le vendeur</button>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  renderVendorBalanceCard(entry = {}) {
+    const vendor = entry.vendor || {};
+    const summary = entry.outstanding || {};
+    const openRequest = entry.openRequest;
+    const lastPaid = entry.lastPaid;
+    const requestMeta = openRequest ? this.payoutStatusMeta(openRequest.status) : null;
+
+    return `
+      <div class="application-card">
+        <div class="application-top">
+          <div>
+            <h3>${this.escape(this.getVendorDisplayName(vendor))}</h3>
+            <p>${this.escape(vendor.phone || vendor.email || 'Aucun contact')}</p>
+          </div>
+          ${requestMeta ? `<div class="badge" style="color:${requestMeta.color}; background:${requestMeta.bg};">${requestMeta.label}</div>` : ''}
+        </div>
+        <div class="application-grid">
+          <div><strong>Brut disponible</strong><span>${this.formatPrice(summary.grossAmount || 0)}</span></div>
+          <div><strong>Commission</strong><span>${this.formatPrice(summary.commissionAmount || 0)}</span></div>
+          <div><strong>Net disponible</strong><span>${this.formatPrice(summary.vendorNetAmount || 0)}</span></div>
+          <div><strong>Commandes ouvertes</strong><span>${Number(summary.totalOrders || 0)}</span></div>
+          <div><strong>Articles</strong><span>${Number(summary.itemCount || 0)}</span></div>
+          <div><strong>Dernier paiement</strong><span>${this.escape(lastPaid ? this.formatDateTime(lastPaid.paidAt || lastPaid.reviewedAt || lastPaid.requestedAt) : '-')}</span></div>
+        </div>
+      </div>
+    `;
+  }
+
+  renderPaidPayoutCard(entry = {}) {
+    return `
+      <div class="application-card">
+        <div class="application-top">
+          <div>
+            <h3>${this.escape(entry.reportNumber || entry.id || 'Decaissement')}</h3>
+            <p>${this.escape(entry.shopName || entry.vendorName || 'Store vendeur')} Â· ${this.escape(this.formatDateTime(entry.paidAt || entry.reviewedAt || entry.requestedAt || entry.createdAt))}</p>
+          </div>
+          <div class="badge" style="color:#14532D; background:rgba(20, 83, 45, 0.12);">Paye</div>
+        </div>
+        <div class="application-grid">
+          <div><strong>Net decaisse</strong><span>${this.formatPrice(entry.netAmount || 0)}</span></div>
+          <div><strong>Brut</strong><span>${this.formatPrice(entry.grossAmount || 0)}</span></div>
+          <div><strong>Commission</strong><span>${this.formatPrice(entry.commissionAmount || 0)}</span></div>
+          <div><strong>Periode</strong><span>${this.escape(entry.periodStart ? new Date(entry.periodStart).toLocaleDateString('fr-FR') : '-')} -> ${this.escape(entry.periodEnd ? new Date(entry.periodEnd).toLocaleDateString('fr-FR') : '-')}</span></div>
+        </div>
+        <div class="actions">
+          <button type="button" data-download-payout-pdf="${this.escape(entry.id || '')}">Telecharger le PDF</button>
+        </div>
+      </div>
+    `;
+  }
+
   attachEvents() {
     this.root.querySelectorAll('[data-action][data-id]').forEach((button) => {
       button.addEventListener('click', async () => {
@@ -671,6 +1016,24 @@ class VendorsDashboard {
 
     this.root.querySelector('[data-save-form-settings]')?.addEventListener('click', async () => {
       await this.saveFormSettings();
+    });
+
+    this.root.querySelectorAll('[data-payout-status][data-payout-id]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.updatePayoutStatus(button.dataset.payoutId, button.dataset.payoutStatus);
+      });
+    });
+
+    this.root.querySelectorAll('[data-pay-payout][data-vendor-id]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.payVendorPayout(button.dataset.payPayout, button.dataset.vendorId);
+      });
+    });
+
+    this.root.querySelectorAll('[data-download-payout-pdf]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.downloadPayoutPdf(button.dataset.downloadPayoutPdf);
+      });
     });
   }
 
@@ -815,6 +1178,114 @@ class VendorsDashboard {
     await this.loadData();
     this.render();
     this.attachEvents();
+  }
+
+  async updatePayoutStatus(id, status) {
+    const current = this.vendorPayouts.find((item) => String(item.id) === String(id));
+    if (!current) return;
+
+    const now = new Date().toISOString();
+    const reviewer = auth.currentUser?.uid || 'dashboard_admin';
+    await setDoc(doc(db, 'vendorPayouts', id), {
+      status,
+      updatedAt: now,
+      reviewedAt: now,
+      approvedBy: reviewer
+    }, { merge: true });
+
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async payVendorPayout(requestId, vendorId) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      window.alert('Session admin requise pour payer un vendeur.');
+      return;
+    }
+
+    const dateFrom = this.root.querySelector(`#payout-date-from-${requestId}`)?.value || '';
+    const dateTo = this.root.querySelector(`#payout-date-to-${requestId}`)?.value || '';
+    const token = await currentUser.getIdToken();
+    const response = await fetch(CREATE_VENDOR_PAYOUT_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        vendorId,
+        requestId,
+        dateFrom,
+        dateTo
+      })
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload?.ok === false) {
+      window.alert(payload?.message || payload?.error || `HTTP ${response.status}`);
+      return;
+    }
+
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  downloadPayoutPdf(payoutId) {
+    try {
+      const payout = this.vendorPayouts.find((item) => String(item.id) === String(payoutId));
+      if (!payout || String(payout.status || '').toLowerCase() !== 'paid') {
+        window.alert('Le PDF est disponible uniquement pour un decaissement paye.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf || {};
+      if (!jsPDF) {
+        window.alert('Bibliotheque PDF indisponible.');
+        return;
+      }
+
+      const docPdf = new jsPDF();
+      let y = 22;
+      docPdf.setFillColor(198, 167, 94);
+      docPdf.rect(0, 0, 210, 28, 'F');
+      docPdf.setTextColor(255, 255, 255);
+      docPdf.setFont('helvetica', 'bold');
+      docPdf.setFontSize(18);
+      docPdf.text('Rapport de decaissement vendeur', 14, 18);
+
+      docPdf.setTextColor(31, 30, 28);
+      docPdf.setFontSize(11);
+      y = 40;
+
+      [
+        `Numero: ${payout.reportNumber || payout.id || '-'}`,
+        `Date: ${this.formatDateTime(payout.paidAt || payout.reviewedAt || payout.requestedAt || payout.createdAt)}`,
+        `Nom du store: ${payout.shopName || payout.vendorName || '-'}`,
+        `Nom complet: ${payout.fullName || `${payout.firstName || ''} ${payout.lastName || ''}`.trim() || '-'}`,
+        `Prenom: ${payout.firstName || '-'}`,
+        `Nom: ${payout.lastName || '-'}`,
+        `Sexe: ${payout.gender || '-'}`,
+        `Telephone: ${payout.phone || '-'}`,
+        `Adresse: ${payout.address || '-'}`,
+        `Montant decaisse: ${this.formatPrice(payout.netAmount || 0)}`,
+        `Periode de decaissement: ${payout.periodStart ? new Date(payout.periodStart).toLocaleDateString('fr-FR') : '-'} -> ${payout.periodEnd ? new Date(payout.periodEnd).toLocaleDateString('fr-FR') : '-'}`,
+        `Montant brut: ${this.formatPrice(payout.grossAmount || 0)}`,
+        `Commission: ${this.formatPrice(payout.commissionAmount || 0)}`
+      ].forEach((line) => {
+        const wrapped = docPdf.splitTextToSize(line, 178);
+        docPdf.text(wrapped, 14, y);
+        y += wrapped.length * 6 + 2;
+      });
+
+      const safeName = String(payout.reportNumber || payout.id || 'decaissement-vendeur').replace(/[^A-Za-z0-9_-]/g, '-');
+      docPdf.save(`decaissement-vendeur-${safeName}.pdf`);
+    } catch (error) {
+      console.error('Erreur generation PDF decaissement admin:', error);
+      window.alert(error?.message || 'Impossible de generer le PDF du decaissement.');
+    }
   }
 
   collectFormSettings() {
