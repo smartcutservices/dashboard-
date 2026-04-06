@@ -415,6 +415,8 @@
       return {
         id: token,
         fileName: '',
+        desktopFileName: '',
+        mobileFileName: '',
         altText: '',
         isActive: true
       };
@@ -442,16 +444,19 @@
     }
 
     function normalizeSlide(slide = {}, index = 0) {
+      const fallbackFileName = normalizeFileName(slide.fileName || slide.imageName || slide.posterName || '');
       return {
         id: String(slide.id || `poster-${index + 1}`).trim(),
-        fileName: normalizeFileName(slide.fileName || slide.imageName || slide.posterName || ''),
+        fileName: fallbackFileName,
+        desktopFileName: normalizeFileName(slide.desktopFileName || slide.desktopImageName || fallbackFileName),
+        mobileFileName: normalizeFileName(slide.mobileFileName || slide.mobileImageName || fallbackFileName),
         altText: String(slide.altText || slide.alt || `Affiche Smart Cut ${index + 1}`).trim(),
         isActive: slide.isActive !== false
       };
     }
 
     function getActiveSlides() {
-      return state.slides.filter((slide) => slide.isActive !== false && normalizeFileName(slide.fileName));
+      return state.slides.filter((slide) => slide.isActive !== false && (normalizeFileName(slide.desktopFileName) || normalizeFileName(slide.mobileFileName) || normalizeFileName(slide.fileName)));
     }
 
     function showToast(message, type = 'success') {
@@ -522,7 +527,7 @@
 
       elements.previewTrack.innerHTML = activeSlides.map((slide, index) => `
         <article class="preview-slide">
-          <div class="preview-poster" role="img" aria-label="${escapeHtml(slide.altText || `Affiche ${index + 1}`)}" style="background-image:url('${escapeHtml(buildPosterUrl(slide.fileName))}')"></div>
+          <div class="preview-poster" role="img" aria-label="${escapeHtml(slide.altText || `Affiche ${index + 1}`)}" style="background-image:url('${escapeHtml(buildPosterUrl(slide.desktopFileName || slide.fileName || slide.mobileFileName))}')"></div>
         </article>
       `).join('');
 
@@ -561,7 +566,7 @@
       }
 
       elements.posterList.innerHTML = state.slides.map((slide, index) => {
-        const previewUrl = buildPosterUrl(slide.fileName);
+        const previewUrl = buildPosterUrl(slide.desktopFileName || slide.fileName || slide.mobileFileName);
         return `
           <article class="poster-row" data-poster-id="${escapeHtml(slide.id)}">
             <div class="poster-thumb" style="${previewUrl ? `background-image:url('${escapeHtml(previewUrl)}')` : ''}"></div>
@@ -576,8 +581,13 @@
               </div>
 
               <label class="grid gap-2">
-                <span class="text-sm font-semibold">Nom du fichier image</span>
-                <input type="text" class="poster-input" data-poster-field="fileName" data-poster-id="${escapeHtml(slide.id)}" value="${escapeHtml(slide.fileName)}" placeholder="affiche-promo-avril.jpg">
+                <span class="text-sm font-semibold">Nom image desktop</span>
+                <input type="text" class="poster-input" data-poster-field="desktopFileName" data-poster-id="${escapeHtml(slide.id)}" value="${escapeHtml(slide.desktopFileName || slide.fileName)}" placeholder="affiche-promo-desktop.jpg">
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm font-semibold">Nom image mobile</span>
+                <input type="text" class="poster-input" data-poster-field="mobileFileName" data-poster-id="${escapeHtml(slide.id)}" value="${escapeHtml(slide.mobileFileName || slide.fileName)}" placeholder="affiche-promo-mobile.jpg">
               </label>
 
               <label class="grid gap-2">
@@ -643,11 +653,13 @@
         heroIsActiveToggle321: !!state.isActive,
         heroAutoplayDelayMs: Math.max(2500, toNumber(state.autoplayDelayMs, DEFAULT_AUTOPLAY_MS)),
         heroPosterImageNames: state.slides
-          .map((slide) => normalizeFileName(slide.fileName))
+          .map((slide) => normalizeFileName(slide.desktopFileName || slide.mobileFileName || slide.fileName))
           .filter(Boolean),
         posterSlides: state.slides.map((slide, index) => ({
           id: slide.id || `poster-${index + 1}`,
-          fileName: normalizeFileName(slide.fileName),
+          fileName: normalizeFileName(slide.desktopFileName || slide.mobileFileName || slide.fileName),
+          desktopFileName: normalizeFileName(slide.desktopFileName || slide.fileName),
+          mobileFileName: normalizeFileName(slide.mobileFileName || slide.fileName || slide.desktopFileName),
           altText: String(slide.altText || `Affiche Smart Cut ${index + 1}`).trim(),
           isActive: slide.isActive !== false
         })),
