@@ -96,42 +96,7 @@
     }
 
     .preview-caption {
-      position: absolute;
-      left: 1rem;
-      right: 1rem;
-      bottom: 1rem;
-      z-index: 1;
-      display: flex;
-      justify-content: space-between;
-      gap: 1rem;
-      align-items: end;
-    }
-
-    .preview-title {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: clamp(1.6rem, 4vw, 3.2rem);
-      line-height: .94;
-      max-width: 10ch;
-    }
-
-    .preview-meta {
-      margin-top: .7rem;
-      color: rgba(248,245,239,0.75);
-      font-size: .92rem;
-      line-height: 1.55;
-      max-width: 34ch;
-    }
-
-    .preview-counter {
-      flex-shrink: 0;
-      padding: .7rem .85rem;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(8,8,8,0.3);
-      font-size: .82rem;
-      letter-spacing: .14em;
-      text-transform: uppercase;
+      display: none;
     }
 
     .preview-header {
@@ -355,7 +320,7 @@
             </div>
           </div>
 
-          <div class="preview-shell">
+            <div class="preview-shell">
             <div id="preview-track" class="preview-track"></div>
           </div>
         </section>
@@ -548,8 +513,7 @@
             <div class="preview-poster" style="background-image:none;background:linear-gradient(180deg,#2d241b,#120f0c);display:grid;place-items:center;">
               <div style="position:relative;z-index:1;text-align:center;padding:1.5rem;">
                 <div class="poster-chip" style="margin:0 auto 1rem;">Aperçu vide</div>
-                <h2 class="preview-title" style="max-width:none;">Ajoutez votre première affiche</h2>
-                <p class="preview-meta" style="max-width:38ch;">Saisissez un nom de fichier image dans la liste ci-dessous pour voir le nouveau hero visuel en situation.</p>
+                <p class="subtle" style="color:rgba(248,245,239,0.72);max-width:34ch;">Ajoutez votre première affiche pour prévisualiser le slider visuel.</p>
               </div>
             </div>
           </div>
@@ -561,16 +525,7 @@
 
       elements.previewTrack.innerHTML = activeSlides.map((slide, index) => `
         <article class="preview-slide">
-          <div class="preview-poster" role="img" aria-label="${escapeHtml(slide.altText || `Affiche ${index + 1}`)}" style="background-image:url('${escapeHtml(buildPosterUrl(slide.fileName))}')">
-            <div class="preview-caption">
-              <div>
-                <div class="poster-chip" style="background:rgba(0,0,0,0.34);border-color:rgba(255,255,255,0.12);color:#f8f5ef;">Affiche ${String(index + 1).padStart(2, '0')}</div>
-                <h2 class="preview-title">Notre collection</h2>
-                <p class="preview-meta">Un hero visuel moderne, animé, responsive et entièrement piloté par vos noms de fichiers.</p>
-              </div>
-              <div class="preview-counter">${String(index + 1).padStart(2, '0')} / ${String(activeSlides.length).padStart(2, '0')}</div>
-            </div>
-          </div>
+          <div class="preview-poster" role="img" aria-label="${escapeHtml(slide.altText || `Affiche ${index + 1}`)}" style="background-image:url('${escapeHtml(buildPosterUrl(slide.fileName))}')"></div>
         </article>
       `).join('');
 
