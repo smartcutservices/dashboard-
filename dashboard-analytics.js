@@ -38,6 +38,13 @@ class DashboardAnalyticsPage {
     return new Intl.NumberFormat('fr-FR').format(Number(value || 0));
   }
 
+  truncateText(value, maxLength = 90) {
+    const text = String(value || '').trim().replace(/\s+/g, ' ');
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return `${text.slice(0, Math.max(0, maxLength - 1)).trim()}…`;
+  }
+
   formatDateTime(value) {
     const parsed = new Date(value || '');
     if (Number.isNaN(parsed.getTime())) return '-';
@@ -128,11 +135,12 @@ class DashboardAnalyticsPage {
     const max = Math.max(...items.map((item) => Number(item.value || 0)), 1);
     node.innerHTML = items.map((item) => {
       const ratio = Math.max(4, Math.round((Number(item.value || 0) / max) * 100));
+      const fullLabel = item.label || item.path || 'Inconnu';
       return `
         <div class="metric-item">
           <div class="metric-row">
-            <span>${this.escapeHtml(item.label || item.path || 'Inconnu')}</span>
-            <strong>${this.formatNumber(item.value)}</strong>
+            <span class="metric-label" title="${this.escapeHtml(fullLabel)}">${this.escapeHtml(this.truncateText(fullLabel, 56))}</span>
+            <strong class="metric-value">${this.formatNumber(item.value)}</strong>
           </div>
           <div class="metric-bar"><div style="width:${ratio}%;"></div></div>
         </div>
@@ -185,8 +193,8 @@ class DashboardAnalyticsPage {
         <tbody>
           ${items.map((item) => `
             <tr>
-              <td>${this.escapeHtml(item.title || item.path || '-')}</td>
-              <td><small>${this.escapeHtml(item.path || '-')}</small></td>
+              <td><span class="table-main" title="${this.escapeHtml(item.title || item.path || '-')}">${this.escapeHtml(this.truncateText(item.title || item.path || '-', 96))}</span></td>
+              <td><span class="table-sub" title="${this.escapeHtml(item.path || '-')}">${this.escapeHtml(item.path || '-')}</span></td>
               <td>${this.formatNumber(item.value)}</td>
             </tr>
           `).join('')}
@@ -220,21 +228,21 @@ class DashboardAnalyticsPage {
           ${items.map((item) => `
             <tr>
               <td>
-                ${this.escapeHtml(item.landingTitle || item.landingPath || '-')}
-                <small>${this.escapeHtml(item.landingPath || '-')}</small>
+                <span class="table-main" title="${this.escapeHtml(item.landingTitle || item.landingPath || '-')}">${this.escapeHtml(this.truncateText(item.landingTitle || item.landingPath || '-', 92))}</span>
+                <span class="table-sub" title="${this.escapeHtml(item.landingPath || '-')}">${this.escapeHtml(item.landingPath || '-')}</span>
               </td>
               <td>${this.escapeHtml(item.source || 'direct')}</td>
               <td>
-                ${this.escapeHtml(item.deviceType || '-')}
-                <small>${this.formatNumber(item.pageViews || 0)} pages</small>
+                <span class="table-main">${this.escapeHtml(item.deviceType || '-')}</span>
+                <span class="table-sub">${this.formatNumber(item.pageViews || 0)} pages</span>
               </td>
               <td>
-                ${this.escapeHtml(item.browser || '-')}
-                <small>${this.escapeHtml(item.os || '-')}</small>
+                <span class="table-main" title="${this.escapeHtml(item.browser || '-')}">${this.escapeHtml(this.truncateText(item.browser || '-', 48))}</span>
+                <span class="table-sub" title="${this.escapeHtml(item.os || '-')}">${this.escapeHtml(item.os || '-')}</span>
               </td>
               <td>
-                ${this.escapeHtml(item.language || '-')}
-                <small>${this.escapeHtml(item.timeZone || '-')}</small>
+                <span class="table-main" title="${this.escapeHtml(item.language || '-')}">${this.escapeHtml(item.language || '-')}</span>
+                <span class="table-sub" title="${this.escapeHtml(item.timeZone || '-')}">${this.escapeHtml(item.timeZone || '-')}</span>
               </td>
               <td>${this.escapeHtml(this.formatDateTime(item.lastSeenAt))}</td>
             </tr>
@@ -271,4 +279,3 @@ class DashboardAnalyticsPage {
 }
 
 new DashboardAnalyticsPage();
-
