@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cut Services · Dashboard Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f6f1e8;
+      --surface: rgba(255, 255, 255, 0.96);
+      --surface-soft: rgba(255, 255, 255, 0.78);
+      --text: #1f1e1c;
+      --muted: #6f675c;
+      --accent: #c6a75e;
+      --accent-dark: #9f8343;
+      --border: rgba(31, 30, 28, 0.08);
+      --shadow: 0 24px 60px rgba(31, 30, 28, 0.08);
+      --success: #0f9f6e;
+      --info: #2563eb;
+      --warning: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: 'Manrope', sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(198, 167, 94, 0.15), transparent 24%),
+        linear-gradient(180deg, #fbf7ef 0%, #f2ebde 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .hero,
+    .panel,
+    .stat-card,
+    .chart-panel,
+    .table-panel {
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .hero {
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(250,244,234,0.95));
+    }
+
+    .hero small {
+      display: inline-block;
+      margin-bottom: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(2.3rem, 6vw, 4rem);
+      line-height: 0.92;
+    }
+
+    .hero p {
+      margin: 1rem 0 0;
+      max-width: 72ch;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .hero-toolbar {
+      margin-top: 1.4rem;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .range-button {
+      border: 1px solid rgba(31, 30, 28, 0.08);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.74);
+      color: var(--text);
+      padding: 0.72rem 1rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .range-button.active {
+      background: var(--text);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .hero-note {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .stat-card {
+      padding: 1.2rem;
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .stat-card small {
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+    }
+
+    .stat-card strong {
+      font-size: 1.9rem;
+      line-height: 1;
+    }
+
+    .stat-card span {
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 0.9rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 1.25rem;
+      align-items: start;
+      margin-bottom: 1.25rem;
+    }
+
+    .stack {
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .chart-panel,
+    .table-panel {
+      padding: 1.25rem;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: start;
+      margin-bottom: 1rem;
+    }
+
+    .chart-head h3 {
+      margin: 0;
+      font-size: 1.08rem;
+    }
+
+    .chart-head p {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    .badge {
+      padding: 0.4rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(198, 167, 94, 0.12);
+      color: var(--accent-dark);
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .bars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
+      align-items: end;
+      gap: 0.7rem;
+      min-height: 230px;
+    }
+
+    .bar-col {
+      display: grid;
+      gap: 0.5rem;
+      justify-items: center;
+    }
+
+    .bar-track {
+      width: 100%;
+      max-width: 42px;
+      height: 168px;
+      border-radius: 999px;
+      background: rgba(198, 167, 94, 0.12);
+      overflow: hidden;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .bar-fill {
+      width: 100%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #e2c688 0%, #c6a75e 100%);
+      min-height: 8px;
+    }
+
+    .bar-label,
+    .bar-value {
+      font-size: 0.78rem;
+      text-align: center;
+    }
+
+    .bar-label { color: var(--muted); }
+    .bar-value { font-weight: 700; }
+
+    .metric-list {
+      display: grid;
+      gap: 0.8rem;
+    }
+
+    .metric-item {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      font-size: 0.92rem;
+    }
+
+    .metric-row span:first-child {
+      color: var(--muted);
+    }
+
+    .metric-bar {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(198, 167, 94, 0.12);
+      overflow: hidden;
+    }
+
+    .metric-bar > div {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #c6a75e, #e8cf96);
+    }
+
+    .table-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table-panel th,
+    .table-panel td {
+      padding: 0.9rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    .table-panel th {
+      color: var(--muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .table-panel td small {
+      display: block;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    .empty-state {
+      border-radius: 22px;
+      border: 1px dashed rgba(31, 30, 28, 0.12);
+      background: rgba(255,255,255,0.68);
+      color: var(--muted);
+      padding: 1rem 1.1rem;
+      text-align: center;
+    }
+
+    @media (max-width: 1200px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .shell { padding: 1rem; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .hero { padding: 1.25rem; }
+      .hero-toolbar { flex-direction: column; align-items: stretch; }
+      .hero-note { margin-left: 0; }
+      .table-panel { overflow-x: auto; }
+      .table-panel table { min-width: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <small>Analytics website</small>
+      <h1>Comprendre vos visiteurs et leur parcours.</h1>
+      <p>
+        Suivez les visites, les pages les plus vues, les appareils, navigateurs, sources de trafic et les moments forts du site.
+        Cette vue est pensée pour piloter la croissance du site de façon simple et claire.
+      </p>
+      <div class="hero-toolbar">
+        <button class="range-button active" data-range="7" type="button">7 jours</button>
+        <button class="range-button" data-range="30" type="button">30 jours</button>
+        <button class="range-button" data-range="60" type="button">60 jours</button>
+        <span class="hero-note" id="analytics-last-update">Chargement des analytics...</span>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <small>Visiteurs uniques</small>
+        <strong id="stat-visitors">0</strong>
+        <span>Sessions distinctes sur la période sélectionnée.</span>
+      </article>
+      <article class="stat-card">
+        <small>Pages vues</small>
+        <strong id="stat-pageviews">0</strong>
+        <span>Total des pages consultées sur le site.</span>
+      </article>
+      <article class="stat-card">
+        <small>Pages / visiteur</small>
+        <strong id="stat-average">0</strong>
+        <span>Mesure la profondeur de navigation moyenne.</span>
+      </article>
+      <article class="stat-card">
+        <small>Ajouts panier</small>
+        <strong id="stat-cartadds">0</strong>
+        <span>Nombre d’actions d’ajout produit détectées.</span>
+      </article>
+      <article class="stat-card">
+        <small>Débuts checkout</small>
+        <strong id="stat-checkouts">0</strong>
+        <span>Intentions d’achat observées sur la période.</span>
+      </article>
+    </section>
+
+    <section class="grid">
+      <div class="chart-panel">
+        <div class="chart-head">
+          <div>
+            <h3>Évolution des visites</h3>
+            <p>Suivi quotidien des pages vues et des visiteurs uniques.</p>
+          </div>
+          <span class="badge" id="timeline-badge">Période active</span>
+        </div>
+        <div class="bars" id="analytics-timeline"></div>
+      </div>
+      <div class="stack">
+        <div class="chart-panel">
+          <div class="chart-head">
+            <div>
+              <h3>Appareils</h3>
+              <p>Répartition entre desktop, mobile et tablette.</p>
+            </div>
+          </div>
+          <div class="metric-list" id="analytics-devices"></div>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-head">
+            <div>
+              <h3>Sources</h3>
+              <p>Origine du trafic observé sur la période.</p>
+            </div>
+          </div>
+          <div class="metric-list" id="analytics-sources"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="table-panel">
+        <div class="chart-head">
+          <div>
+            <h3>Pages les plus consultées</h3>
+            <p>Les contenus qui attirent le plus de vues.</p>
+          </div>
+        </div>
+        <div id="top-pages-wrap"></div>
+      </div>
+      <div class="stack">
+        <div class="chart-panel">
+          <div class="chart-head">
+            <div>
+              <h3>Navigateurs</h3>
+              <p>Compatibilité réelle côté visiteurs.</p>
+            </div>
+          </div>
+          <div class="metric-list" id="analytics-browsers"></div>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-head">
+            <div>
+              <h3>Systèmes & langues</h3>
+              <p>Lecture rapide des usages techniques et linguistiques.</p>
+            </div>
+          </div>
+          <div class="metric-list" id="analytics-os"></div>
+          <div class="metric-list" id="analytics-languages" style="margin-top:1rem;"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="table-panel">
+      <div class="chart-head">
+        <div>
+          <h3>Sessions récentes</h3>
+          <p>Derniers visiteurs détectés, avec appareil, source et page d’entrée.</p>
+        </div>
+      </div>
+      <div id="recent-sessions-wrap"></div>
+    </section>
+  </main>
+
+  <script type="module" src="./dashboard-analytics.js"></script>
+  <script type="module" src="./admin-access.js"></script>
+</body>
+</html>

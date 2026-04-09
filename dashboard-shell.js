@@ -84,6 +84,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-box-open'
   },
   {
+    id: 'analytics',
+    label: 'Analytics',
+    description: 'Visites, pages vues, appareils, sources et tendances du site.',
+    href: './dashboard-analytics.html',
+    icon: 'fa-chart-line'
+  },
+  {
     id: 'printing',
     label: 'Impression',
     description: 'Print on Demand, PDF, photo, CAD et grand format.',
