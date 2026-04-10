@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cut Services · Codes Promo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f7f1e7;
+      --surface: rgba(255,255,255,0.94);
+      --surface-soft: rgba(255,255,255,0.75);
+      --text: #1d1b18;
+      --muted: #6d6559;
+      --accent: #c6a75e;
+      --border: rgba(29,27,24,0.08);
+      --shadow: 0 24px 60px rgba(31,30,28,0.08);
+      --success: #0f9f6e;
+      --danger: #c2410c;
+      --warning: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Manrope', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(198,167,94,0.18), transparent 22%),
+        linear-gradient(180deg, #fcf7ee 0%, #f2eadf 100%);
+    }
+
+    .shell {
+      min-height: 100vh;
+      padding: 2rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+
+    .hero, .panel, .stat-card {
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .hero, .panel { padding: 1.5rem; }
+
+    .hero small, .panel small {
+      display: inline-block;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: .75rem;
+      font-weight: 700;
+      margin-bottom: .8rem;
+    }
+
+    .hero h1, .panel h2 {
+      margin: 0;
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    .hero h1 { font-size: clamp(2.5rem, 6vw, 4.2rem); line-height: .92; }
+    .hero p, .panel p { color: var(--muted); line-height: 1.8; }
+    .hero p { max-width: 72ch; margin: 1rem 0 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+
+    .stat-card { padding: 1.1rem 1.15rem; }
+    .stat-card strong { display: block; font-size: 1.65rem; line-height: 1; }
+    .stat-card span { color: var(--muted); font-size: .84rem; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .field, .full-field {
+      display: grid;
+      gap: .45rem;
+    }
+
+    .full-field { grid-column: 1 / -1; }
+
+    label {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .02em;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 18px;
+      border: 1px solid rgba(29,27,24,0.12);
+      padding: .95rem 1rem;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea { min-height: 110px; resize: vertical; }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .6rem;
+      max-height: 240px;
+      overflow: auto;
+      padding: .2rem;
+    }
+
+    .check {
+      display: flex;
+      gap: .7rem;
+      align-items: flex-start;
+      padding: .85rem .9rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.82);
+      border: 1px solid rgba(29,27,24,0.08);
+    }
+
+    .check input { width: auto; margin-top: .15rem; }
+    .check strong { display: block; font-size: .88rem; }
+    .check span { color: var(--muted); font-size: .75rem; line-height: 1.5; }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: .5rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: .9rem 1.2rem;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn-primary { background: #1d1b18; color: #f8f5ef; }
+    .btn-secondary { background: #fff; color: var(--text); border: 1px solid rgba(29,27,24,0.12); }
+    .btn-danger { background: #7f1d1d; color: #fff; }
+
+    .promo-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .promo-card {
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--surface-soft);
+      padding: 1.15rem;
+      display: grid;
+      gap: .9rem;
+    }
+
+    .promo-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .promo-code {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .4rem .75rem;
+      border-radius: 999px;
+      background: rgba(198,167,94,0.14);
+      color: #8a6d2d;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      max-width: 100%;
+    }
+
+    .promo-code span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .35rem .75rem;
+      border-radius: 999px;
+      font-size: .74rem;
+      font-weight: 800;
+    }
+
+    .badge-active { background: rgba(15,159,110,0.14); color: var(--success); }
+    .badge-inactive { background: rgba(217,119,6,0.14); color: var(--warning); }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: .8rem;
+    }
+
+    .meta {
+      padding: .8rem .9rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(29,27,24,0.06);
+    }
+
+    .meta small {
+      display: block;
+      margin: 0 0 .25rem;
+      color: var(--muted);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .meta strong {
+      display: block;
+      font-size: .92rem;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(198,167,94,0.3);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.7);
+    }
+
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      padding: .9rem 1.1rem;
+      border-radius: 18px;
+      color: #fff;
+      font-weight: 700;
+      z-index: 30;
+      box-shadow: 0 18px 38px rgba(31,30,28,0.2);
+    }
+
+    .toast.success { background: #0f9f6e; }
+    .toast.error { background: #7f1d1d; }
+
+    @media (max-width: 1024px) {
+      .shell { padding: 1rem; }
+      .layout { grid-template-columns: 1fr; }
+      .field-grid, .category-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <small>Fidelisation clients</small>
+      <h1>Codes promo Smart Cut Services</h1>
+      <p>Crée, active, désactive ou supprime des codes promo réservés aux produits Smart Cut Services. Chaque code peut cibler des catégories précises et ne peut être utilisé qu’une seule fois par client.</p>
+    </section>
+
+    <section class="stats" id="promoStats">
+      <article class="stat-card"><strong id="statTotalPromos">0</strong><span>Codes promo</span></article>
+      <article class="stat-card"><strong id="statActivePromos">0</strong><span>Actifs</span></article>
+      <article class="stat-card"><strong id="statTotalUses">0</strong><span>Utilisations</span></article>
+      <article class="stat-card"><strong id="statCategories">0</strong><span>Catégories couvertes</span></article>
+    </section>
+
+    <section class="layout">
+      <article class="panel">
+        <small>Création / édition</small>
+        <h2>Configurer un code promo</h2>
+        <p>Ce module agit uniquement sur les produits Smart Cut Services. Les produits vendeurs ne sont jamais remisés par ces codes.</p>
+        <div class="field-grid" style="margin-top:1rem;">
+          <div class="field">
+            <label for="promoCodeInput">Code promo</label>
+            <input id="promoCodeInput" type="text" placeholder="Ex: SMARTCUT10">
+          </div>
+          <div class="field">
+            <label for="promoLabelInput">Libellé</label>
+            <input id="promoLabelInput" type="text" placeholder="Offre clients fidèles">
+          </div>
+          <div class="field">
+            <label for="promoTypeInput">Type</label>
+            <select id="promoTypeInput">
+              <option value="percentage">Pourcentage (%)</option>
+              <option value="amount">Montant fixe (HTG)</option>
+              <option value="fixed_price">Prix final fixe</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="promoValueInput">Valeur</label>
+            <input id="promoValueInput" type="number" min="0" step="0.01" placeholder="10">
+          </div>
+          <div class="field">
+            <label for="promoStartInput">Début</label>
+            <input id="promoStartInput" type="datetime-local">
+          </div>
+          <div class="field">
+            <label for="promoEndInput">Fin</label>
+            <input id="promoEndInput" type="datetime-local">
+          </div>
+          <div class="full-field">
+            <label for="promoDescriptionInput">Description interne</label>
+            <textarea id="promoDescriptionInput" placeholder="Optionnel: notes internes, objectif de campagne, public concerné..."></textarea>
+          </div>
+          <div class="full-field">
+            <label>Catégories Smart Cut concernées</label>
+            <div class="category-grid" id="promoCategories"></div>
+          </div>
+          <div class="full-field">
+            <label class="check">
+              <input id="promoActiveInput" type="checkbox" checked>
+              <span>
+                <strong>Code actif</strong>
+                <span>Tu peux l’activer ou le désactiver à volonté sans le supprimer.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="savePromoBtn"><i class="fas fa-save"></i> Enregistrer</button>
+          <button class="btn btn-secondary" id="resetPromoBtn"><i class="fas fa-rotate-left"></i> Réinitialiser</button>
+          <button class="btn btn-danger" id="deletePromoBtn" style="display:none;"><i class="fas fa-trash"></i> Supprimer</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <small>Bibliothèque promo</small>
+        <h2>Codes existants</h2>
+        <p>Chaque code est limité à une utilisation par client. Les usages sont historisés côté backend au moment du paiement confirmé.</p>
+        <div class="promo-list" id="promoList" style="margin-top:1rem;"></div>
+      </article>
+    </section>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase-init.js';
+    import { collection, addDoc, deleteDoc, doc, getDocs, orderBy, query, updateDoc, where, limit } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+    const PROMOS = 'promoCodes';
+    const CATEGORIES = 'categories_list';
+
+    const state = {
+      promos: [],
+      categories: [],
+      currentPromoId: ''
+    };
+
+    const els = {
+      code: document.getElementById('promoCodeInput'),
+      label: document.getElementById('promoLabelInput'),
+      type: document.getElementById('promoTypeInput'),
+      value: document.getElementById('promoValueInput'),
+      start: document.getElementById('promoStartInput'),
+      end: document.getElementById('promoEndInput'),
+      description: document.getElementById('promoDescriptionInput'),
+      active: document.getElementById('promoActiveInput'),
+      save: document.getElementById('savePromoBtn'),
+      reset: document.getElementById('resetPromoBtn'),
+      del: document.getElementById('deletePromoBtn'),
+      categories: document.getElementById('promoCategories'),
+      list: document.getElementById('promoList'),
+      statTotal: document.getElementById('statTotalPromos'),
+      statActive: document.getElementById('statActivePromos'),
+      statUses: document.getElementById('statTotalUses'),
+      statCategories: document.getElementById('statCategories')
+    };
+
+    function escapeHtml(value = '') {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2800);
+    }
+
+    function normalizeCode(value = '') {
+      return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+    }
+
+    function formatDateTimeLocal(value = '') {
+      if (!value) return '';
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return '';
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function formatDateTime(value = '') {
+      if (!value) return '-';
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return '-';
+      return date.toLocaleString('fr-FR');
+    }
+
+    function getSelectedCategoryIds() {
+      return Array.from(els.categories.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value);
+    }
+
+    function renderCategories() {
+      els.categories.innerHTML = state.categories.map((category) => `
+        <label class="check">
+          <input type="checkbox" value="${escapeHtml(category.id)}">
+          <span>
+            <strong>${escapeHtml(category.name || 'Catégorie')}</strong>
+            <span>${escapeHtml(category.description || 'Produits Smart Cut Services')}</span>
+          </span>
+        </label>
+      `).join('');
+    }
+
+    function updateStats() {
+      els.statTotal.textContent = String(state.promos.length);
+      els.statActive.textContent = String(state.promos.filter((promo) => promo.active !== false).length);
+      els.statUses.textContent = String(state.promos.reduce((sum, promo) => sum + (Number(promo.usageCount) || 0), 0));
+      const covered = new Set(state.promos.flatMap((promo) => Array.isArray(promo.categoryIds) ? promo.categoryIds : []));
+      els.statCategories.textContent = String(covered.size);
+    }
+
+    function resetForm() {
+      state.currentPromoId = '';
+      els.code.value = '';
+      els.label.value = '';
+      els.type.value = 'percentage';
+      els.value.value = '';
+      els.start.value = '';
+      els.end.value = '';
+      els.description.value = '';
+      els.active.checked = true;
+      els.del.style.display = 'none';
+      els.categories.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = false;
+      });
+    }
+
+    function fillForm(promo) {
+      state.currentPromoId = promo.id;
+      els.code.value = promo.code || '';
+      els.label.value = promo.label || promo.name || '';
+      els.type.value = promo.type || 'percentage';
+      els.value.value = promo.value ?? '';
+      els.start.value = formatDateTimeLocal(promo.startAt || '');
+      els.end.value = formatDateTimeLocal(promo.endAt || '');
+      els.description.value = promo.description || '';
+      els.active.checked = promo.active !== false;
+      const selected = new Set(Array.isArray(promo.categoryIds) ? promo.categoryIds : []);
+      els.categories.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+        input.checked = selected.has(input.value);
+      });
+      els.del.style.display = 'inline-flex';
+    }
+
+    function renderPromos() {
+      updateStats();
+      if (!state.promos.length) {
+        els.list.innerHTML = '<div class="empty">Aucun code promo configuré pour le moment.</div>';
+        return;
+      }
+
+      const categoryMap = new Map(state.categories.map((category) => [category.id, category.name || 'Catégorie']));
+      els.list.innerHTML = state.promos.map((promo) => {
+        const categoryNames = (Array.isArray(promo.categoryIds) ? promo.categoryIds : [])
+          .map((id) => categoryMap.get(id))
+          .filter(Boolean);
+
+        return `
+          <article class="promo-card">
+            <div class="promo-top">
+              <div style="min-width:0;">
+                <div class="promo-code"><i class="fas fa-ticket-alt"></i><span>${escapeHtml(promo.code || '')}</span></div>
+                <h3 style="margin:.7rem 0 .25rem;font-size:1.2rem;line-height:1.2;">${escapeHtml(promo.label || promo.name || 'Code promo')}</h3>
+                <p style="margin:0;">${escapeHtml(promo.description || 'Remise ciblée Smart Cut Services.')}</p>
+              </div>
+              <span class="badge ${promo.active !== false ? 'badge-active' : 'badge-inactive'}">
+                <i class="fas ${promo.active !== false ? 'fa-bolt' : 'fa-pause'}"></i>
+                ${promo.active !== false ? 'Actif' : 'Inactif'}
+              </span>
+            </div>
+
+            <div class="meta-grid">
+              <div class="meta"><small>Remise</small><strong>${escapeHtml(String(promo.value ?? 0))} ${promo.type === 'percentage' ? '%' : promo.type === 'amount' ? 'HTG' : 'HTG final'}</strong></div>
+              <div class="meta"><small>Début</small><strong>${escapeHtml(formatDateTime(promo.startAt || ''))}</strong></div>
+              <div class="meta"><small>Fin</small><strong>${escapeHtml(formatDateTime(promo.endAt || ''))}</strong></div>
+              <div class="meta"><small>Utilisations</small><strong>${escapeHtml(String(promo.usageCount || 0))}</strong></div>
+              <div class="meta" style="grid-column:1 / -1;"><small>Catégories</small><strong>${escapeHtml(categoryNames.length ? categoryNames.join(', ') : 'Toutes les catégories Smart Cut')}</strong></div>
+            </div>
+
+            <div class="actions">
+              <button class="btn btn-secondary" data-edit="${promo.id}"><i class="fas fa-pen"></i> Modifier</button>
+              <button class="btn btn-secondary" data-toggle="${promo.id}"><i class="fas ${promo.active !== false ? 'fa-pause' : 'fa-play'}"></i> ${promo.active !== false ? 'Désactiver' : 'Activer'}</button>
+              <button class="btn btn-danger" data-delete="${promo.id}"><i class="fas fa-trash"></i> Supprimer</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+
+      els.list.querySelectorAll('[data-edit]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const promo = state.promos.find((item) => item.id === btn.dataset.edit);
+          if (promo) fillForm(promo);
+        });
+      });
+
+      els.list.querySelectorAll('[data-toggle]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const promo = state.promos.find((item) => item.id === btn.dataset.toggle);
+          if (!promo) return;
+          await updateDoc(doc(db, PROMOS, promo.id), {
+            active: promo.active === false,
+            updatedAt: new Date().toISOString()
+          });
+          await loadPromos();
+          showToast('Statut promo mis à jour.');
+        });
+      });
+
+      els.list.querySelectorAll('[data-delete]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const promo = state.promos.find((item) => item.id === btn.dataset.delete);
+          if (!promo) return;
+          if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
+          await deleteDoc(doc(db, PROMOS, promo.id));
+          if (state.currentPromoId === promo.id) resetForm();
+          await loadPromos();
+          showToast('Code promo supprimé.');
+        });
+      });
+    }
+
+    async function loadCategories() {
+      const snapshot = await getDocs(query(collection(db, CATEGORIES), orderBy('name')));
+      state.categories = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+      renderCategories();
+    }
+
+    async function loadPromos() {
+      const snapshot = await getDocs(query(collection(db, PROMOS), orderBy('updatedAt', 'desc'), limit(100)));
+      state.promos = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+      renderPromos();
+    }
+
+    async function savePromo() {
+      const code = normalizeCode(els.code.value);
+      const label = String(els.label.value || '').trim();
+      const type = String(els.type.value || 'percentage').trim();
+      const value = Number(els.value.value);
+      const startAt = els.start.value ? new Date(els.start.value).toISOString() : '';
+      const endAt = els.end.value ? new Date(els.end.value).toISOString() : '';
+      const categoryIds = getSelectedCategoryIds();
+
+      if (!code) throw new Error('Le code promo est requis.');
+      if (!label) throw new Error('Le libellé du code promo est requis.');
+      if (!Number.isFinite(value) || value <= 0) throw new Error('La valeur de la remise doit être supérieure à 0.');
+      if (startAt && endAt && new Date(endAt).getTime() <= new Date(startAt).getTime()) {
+        throw new Error('La date de fin doit être après la date de début.');
+      }
+
+      const duplicateSnapshot = await getDocs(query(collection(db, PROMOS), where('code', '==', code), limit(5)));
+      const duplicate = duplicateSnapshot.docs.find((entry) => entry.id !== state.currentPromoId);
+      if (duplicate) throw new Error('Ce code promo existe déjà.');
+
+      const payload = {
+        code,
+        label,
+        name: label,
+        type,
+        value,
+        active: Boolean(els.active.checked),
+        startAt,
+        endAt,
+        description: String(els.description.value || '').trim(),
+        categoryIds,
+        updatedAt: new Date().toISOString()
+      };
+
+      if (state.currentPromoId) {
+        await updateDoc(doc(db, PROMOS, state.currentPromoId), payload);
+        showToast('Code promo mis à jour.');
+      } else {
+        await addDoc(collection(db, PROMOS), {
+          ...payload,
+          usageCount: 0,
+          createdAt: new Date().toISOString()
+        });
+        showToast('Code promo créé.');
+      }
+
+      resetForm();
+      await loadPromos();
+    }
+
+    els.save.addEventListener('click', async () => {
+      try {
+        await savePromo();
+      } catch (error) {
+        console.error('Erreur sauvegarde promo:', error);
+        showToast(error?.message || 'Impossible d’enregistrer ce code promo.', 'error');
+      }
+    });
+
+    els.reset.addEventListener('click', () => resetForm());
+
+    els.del.addEventListener('click', async () => {
+      if (!state.currentPromoId) return;
+      const promo = state.promos.find((item) => item.id === state.currentPromoId);
+      if (!promo) return;
+      if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
+      await deleteDoc(doc(db, PROMOS, promo.id));
+      resetForm();
+      await loadPromos();
+      showToast('Code promo supprimé.');
+    });
+
+    await Promise.all([loadCategories(), loadPromos()]);
+  </script>
+  <script src="./dashboard-nav-bubble.js"></script>
+  <script type="module" src="./admin-access.js"></script>
+</body>
+</html>

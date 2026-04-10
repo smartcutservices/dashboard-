@@ -91,6 +91,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-chart-line'
   },
   {
+    id: 'promos',
+    label: 'Codes promo',
+    description: 'Remises Smart Cut, activation, categories cibles et suivi des usages.',
+    href: './dashboard-promos.html',
+    icon: 'fa-ticket'
+  },
+  {
     id: 'printing',
     label: 'Impression',
     description: 'Print on Demand, PDF, photo, CAD et grand format.',
