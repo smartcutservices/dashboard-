@@ -365,11 +365,12 @@
   </div>
 
   <script type="module">
-    import { db } from './firebase-init.js';
-    import { collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, setDoc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+    import { auth, db } from './firebase-init.js';
+    import { collection, getDocs, orderBy, query } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
     const PROMOS = 'promoCodes';
     const CATEGORIES = 'categories_list';
+    const FUNCTION_BASE_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net';
 
     const state = {
       promos: [],
@@ -416,6 +417,29 @@
 
     function normalizeCode(value = '') {
       return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+    }
+
+    async function getAuthToken() {
+      const user = auth?.currentUser;
+      if (!user) throw new Error('Connecte-toi comme administrateur pour gerer les codes promo.');
+      return user.getIdToken();
+    }
+
+    async function requestJson(path, options = {}) {
+      const token = await getAuthToken();
+      const response = await fetch(`${FUNCTION_BASE_URL}/${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...(options.headers || {})
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+      }
+      return payload;
     }
 
     function formatDateTimeLocal(value = '') {
@@ -545,9 +569,20 @@
         btn.addEventListener('click', async () => {
           const promo = state.promos.find((item) => item.id === btn.dataset.toggle);
           if (!promo) return;
-          await updateDoc(doc(db, PROMOS, promo.id), {
-            active: promo.active === false,
-            updatedAt: new Date().toISOString()
+          await requestJson('savePromoCode', {
+            method: 'POST',
+            body: JSON.stringify({
+              previousCode: promo.id,
+              code: promo.code || promo.id,
+              label: promo.label || promo.name || '',
+              type: promo.type || 'percentage',
+              value: promo.value ?? promo.amount ?? promo.rate ?? 0,
+              active: promo.active === false,
+              startAt: promo.startAt || '',
+              endAt: promo.endAt || '',
+              description: promo.description || '',
+              categoryIds: Array.isArray(promo.categoryIds) ? promo.categoryIds : []
+            })
           });
           await loadPromos();
           showToast('Statut promo mis à jour.');
@@ -559,7 +594,10 @@
           const promo = state.promos.find((item) => item.id === btn.dataset.delete);
           if (!promo) return;
           if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
-          await deleteDoc(doc(db, PROMOS, promo.id));
+          await requestJson('deletePromoCode', {
+            method: 'POST',
+            body: JSON.stringify({ code: promo.id })
+          });
           if (state.currentPromoId === promo.id) resetForm();
           await loadPromos();
           showToast('Code promo supprimé.');
@@ -574,8 +612,8 @@
     }
 
     async function loadPromos() {
-      const snapshot = await getDocs(query(collection(db, PROMOS), orderBy('updatedAt', 'desc'), limit(100)));
-      state.promos = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+      const response = await requestJson('listPromoCodes', { method: 'GET' });
+      state.promos = Array.isArray(response?.promos) ? response.promos : [];
       renderPromos();
     }
 
@@ -587,8 +625,6 @@
       const startAt = els.start.value ? new Date(els.start.value).toISOString() : '';
       const endAt = els.end.value ? new Date(els.end.value).toISOString() : '';
       const categoryIds = getSelectedCategoryIds();
-      const now = new Date().toISOString();
-      const targetDocId = code;
       const existingPromo = state.promos.find((item) => item.id === state.currentPromoId) || null;
 
       if (!code) throw new Error('Le code promo est requis.');
@@ -598,38 +634,21 @@
         throw new Error('La date de fin doit etre apres la date de debut.');
       }
 
-      const duplicateById = await getDoc(doc(db, PROMOS, targetDocId));
-      if (duplicateById.exists() && targetDocId !== state.currentPromoId) {
-        throw new Error('Ce code promo existe deja.');
-      }
-
-      const duplicateSnapshot = await getDocs(query(collection(db, PROMOS), where('code', '==', code), limit(5)));
-      const duplicate = duplicateSnapshot.docs.find((entry) => entry.id !== state.currentPromoId && entry.id !== targetDocId);
-      if (duplicate) throw new Error('Ce code promo existe deja.');
-
-      const payload = {
-        code,
-        label,
-        name: label,
-        type,
-        value,
-        active: Boolean(els.active.checked),
-        startAt,
-        endAt,
-        description: String(els.description.value || '').trim(),
-        categoryIds,
-        updatedAt: now
-      };
-
-      await setDoc(doc(db, PROMOS, targetDocId), {
-        usageCount: Number(existingPromo?.usageCount || 0),
-        createdAt: existingPromo?.createdAt || now,
-        ...payload
-      }, { merge: true });
-
-      if (state.currentPromoId && state.currentPromoId !== targetDocId) {
-        await deleteDoc(doc(db, PROMOS, state.currentPromoId));
-      }
+      await requestJson('savePromoCode', {
+        method: 'POST',
+        body: JSON.stringify({
+          previousCode: state.currentPromoId || '',
+          code,
+          label,
+          type,
+          value,
+          active: Boolean(els.active.checked),
+          startAt,
+          endAt,
+          description: String(els.description.value || '').trim(),
+          categoryIds
+        })
+      });
 
       if (state.currentPromoId) {
         showToast('Code promo mis a jour.');
@@ -657,7 +676,10 @@
       const promo = state.promos.find((item) => item.id === state.currentPromoId);
       if (!promo) return;
       if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
-      await deleteDoc(doc(db, PROMOS, promo.id));
+      await requestJson('deletePromoCode', {
+        method: 'POST',
+        body: JSON.stringify({ code: promo.id })
+      });
       resetForm();
       await loadPromos();
       showToast('Code promo supprimé.');
