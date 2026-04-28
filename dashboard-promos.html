@@ -425,10 +425,47 @@
       return user.getIdToken();
     }
 
+    function withCacheBust(path) {
+      const separator = path.includes('?') ? '&' : '?';
+      return `${path}${separator}_ts=${Date.now()}`;
+    }
+
+    function sortPromos(list = []) {
+      return [...list].sort((left, right) => {
+        const rightTime = Date.parse(right?.updatedAt || right?.createdAt || '') || 0;
+        const leftTime = Date.parse(left?.updatedAt || left?.createdAt || '') || 0;
+        return rightTime - leftTime;
+      });
+    }
+
+    function upsertPromoInState(promo) {
+      if (!promo?.id) return;
+      const promos = Array.isArray(state.promos) ? [...state.promos] : [];
+      const index = promos.findIndex((item) => item.id === promo.id);
+      if (index >= 0) {
+        promos[index] = { ...promos[index], ...promo };
+      } else {
+        promos.unshift(promo);
+      }
+      state.promos = sortPromos(promos);
+      renderPromos();
+    }
+
+    function removePromoFromState(promoId) {
+      state.promos = sortPromos((Array.isArray(state.promos) ? state.promos : []).filter((item) => item.id !== promoId));
+      renderPromos();
+    }
+
     async function requestJson(path, options = {}) {
       const token = await getAuthToken();
-      const response = await fetch(`${FUNCTION_BASE_URL}/${path}`, {
+      const method = String(options.method || 'GET').toUpperCase();
+      const url = method === 'GET'
+        ? `${FUNCTION_BASE_URL}/${withCacheBust(path)}`
+        : `${FUNCTION_BASE_URL}/${path}`;
+      const response = await fetch(url, {
         ...options,
+        method,
+        cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
@@ -569,7 +606,7 @@
         btn.addEventListener('click', async () => {
           const promo = state.promos.find((item) => item.id === btn.dataset.toggle);
           if (!promo) return;
-          await requestJson('savePromoCode', {
+          const response = await requestJson('savePromoCode', {
             method: 'POST',
             body: JSON.stringify({
               previousCode: promo.id,
@@ -584,7 +621,11 @@
               categoryIds: Array.isArray(promo.categoryIds) ? promo.categoryIds : []
             })
           });
-          await loadPromos();
+          if (response?.promo?.id) {
+            upsertPromoInState(response.promo);
+          } else {
+            await loadPromos();
+          }
           showToast('Statut promo mis à jour.');
         });
       });
@@ -599,7 +640,7 @@
             body: JSON.stringify({ code: promo.id })
           });
           if (state.currentPromoId === promo.id) resetForm();
-          await loadPromos();
+          removePromoFromState(promo.id);
           showToast('Code promo supprimé.');
         });
       });
@@ -613,7 +654,7 @@
 
     async function loadPromos() {
       const response = await requestJson('listPromoCodes', { method: 'GET' });
-      state.promos = Array.isArray(response?.promos) ? response.promos : [];
+      state.promos = sortPromos(Array.isArray(response?.promos) ? response.promos : []);
       renderPromos();
     }
 
@@ -625,7 +666,7 @@
       const startAt = els.start.value ? new Date(els.start.value).toISOString() : '';
       const endAt = els.end.value ? new Date(els.end.value).toISOString() : '';
       const categoryIds = getSelectedCategoryIds();
-      const existingPromo = state.promos.find((item) => item.id === state.currentPromoId) || null;
+      const previousCode = state.currentPromoId || '';
 
       if (!code) throw new Error('Le code promo est requis.');
       if (!label) throw new Error('Le libelle du code promo est requis.');
@@ -634,10 +675,10 @@
         throw new Error('La date de fin doit etre apres la date de debut.');
       }
 
-      await requestJson('savePromoCode', {
+      const response = await requestJson('savePromoCode', {
         method: 'POST',
         body: JSON.stringify({
-          previousCode: state.currentPromoId || '',
+          previousCode,
           code,
           label,
           type,
@@ -650,14 +691,20 @@
         })
       });
 
-      if (state.currentPromoId) {
+      if (previousCode && previousCode !== code) {
+        removePromoFromState(previousCode);
+      }
+      if (response?.promo?.id) {
+        upsertPromoInState(response.promo);
+      }
+
+      if (previousCode) {
         showToast('Code promo mis a jour.');
       } else {
         showToast('Code promo cree.');
       }
 
       resetForm();
-      await loadPromos();
     }
 
     els.save.addEventListener('click', async () => {
@@ -681,7 +728,7 @@
         body: JSON.stringify({ code: promo.id })
       });
       resetForm();
-      await loadPromos();
+      removePromoFromState(promo.id);
       showToast('Code promo supprimé.');
     });
 
