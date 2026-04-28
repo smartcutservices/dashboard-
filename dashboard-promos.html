@@ -398,6 +398,12 @@
       statCategories: document.getElementById('statCategories')
     };
 
+    function promoDebug(event, payload = {}) {
+      try {
+        console.log(`[PROMO_ADMIN_DEBUG][UI] ${event}`, payload);
+      } catch (_) {}
+    }
+
     function escapeHtml(value = '') {
       return String(value || '')
         .replace(/&/g, '&amp;')
@@ -448,11 +454,21 @@
         promos.unshift(promo);
       }
       state.promos = sortPromos(promos);
+      promoDebug('state:upsert', {
+        promoId: promo.id,
+        size: state.promos.length,
+        ids: state.promos.map((item) => item.id)
+      });
       renderPromos();
     }
 
     function removePromoFromState(promoId) {
       state.promos = sortPromos((Array.isArray(state.promos) ? state.promos : []).filter((item) => item.id !== promoId));
+      promoDebug('state:remove', {
+        promoId,
+        size: state.promos.length,
+        ids: state.promos.map((item) => item.id)
+      });
       renderPromos();
     }
 
@@ -462,6 +478,12 @@
       const url = method === 'GET'
         ? `${FUNCTION_BASE_URL}/${withCacheBust(path)}`
         : `${FUNCTION_BASE_URL}/${path}`;
+      promoDebug('request:start', {
+        path,
+        method,
+        url,
+        body: options.body || null
+      });
       const response = await fetch(url, {
         ...options,
         method,
@@ -473,6 +495,14 @@
         }
       });
       const payload = await response.json().catch(() => ({}));
+      promoDebug('request:response', {
+        path,
+        method,
+        url,
+        ok: response.ok,
+        status: response.status,
+        payload
+      });
       if (!response.ok || payload?.ok === false) {
         throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
       }
@@ -552,6 +582,10 @@
     }
 
     function renderPromos() {
+      promoDebug('render:start', {
+        size: state.promos.length,
+        ids: state.promos.map((promo) => promo.id)
+      });
       updateStats();
       if (!state.promos.length) {
         els.list.innerHTML = '<div class="empty">Aucun code promo configuré pour le moment.</div>';
@@ -606,6 +640,10 @@
         btn.addEventListener('click', async () => {
           const promo = state.promos.find((item) => item.id === btn.dataset.toggle);
           if (!promo) return;
+          promoDebug('togglePromo:start', {
+            promoId: promo.id,
+            currentActive: promo.active !== false
+          });
           const response = await requestJson('savePromoCode', {
             method: 'POST',
             body: JSON.stringify({
@@ -635,6 +673,10 @@
           const promo = state.promos.find((item) => item.id === btn.dataset.delete);
           if (!promo) return;
           if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
+          promoDebug('deletePromo:list:start', {
+            promoId: promo.id,
+            promoCode: promo.code || ''
+          });
           await requestJson('deletePromoCode', {
             method: 'POST',
             body: JSON.stringify({ code: promo.id })
@@ -653,8 +695,17 @@
     }
 
     async function loadPromos() {
+      promoDebug('loadPromos:start', {
+        currentSize: Array.isArray(state.promos) ? state.promos.length : 0,
+        currentIds: Array.isArray(state.promos) ? state.promos.map((item) => item.id) : []
+      });
       const response = await requestJson('listPromoCodes', { method: 'GET' });
       state.promos = sortPromos(Array.isArray(response?.promos) ? response.promos : []);
+      promoDebug('loadPromos:success', {
+        receivedSize: state.promos.length,
+        receivedIds: state.promos.map((item) => item.id),
+        rawPromos: state.promos
+      });
       renderPromos();
     }
 
@@ -675,6 +726,17 @@
         throw new Error('La date de fin doit etre apres la date de debut.');
       }
 
+      promoDebug('savePromo:start', {
+        previousCode,
+        code,
+        label,
+        type,
+        value,
+        startAt,
+        endAt,
+        categoryIds,
+        active: Boolean(els.active.checked)
+      });
       const response = await requestJson('savePromoCode', {
         method: 'POST',
         body: JSON.stringify({
@@ -689,6 +751,11 @@
           description: String(els.description.value || '').trim(),
           categoryIds
         })
+      });
+      promoDebug('savePromo:response', {
+        previousCode,
+        code,
+        response
       });
 
       if (previousCode && previousCode !== code) {
@@ -712,6 +779,10 @@
         await savePromo();
       } catch (error) {
         console.error('Erreur sauvegarde promo:', error);
+        promoDebug('savePromo:error', {
+          message: error?.message || 'unknown-error',
+          stack: error?.stack || ''
+        });
         showToast(error?.message || 'Impossible d’enregistrer ce code promo.', 'error');
       }
     });
@@ -723,6 +794,10 @@
       const promo = state.promos.find((item) => item.id === state.currentPromoId);
       if (!promo) return;
       if (!confirm(`Supprimer le code ${promo.code} ?`)) return;
+      promoDebug('deletePromo:form:start', {
+        promoId: promo.id,
+        promoCode: promo.code || ''
+      });
       await requestJson('deletePromoCode', {
         method: 'POST',
         body: JSON.stringify({ code: promo.id })
@@ -732,7 +807,13 @@
       showToast('Code promo supprimé.');
     });
 
+    promoDebug('bootstrap:start');
     await Promise.all([loadCategories(), loadPromos()]);
+    promoDebug('bootstrap:done', {
+      categories: Array.isArray(state.categories) ? state.categories.length : 0,
+      promos: Array.isArray(state.promos) ? state.promos.length : 0,
+      promoIds: Array.isArray(state.promos) ? state.promos.map((item) => item.id) : []
+    });
   </script>
   <script src="./dashboard-nav-bubble.js"></script>
   <script type="module" src="./admin-access.js"></script>
