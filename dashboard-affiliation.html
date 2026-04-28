@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cut Services · Affiliation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Manrope', sans-serif;
+      color: #f6f1e8;
+      background:
+        radial-gradient(circle at top right, rgba(198, 167, 94, 0.18), transparent 24%),
+        linear-gradient(180deg, #171513 0%, #0f0e0d 100%);
+    }
+    .shell {
+      min-height: 100vh;
+      padding: 2rem;
+      display: grid;
+      gap: 1.25rem;
+    }
+    .hero, .panel, .stat-card, .member-card, .payout-card {
+      border-radius: 30px;
+      border: 1px solid rgba(198, 167, 94, 0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.03));
+      box-shadow: 0 24px 60px rgba(0,0,0,0.24);
+    }
+    .hero, .panel { padding: 1.5rem; }
+    .hero small,
+    .panel small {
+      display: inline-block;
+      color: #c6a75e;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 0.74rem;
+      font-weight: 700;
+      margin-bottom: 0.85rem;
+    }
+    .hero h1,
+    .panel h2 {
+      margin: 0;
+      font-family: 'Cormorant Garamond', serif;
+      line-height: 0.98;
+    }
+    .hero h1 { font-size: clamp(2.6rem, 5vw, 4.2rem); }
+    .panel h2 { font-size: clamp(1.8rem, 3vw, 2.4rem); }
+    .hero p,
+    .panel p {
+      margin: 1rem 0 0;
+      color: rgba(246,241,232,0.72);
+      line-height: 1.75;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .stat-card {
+      padding: 1.1rem 1.2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+    .stat-card i {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      color: #c6a75e;
+      background: rgba(198, 167, 94, 0.14);
+    }
+    .stat-card strong {
+      display: block;
+      font-size: 1.45rem;
+    }
+    .stat-card span {
+      color: rgba(246,241,232,0.66);
+      font-size: 0.86rem;
+    }
+    .grid-main {
+      display: grid;
+      grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .grid-secondary {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+    .field, .full-field {
+      display: grid;
+      gap: 0.45rem;
+    }
+    .full-field {
+      grid-column: 1 / -1;
+    }
+    label {
+      color: #c6a75e;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid rgba(198, 167, 94, 0.18);
+      background: rgba(255,255,255,0.05);
+      color: #f6f1e8;
+      border-radius: 18px;
+      padding: 0.9rem 1rem;
+      font: inherit;
+    }
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .btn {
+      border: 1px solid rgba(198, 167, 94, 0.18);
+      background: rgba(255,255,255,0.04);
+      color: #f6f1e8;
+      border-radius: 999px;
+      padding: 0.75rem 1rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #c6a75e, #8d7237);
+      color: #1c1710;
+      border-color: transparent;
+    }
+    .btn-danger {
+      background: rgba(127, 29, 29, 0.18);
+      border-color: rgba(127, 29, 29, 0.36);
+    }
+    .hint {
+      margin-top: 0.85rem;
+      padding: 0.95rem;
+      border-radius: 18px;
+      border: 1px solid rgba(198, 167, 94, 0.14);
+      background: rgba(198, 167, 94, 0.06);
+      color: rgba(246,241,232,0.72);
+      line-height: 1.65;
+      font-size: 0.9rem;
+    }
+    .members-list, .payout-list {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .member-card, .payout-card {
+      padding: 1.1rem;
+      border-radius: 24px;
+    }
+    .member-top, .payout-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .member-name, .payout-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      word-break: break-word;
+    }
+    .member-subtitle, .payout-subtitle {
+      margin: 0.35rem 0 0;
+      color: rgba(246,241,232,0.68);
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.55rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-active { background: rgba(34,197,94,0.16); color: #b7f2c7; }
+    .badge-inactive { background: rgba(239,68,68,0.14); color: #fecaca; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    .meta {
+      min-width: 0;
+      padding: 0.8rem 0.85rem;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .meta small {
+      display: block;
+      color: #c6a75e;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+    .meta strong, .meta span {
+      display: block;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .inline-range {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.9rem 0.7rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      vertical-align: top;
+      word-break: break-word;
+    }
+    th {
+      color: #c6a75e;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    td {
+      color: rgba(246,241,232,0.84);
+      font-size: 0.92rem;
+    }
+    .empty {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 18px;
+      border: 1px dashed rgba(198, 167, 94, 0.18);
+      color: rgba(246,241,232,0.62);
+      text-align: center;
+    }
+    .toast {
+      position: fixed;
+      right: 1.2rem;
+      bottom: 1.2rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: 18px;
+      background: rgba(17,17,17,0.92);
+      color: #f6f1e8;
+      border: 1px solid rgba(198, 167, 94, 0.26);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.26);
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      max-width: min(90vw, 420px);
+      z-index: 50;
+    }
+    .toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    @media (max-width: 1180px) {
+      .grid-main,
+      .grid-secondary {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 720px) {
+      .shell { padding: 1rem; }
+      .field-grid,
+      .inline-range,
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+      .panel-head,
+      .member-top,
+      .payout-top {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <small>Programme affiliation</small>
+      <h1>Fidelite & affiliation Smart Cut Services</h1>
+      <p>Ajoute tes membres manuellement, rattache leur code promo, laisse le backend accumuler automatiquement leurs gains a chaque paiement confirme, puis solde leurs cycles proprement avec un bouton de paiement et un historique clair.</p>
+    </section>
+
+    <section class="stats" id="affiliateStats">
+      <article class="stat-card"><i class="fas fa-users"></i><div><strong id="statMembers">0</strong><span>Membres</span></div></article>
+      <article class="stat-card"><i class="fas fa-link"></i><div><strong id="statActiveMembers">0</strong><span>Actifs</span></div></article>
+      <article class="stat-card"><i class="fas fa-wallet"></i><div><strong id="statPendingAmount">0 HTG</strong><span>Solde en attente</span></div></article>
+      <article class="stat-card"><i class="fas fa-hand-holding-dollar"></i><div><strong id="statPaidAmount">0 HTG</strong><span>Total paye</span></div></article>
+    </section>
+
+    <section class="grid-main">
+      <article class="panel">
+        <small>Creation / edition</small>
+        <h2>Configurer un membre affiliation</h2>
+        <p>Chaque membre est relie a un code promo Smart Cut existant. Des qu un client paie avec ce code, les gains affiliation se cumulent automatiquement sur le membre.</p>
+
+        <div class="field-grid">
+          <div class="field">
+            <label for="affiliateFirstName">Nom</label>
+            <input id="affiliateFirstName" type="text" placeholder="Nom">
+          </div>
+          <div class="field">
+            <label for="affiliateLastName">Prenom</label>
+            <input id="affiliateLastName" type="text" placeholder="Prenom">
+          </div>
+          <div class="field">
+            <label for="affiliateSex">Sexe</label>
+            <select id="affiliateSex">
+              <option value="">Selectionner</option>
+              <option value="Masculin">Masculin</option>
+              <option value="Feminin">Feminin</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="affiliatePhone">Telephone</label>
+            <input id="affiliatePhone" type="text" placeholder="+509...">
+          </div>
+          <div class="field">
+            <label for="affiliateMemberId">ID membre</label>
+            <input id="affiliateMemberId" type="text" placeholder="AFF-001">
+          </div>
+          <div class="field">
+            <label for="affiliatePromoCode">Code promo</label>
+            <input id="affiliatePromoCode" type="text" placeholder="SMARTCUT10">
+          </div>
+          <div class="field">
+            <label for="affiliateStatus">Statut</label>
+            <select id="affiliateStatus">
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="affiliateRangeStart">Paiement depuis</label>
+            <input id="affiliateRangeStart" type="date">
+          </div>
+          <div class="field">
+            <label for="affiliateRangeEnd">Paiement jusqu a</label>
+            <input id="affiliateRangeEnd" type="date">
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="saveAffiliateBtn"><i class="fas fa-save"></i> Enregistrer</button>
+          <button class="btn" id="resetAffiliateBtn"><i class="fas fa-rotate-left"></i> Reinitialiser</button>
+          <button class="btn btn-danger" id="deleteAffiliateBtn" style="display:none;"><i class="fas fa-trash"></i> Supprimer</button>
+          <button class="btn" id="payAffiliateBtn" style="display:none;"><i class="fas fa-money-bill-wave"></i> Payer ce membre</button>
+        </div>
+
+        <div class="hint">
+          Le pourcentage de gain affiliation suit le pourcentage du code promo rattache. Pour garder le programme propre, rattache ici uniquement des codes promo Smart Cut en pourcentage.
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <small>Bibliotheque membres</small>
+            <h2>Membres affiliés</h2>
+            <p>Chaque fiche remonte le solde en attente, le total deja paye, le prochain cycle recommande et l acces direct au paiement.</p>
+          </div>
+        </div>
+        <div class="members-list" id="affiliateMembersList"></div>
+      </article>
+    </section>
+
+    <section class="grid-secondary">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <small>Gains en attente</small>
+            <h2>Usages promo convertis</h2>
+            <p>Cette liste montre les gains qui montent automatiquement quand un paiement confirme utilise le code promo d un membre affiliation.</p>
+          </div>
+        </div>
+        <div id="affiliateEarningsTable"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <small>Historique paiements</small>
+            <h2>Cycles soldes</h2>
+            <p>Chaque paiement remet le compteur du cycle concerne a zero, tout en conservant l historique et un PDF telechargeable.</p>
+          </div>
+        </div>
+        <div class="payout-list" id="affiliatePayoutList"></div>
+      </article>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module">
+    import { auth, authReadyPromise } from './firebase-init.js?v=20260428-2';
+
+    const FUNCTION_BASE_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net';
+
+    const state = {
+      members: [],
+      earnings: [],
+      payouts: [],
+      currentPromoCode: ''
+    };
+
+    const els = {
+      firstName: document.getElementById('affiliateFirstName'),
+      lastName: document.getElementById('affiliateLastName'),
+      sex: document.getElementById('affiliateSex'),
+      phone: document.getElementById('affiliatePhone'),
+      memberId: document.getElementById('affiliateMemberId'),
+      promoCode: document.getElementById('affiliatePromoCode'),
+      status: document.getElementById('affiliateStatus'),
+      rangeStart: document.getElementById('affiliateRangeStart'),
+      rangeEnd: document.getElementById('affiliateRangeEnd'),
+      save: document.getElementById('saveAffiliateBtn'),
+      reset: document.getElementById('resetAffiliateBtn'),
+      del: document.getElementById('deleteAffiliateBtn'),
+      pay: document.getElementById('payAffiliateBtn'),
+      membersList: document.getElementById('affiliateMembersList'),
+      earningsTable: document.getElementById('affiliateEarningsTable'),
+      payoutList: document.getElementById('affiliatePayoutList'),
+      statMembers: document.getElementById('statMembers'),
+      statActiveMembers: document.getElementById('statActiveMembers'),
+      statPendingAmount: document.getElementById('statPendingAmount'),
+      statPaidAmount: document.getElementById('statPaidAmount'),
+      toast: document.getElementById('toast')
+    };
+
+    function affiliateDebug(event, payload = {}) {
+      try {
+        console.log(`[AFFILIATE_DEBUG][UI] ${event}`, payload);
+      } catch (_) {}
+    }
+
+    function showToast(message, tone = 'info') {
+      els.toast.textContent = message;
+      els.toast.style.borderColor = tone === 'error' ? 'rgba(239,68,68,0.32)' : 'rgba(198, 167, 94, 0.26)';
+      els.toast.classList.add('visible');
+      window.clearTimeout(showToast._timer);
+      showToast._timer = window.setTimeout(() => {
+        els.toast.classList.remove('visible');
+      }, 2600);
+    }
+
+    function escapeHtml(value = '') {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function normalizePromoCode(value = '') {
+      return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+    }
+
+    function formatPrice(value = 0) {
+      const amount = Number(value || 0);
+      return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: amount % 1 ? 2 : 0, maximumFractionDigits: 2 })} HTG`;
+    }
+
+    function formatDateTime(value = '') {
+      if (!value) return '—';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '—';
+      return new Intl.DateTimeFormat('fr-FR', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }).format(date);
+    }
+
+    async function getAuthToken() {
+      const user = auth?.currentUser;
+      if (!user) throw new Error('Connecte-toi comme administrateur pour utiliser le module affiliation.');
+      return user.getIdToken();
+    }
+
+    async function requestJson(path, { method = 'GET', body } = {}) {
+      const url = `${FUNCTION_BASE_URL}/${path}`;
+      affiliateDebug('request:start', { path, method });
+      const token = await getAuthToken();
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body
+      });
+      const payload = await response.json().catch(() => ({}));
+      affiliateDebug('request:response', { path, method, ok: response.ok, status: response.status, payload });
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.message || 'Une erreur est survenue.');
+      }
+      return payload;
+    }
+
+    function resetForm() {
+      state.currentPromoCode = '';
+      els.firstName.value = '';
+      els.lastName.value = '';
+      els.sex.value = '';
+      els.phone.value = '';
+      els.memberId.value = '';
+      els.promoCode.value = '';
+      els.status.value = 'active';
+      els.delete.style.display = 'none';
+      els.pay.style.display = 'none';
+    }
+
+    function fillForm(member) {
+      state.currentPromoCode = member.id;
+      els.firstName.value = member.firstName || '';
+      els.lastName.value = member.lastName || '';
+      els.sex.value = member.sex || '';
+      els.phone.value = member.phone || '';
+      els.memberId.value = member.memberId || '';
+      els.promoCode.value = member.promoCode || member.id || '';
+      els.status.value = member.status || 'active';
+      els.delete.style.display = 'inline-flex';
+      els.pay.style.display = 'inline-flex';
+    }
+
+    function updateStats() {
+      const members = Array.isArray(state.members) ? state.members : [];
+      const pendingAmount = members.reduce((sum, member) => sum + Number(member.pendingAmount || 0), 0);
+      const paidAmount = members.reduce((sum, member) => sum + Number(member.totalPaidAmount || 0), 0);
+      els.statMembers.textContent = String(members.length);
+      els.statActiveMembers.textContent = String(members.filter((member) => member.status !== 'inactive').length);
+      els.statPendingAmount.textContent = formatPrice(pendingAmount);
+      els.statPaidAmount.textContent = formatPrice(paidAmount);
+    }
+
+    function renderMembers() {
+      updateStats();
+      if (!state.members.length) {
+        els.membersList.innerHTML = '<div class="empty">Aucun membre affiliation configure pour le moment.</div>';
+        return;
+      }
+
+      els.membersList.innerHTML = state.members.map((member) => `
+        <article class="member-card">
+          <div class="member-top">
+            <div style="min-width:0;">
+              <h3 class="member-name">${escapeHtml(member.fullName || `${member.firstName || ''} ${member.lastName || ''}`.trim() || 'Membre affiliation')}</h3>
+              <p class="member-subtitle">ID: ${escapeHtml(member.memberId || '—')} · Code promo: ${escapeHtml(member.promoCode || member.id || '—')}</p>
+            </div>
+            <span class="badge ${member.status === 'inactive' ? 'badge-inactive' : 'badge-active'}">
+              <i class="fas ${member.status === 'inactive' ? 'fa-pause' : 'fa-bolt'}"></i>
+              ${member.status === 'inactive' ? 'Inactif' : 'Actif'}
+            </span>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta"><small>Telephone</small><span>${escapeHtml(member.phone || '—')}</span></div>
+            <div class="meta"><small>Sexe</small><span>${escapeHtml(member.sex || '—')}</span></div>
+            <div class="meta"><small>Taux affiliation</small><strong>${escapeHtml(String(member.affiliateRate || 0))}%</strong></div>
+            <div class="meta"><small>Solde en attente</small><strong>${escapeHtml(formatPrice(member.pendingAmount || 0))}</strong></div>
+            <div class="meta"><small>Total paye</small><strong>${escapeHtml(formatPrice(member.totalPaidAmount || 0))}</strong></div>
+            <div class="meta"><small>Utilisations</small><strong>${escapeHtml(String(member.totalUses || 0))}</strong></div>
+            <div class="meta"><small>Dernier gain</small><span>${escapeHtml(formatDateTime(member.lastUsedAt || ''))}</span></div>
+            <div class="meta"><small>Prochain cycle conseille</small><span>${escapeHtml(formatDateTime(member.nextSuggestedPayoutAt || ''))}</span></div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" data-edit="${escapeHtml(member.id)}"><i class="fas fa-pen"></i> Modifier</button>
+            <button class="btn btn-primary" data-pay="${escapeHtml(member.id)}"><i class="fas fa-money-bill-wave"></i> Payer</button>
+          </div>
+        </article>
+      `).join('');
+
+      els.membersList.querySelectorAll('[data-edit]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const member = state.members.find((entry) => entry.id === button.dataset.edit);
+          if (member) fillForm(member);
+        });
+      });
+
+      els.membersList.querySelectorAll('[data-pay]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          try {
+            await createAffiliatePayout(button.dataset.pay);
+          } catch (error) {
+            console.error('Erreur paiement affiliation:', error);
+            showToast(error?.message || 'Impossible de payer ce membre.', 'error');
+          }
+        });
+      });
+    }
+
+    function renderEarnings() {
+      const pending = state.earnings.filter((entry) => entry.status !== 'paid');
+      if (!pending.length) {
+        els.earningsTable.innerHTML = '<div class="empty">Aucun gain affiliation en attente pour le moment.</div>';
+        return;
+      }
+
+      els.earningsTable.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Membre</th>
+              <th>Code</th>
+              <th>Commande</th>
+              <th>Base</th>
+              <th>Gain</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pending.slice(0, 80).map((entry) => `
+              <tr>
+                <td>${escapeHtml(entry.fullName || `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || '—')}</td>
+                <td>${escapeHtml(entry.promoCode || '—')}<br><span style="color:rgba(246,241,232,0.56);">${escapeHtml(String(entry.affiliateRate || 0))}%</span></td>
+                <td>${escapeHtml(entry.orderId || '—')}</td>
+                <td>${escapeHtml(formatPrice(entry.eligibleSubtotal || 0))}</td>
+                <td>${escapeHtml(formatPrice(entry.amount || 0))}</td>
+                <td>${escapeHtml(formatDateTime(entry.createdAt || ''))}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function downloadPayoutPdf(payout) {
+      const jsPDFCtor = window.jspdf?.jsPDF;
+      if (!jsPDFCtor) {
+        showToast('Le moteur PDF n est pas disponible.', 'error');
+        return;
+      }
+
+      const doc = new jsPDFCtor({ unit: 'pt', format: 'a4' });
+      const lines = [
+        ['Rapport', payout.reportNumber || payout.id || '—'],
+        ['Nom', payout.fullName || '—'],
+        ['ID membre', payout.memberId || '—'],
+        ['Code promo', payout.promoCode || '—'],
+        ['Telephone', payout.phone || '—'],
+        ['Sexe', payout.sex || '—'],
+        ['Taux', payout.ratesUsed?.length ? `${payout.ratesUsed.join(', ')} %` : `${payout.affiliateRate || 0} %`],
+        ['Periode debut', formatDateTime(payout.periodStart || '')],
+        ['Periode fin', formatDateTime(payout.periodEnd || '')],
+        ['Usages payes', String(payout.usageCount || 0)],
+        ['Base eligible', formatPrice(payout.eligibleSubtotalAmount || 0)],
+        ['Reduction accordee', formatPrice(payout.discountAmount || 0)],
+        ['Montant paye', formatPrice(payout.amount || 0)],
+        ['Date paiement', formatDateTime(payout.paidAt || '')]
+      ];
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Smart Cut Services - Paiement affiliation', 40, 48);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
+
+      let y = 86;
+      lines.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${label}:`, 40, y);
+        doc.setFont('helvetica', 'normal');
+        doc.text(String(value || '—'), 170, y);
+        y += 24;
+      });
+
+      doc.save(`${payout.reportNumber || payout.id || 'affiliation'}.pdf`);
+    }
+
+    function renderPayouts() {
+      if (!state.payouts.length) {
+        els.payoutList.innerHTML = '<div class="empty">Aucun paiement affiliation enregistre pour le moment.</div>';
+        return;
+      }
+
+      els.payoutList.innerHTML = state.payouts.slice(0, 40).map((payout) => `
+        <article class="payout-card">
+          <div class="payout-top">
+            <div style="min-width:0;">
+              <h3 class="payout-title">${escapeHtml(payout.reportNumber || payout.id || 'Paiement')}</h3>
+              <p class="payout-subtitle">${escapeHtml(payout.fullName || 'Membre')} · ${escapeHtml(payout.promoCode || '—')}</p>
+            </div>
+            <span class="badge badge-active"><i class="fas fa-circle-check"></i> Paye</span>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta"><small>Montant</small><strong>${escapeHtml(formatPrice(payout.amount || 0))}</strong></div>
+            <div class="meta"><small>Usages soldes</small><strong>${escapeHtml(String(payout.usageCount || 0))}</strong></div>
+            <div class="meta"><small>Periode debut</small><span>${escapeHtml(formatDateTime(payout.periodStart || ''))}</span></div>
+            <div class="meta"><small>Periode fin</small><span>${escapeHtml(formatDateTime(payout.periodEnd || ''))}</span></div>
+          </div>
+
+          <div class="actions">
+            <button class="btn" data-pdf="${escapeHtml(payout.id)}"><i class="fas fa-file-pdf"></i> Telecharger PDF</button>
+          </div>
+        </article>
+      `).join('');
+
+      els.payoutList.querySelectorAll('[data-pdf]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const payout = state.payouts.find((entry) => entry.id === button.dataset.pdf);
+          if (payout) downloadPayoutPdf(payout);
+        });
+      });
+    }
+
+    function renderAll() {
+      affiliateDebug('render:start', {
+        members: state.members.length,
+        earnings: state.earnings.length,
+        payouts: state.payouts.length
+      });
+      renderMembers();
+      renderEarnings();
+      renderPayouts();
+    }
+
+    async function loadDashboard() {
+      affiliateDebug('load:start');
+      const response = await requestJson('getAffiliateDashboardData');
+      state.members = Array.isArray(response.members) ? response.members : [];
+      state.earnings = Array.isArray(response.earnings) ? response.earnings : [];
+      state.payouts = Array.isArray(response.payouts) ? response.payouts : [];
+      affiliateDebug('load:success', {
+        members: state.members.map((entry) => entry.id),
+        earnings: state.earnings.length,
+        payouts: state.payouts.length
+      });
+      renderAll();
+    }
+
+    async function saveMember() {
+      const payload = {
+        previousPromoCode: state.currentPromoCode,
+        firstName: els.firstName.value,
+        lastName: els.lastName.value,
+        sex: els.sex.value,
+        phone: els.phone.value,
+        memberId: els.memberId.value,
+        promoCode: normalizePromoCode(els.promoCode.value),
+        status: els.status.value
+      };
+      affiliateDebug('save:start', payload);
+      const response = await requestJson('saveAffiliateMember', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      showToast(state.currentPromoCode ? 'Membre affiliation mis a jour.' : 'Membre affiliation cree.');
+      resetForm();
+      await loadDashboard();
+      return response;
+    }
+
+    async function deleteMember() {
+      if (!state.currentPromoCode) return;
+      const promoCode = state.currentPromoCode;
+      if (!window.confirm(`Supprimer le membre rattache au code ${promoCode} ?`)) return;
+      await requestJson('deleteAffiliateMember', {
+        method: 'POST',
+        body: JSON.stringify({ promoCode })
+      });
+      showToast('Membre affiliation supprime.');
+      resetForm();
+      await loadDashboard();
+    }
+
+    async function createAffiliatePayout(promoCode) {
+      const normalized = normalizePromoCode(promoCode || state.currentPromoCode);
+      if (!normalized) {
+        throw new Error('Selectionne d abord un membre affiliation.');
+      }
+      const response = await requestJson('createAffiliatePayout', {
+        method: 'POST',
+        body: JSON.stringify({
+          promoCode: normalized,
+          dateFrom: els.rangeStart.value || '',
+          dateTo: els.rangeEnd.value || ''
+        })
+      });
+      showToast('Paiement affiliation enregistre.');
+      await loadDashboard();
+      return response;
+    }
+
+    els.save.addEventListener('click', async () => {
+      try {
+        await saveMember();
+      } catch (error) {
+        console.error('Erreur sauvegarde affiliation:', error);
+        affiliateDebug('save:error', { message: error?.message || 'unknown-error', stack: error?.stack || '' });
+        showToast(error?.message || 'Impossible d enregistrer ce membre.', 'error');
+      }
+    });
+
+    els.reset.addEventListener('click', () => resetForm());
+    els.del.addEventListener('click', async () => {
+      try {
+        await deleteMember();
+      } catch (error) {
+        console.error('Erreur suppression affiliation:', error);
+        showToast(error?.message || 'Impossible de supprimer ce membre.', 'error');
+      }
+    });
+
+    els.pay.addEventListener('click', async () => {
+      try {
+        await createAffiliatePayout();
+      } catch (error) {
+        console.error('Erreur paiement affiliation:', error);
+        showToast(error?.message || 'Impossible de payer ce membre.', 'error');
+      }
+    });
+
+    affiliateDebug('bootstrap:start');
+    await authReadyPromise;
+    await loadDashboard();
+    affiliateDebug('bootstrap:done');
+  </script>
+</body>
+</html>

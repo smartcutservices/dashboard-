@@ -98,6 +98,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-ticket'
   },
   {
+    id: 'affiliation',
+    label: 'Affiliation',
+    description: 'Membres, gains automatiques et paiements du programme affiliation.',
+    href: './dashboard-affiliation.html',
+    icon: 'fa-handshake'
+  },
+  {
     id: 'printing',
     label: 'Impression',
     description: 'Print on Demand, PDF, photo, CAD et grand format.',
