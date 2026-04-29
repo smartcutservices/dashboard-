@@ -3,6 +3,7 @@ import { sendBroadcastNotification } from './notification.js';
 import { buildAdminSalesSummary } from './vendor-analytics.js';
 import {
   collection,
+  collectionGroup,
   doc,
   getDocs,
   onSnapshot,
@@ -197,25 +198,17 @@ async function loadClients() {
 }
 
 async function loadOrders() {
-  const allOrders = [];
-
-  for (const client of state.clients) {
-    try {
-      const ordersRef = collection(db, CLIENTS_COLLECTION, client.id, 'orders');
-      const snapshot = await getDocs(query(ordersRef, orderBy('createdAt', 'desc')));
-      snapshot.docs.forEach((entry) => {
-        allOrders.push({
-          id: entry.id,
-          clientId: client.id,
-          ...entry.data()
-        });
-      });
-    } catch (error) {
-      console.error(`Erreur chargement commandes pour ${client.id}:`, error);
-    }
+  try {
+    const snapshot = await getDocs(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')));
+    state.orders = snapshot.docs.map((entry) => ({
+      id: entry.id,
+      clientId: entry.ref.parent.parent?.id || entry.data()?.clientId || '',
+      ...entry.data()
+    }));
+  } catch (error) {
+    console.error('Erreur chargement commandes globales:', error);
+    state.orders = [];
   }
-
-  state.orders = allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
 function clearRealtimeListeners() {
@@ -239,12 +232,10 @@ function scheduleReload() {
 function setupRealtimeListeners() {
   clearRealtimeListeners();
 
-  state.clients.forEach((client) => {
-    const unsubscribe = onSnapshot(collection(db, CLIENTS_COLLECTION, client.id, 'orders'), () => {
-      scheduleReload();
-    });
-    state.unsubscribers.push(unsubscribe);
+  const unsubscribe = onSnapshot(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')), () => {
+    scheduleReload();
   });
+  state.unsubscribers.push(unsubscribe);
 }
 
 function getFilteredOrders() {

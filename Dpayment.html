@@ -1036,6 +1036,7 @@
     import { 
       getFirestore, 
       collection, 
+      collectionGroup,
       addDoc, 
       getDocs, 
       doc, 
@@ -1427,12 +1428,10 @@
 
     function setupOrdersRealtimeListeners() {
       clearOrderRealtimeListeners();
-      clients.forEach((client) => {
-        const unsub = onSnapshot(collection(db, CLIENTS, client.id, 'orders'), () => {
-          scheduleOrdersReload();
-        });
-        orderUnsubscribers.push(unsub);
+      const unsub = onSnapshot(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')), () => {
+        scheduleOrdersReload();
       });
+      orderUnsubscribers.push(unsub);
     }
 
     // ========== CHARGEMENT DES DONNÃ‰ES ==========
@@ -1453,28 +1452,12 @@
 
     async function loadOrders() {
       try {
-        const allOrders = [];
-        
-        // Charger les commandes pour chaque client
-        for (const client of clients) {
-          try {
-            const ordersRef = collection(db, CLIENTS, client.id, 'orders');
-            const snapshot = await getDocs(query(ordersRef, orderBy('createdAt', 'desc')));
-            
-            snapshot.docs.forEach(doc => {
-              allOrders.push({
-                id: doc.id,
-                clientId: client.id,
-                ...doc.data()
-              });
-            });
-          } catch (error) {
-            console.error(`Ã¢ÂÅ’ Erreur chargement commandes pour client ${client.id}:`, error);
-          }
-        }
-        
-        // Trier par date
-        orders = allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const snapshot = await getDocs(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')));
+        orders = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          clientId: doc.ref.parent.parent?.id || doc.data()?.clientId || '',
+          ...doc.data()
+        }));
 
         if (!ordersNotifReady) {
           orders.forEach((o) => seenOrderIds.add(o.id));
