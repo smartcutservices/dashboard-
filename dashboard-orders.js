@@ -168,6 +168,26 @@ function getOrderAmount(order) {
   }, 0);
 }
 
+function getOrderPromo(order) {
+  return order?.promoCode && typeof order.promoCode === 'object' ? order.promoCode : null;
+}
+
+function renderPromoBadge(order) {
+  const promo = getOrderPromo(order);
+  const discountAmount = Number(order?.discountAmount || promo?.discountAmount || 0);
+  if (!promo && discountAmount <= 0) return '<span class="muted">-</span>';
+
+  const code = String(promo?.code || '').trim() || 'PROMO';
+  const affiliate = promo?.affiliateEnabled === true || Boolean(promo?.affiliateMemberId || promo?.affiliateMemberName);
+  const label = affiliate ? 'Affilie' : 'Promo';
+  return `
+    <div style="display:grid;gap:0.25rem;">
+      ${renderBadge(code, affiliate ? '#7c3aed' : '#c6a75e')}
+      <span class="muted" style="font-size:0.78rem;">${label}${discountAmount > 0 ? ` · -${formatPrice(discountAmount)}` : ''}</span>
+    </div>
+  `;
+}
+
 function getClientById(clientId) {
   return state.clients.find((client) => client.id === clientId) || null;
 }
@@ -248,6 +268,9 @@ function getFilteredOrders() {
     const client = getClientById(order.clientId);
     const searchable = [
       order.uniqueCode,
+      getOrderPromo(order)?.code,
+      getOrderPromo(order)?.label,
+      getOrderPromo(order)?.affiliateMemberName,
       order.customerName,
       order.customerEmail,
       client?.name,
@@ -389,6 +412,7 @@ function renderOrdersTable() {
           <div class="muted">${escapeHtml(order.customerEmail || client?.email || '-')}</div>
         </td>
         <td>${formatPrice(getOrderAmount(order))}</td>
+        <td>${renderPromoBadge(order)}</td>
         <td>${renderBadge(getPaymentStatusText(order.status), paymentColor)}</td>
         <td>${renderBadge(getFulfillmentStatusText(fulfillmentKey), fulfillmentColor)}</td>
         <td><span class="muted">${escapeHtml(order.uniqueCode || '-')}</span></td>
@@ -646,6 +670,19 @@ function renderOrderDetail() {
           ${renderBadge(getFulfillmentStatusText(fulfillmentKey), fulfillmentColor)}
         </div>
         ${renderStepper(order)}
+      </div>
+
+      <div class="detail-section">
+        <strong>Code promo</strong>
+        <div style="margin-top:0.65rem;">
+          ${renderPromoBadge(order)}
+          ${getOrderPromo(order)?.label ? `<div class="muted" style="margin-top:0.45rem;">${escapeHtml(getOrderPromo(order).label)}</div>` : ''}
+          ${getOrderPromo(order)?.affiliateEnabled || getOrderPromo(order)?.affiliateMemberName ? `
+            <div class="muted" style="margin-top:0.35rem;">
+              Code affilié${getOrderPromo(order)?.affiliateMemberName ? ` · ${escapeHtml(getOrderPromo(order).affiliateMemberName)}` : ''}
+            </div>
+          ` : ''}
+        </div>
       </div>
 
       <div class="detail-section">

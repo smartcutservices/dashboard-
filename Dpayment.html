@@ -673,6 +673,7 @@
                     <th>Client</th>
                     <th>Email</th>
                     <th>Montant</th>
+                    <th>Code promo</th>
                     <th>MÃ©thode</th>
                     <th>Statut</th>
                     <th>Suivi client</th>
@@ -1389,6 +1390,10 @@
       }, 0);
     }
 
+    function getOrderPromo(order) {
+      return order?.promoCode && typeof order.promoCode === 'object' ? order.promoCode : null;
+    }
+
     function escapeHtml(value) {
       return String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -1410,6 +1415,50 @@
         }
         return String(opt);
       }).join(' | ');
+    }
+
+    function buildPromoLines(order) {
+      const promo = getOrderPromo(order);
+      const discountAmount = Number(order?.discountAmount || promo?.discountAmount || 0);
+      if (!promo && discountAmount <= 0) return [];
+
+      const lines = [];
+      const code = String(promo?.code || '').trim();
+      const label = String(promo?.label || '').trim();
+      const affiliate = promo?.affiliateEnabled === true || Boolean(promo?.affiliateMemberId || promo?.affiliateMemberName);
+
+      if (code && label) {
+        lines.push(`Code promo: ${code} - ${label}`);
+      } else if (code) {
+        lines.push(`Code promo: ${code}`);
+      } else if (label) {
+        lines.push(`Promotion: ${label}`);
+      }
+
+      if (affiliate) {
+        const memberName = String(promo?.affiliateMemberName || '').trim();
+        lines.push(`Type: Code affilié${memberName ? ` - ${memberName}` : ''}`);
+      }
+
+      if (discountAmount > 0) {
+        lines.push(`Réduction appliquée: - ${formatPrice(discountAmount)}`);
+      }
+
+      return lines;
+    }
+
+    function renderPromoCell(order) {
+      const promo = getOrderPromo(order);
+      const discountAmount = Number(order?.discountAmount || promo?.discountAmount || 0);
+      if (!promo && discountAmount <= 0) return '<span class="text-text-secondary">-</span>';
+      const code = escapeHtml(String(promo?.code || 'PROMO').trim());
+      const affiliate = promo?.affiliateEnabled === true || Boolean(promo?.affiliateMemberId || promo?.affiliateMemberName);
+      return `
+        <div class="space-y-1">
+          <span class="font-mono text-sm">${code}</span>
+          <p class="text-xs text-text-secondary">${affiliate ? 'Affilié' : 'Promo'}${discountAmount > 0 ? ` · -${formatPrice(discountAmount)}` : ''}</p>
+        </div>
+      `;
     }
 
     function clearOrderRealtimeListeners() {
@@ -1739,6 +1788,9 @@
       if (search) {
         filtered = filtered.filter(o => 
           o.uniqueCode?.toLowerCase().includes(search) ||
+          getOrderPromo(o)?.code?.toLowerCase().includes(search) ||
+          getOrderPromo(o)?.label?.toLowerCase().includes(search) ||
+          getOrderPromo(o)?.affiliateMemberName?.toLowerCase().includes(search) ||
           o.customerName?.toLowerCase().includes(search) ||
           o.customerEmail?.toLowerCase().includes(search)
         );
@@ -1763,6 +1815,7 @@
             <td class="font-medium">${order.customerName || client?.name || 'N/A'}</td>
             <td>${order.customerEmail || client?.email || '-'}</td>
             <td class="font-medium">${formatPrice(getOrderComputedAmount(order))}</td>
+            <td>${renderPromoCell(order)}</td>
             <td>${order.methodName || 'N/A'}</td>
             <td>
               <span class="badge badge-${order.status || 'pending'}">
@@ -2094,6 +2147,19 @@
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
         doc.text(`Montant: ${formatPrice(getOrderComputedAmount(order))}`, 20, y + 24);
 
+        const promoLines = buildPromoLines(order);
+        if (promoLines.length) {
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(10);
+          doc.setFont('helvetica', 'normal');
+          let promoY = y + 34;
+          promoLines.forEach((line) => {
+            doc.text(line.slice(0, 110), 20, promoY);
+            promoY += 5;
+          });
+          y = promoY - 28;
+        }
+
         // Produits commandÃ©s
         y = y + 36;
         doc.setTextColor(0, 0, 0);
@@ -2227,6 +2293,10 @@
             <div>
               <p class="text-xs text-text-secondary">Montant</p>
               <p class="font-semibold">${formatPrice(getOrderComputedAmount(order))}</p>
+            </div>
+            <div>
+              <p class="text-xs text-text-secondary">Code promo</p>
+              ${renderPromoCell(order)}
             </div>
           </div>
           
