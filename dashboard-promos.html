@@ -365,8 +365,9 @@
   </div>
 
   <script type="module">
-    import { auth, db } from './firebase-init.js?v=20260428-2';
+    import { auth, authReadyPromise, db } from './firebase-init.js?v=20260428-2';
     import { collection, getDocs, orderBy, query } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
 
     const PROMOS = 'promoCodes';
     const CATEGORIES = 'categories_list';
@@ -425,10 +426,35 @@
       return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
     }
 
+    async function waitForAuthUser(timeoutMs = 8000) {
+      await authReadyPromise.catch(() => {});
+      if (auth?.currentUser) return auth.currentUser;
+
+      return new Promise((resolve) => {
+        let settled = false;
+        const timeout = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          unsubscribe();
+          resolve(auth?.currentUser || null);
+        }, timeoutMs);
+
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          unsubscribe();
+          resolve(user || null);
+        });
+      });
+    }
+
     async function getAuthToken() {
+      const readyUser = await waitForAuthUser();
       const user = auth?.currentUser;
-      if (!user) throw new Error('Connecte-toi comme administrateur pour gerer les codes promo.');
-      return user.getIdToken();
+      const targetUser = readyUser || user;
+      if (!targetUser) throw new Error('Connecte-toi comme administrateur pour gerer les codes promo.');
+      return targetUser.getIdToken();
     }
 
     function withCacheBust(path) {
