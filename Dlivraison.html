@@ -354,18 +354,30 @@
     <div class="card">
       <div class="card-title">
         <i class="fas fa-weight-hanging" style="color: var(--secondary);"></i>
-        Regles de poids (grammes)
+        Regles de poids (g / kg)
       </div>
       <p class="muted">Definissez des frais supplementaires selon le poids total du colis.</p>
       <form id="weightForm" class="grid-form" style="margin-top:0.75rem;">
         <input type="hidden" id="weightId">
         <div>
-          <label class="text-sm">Min (g)</label>
-          <input id="weightMin" type="number" class="input" placeholder="500">
+          <label class="text-sm">Min</label>
+          <div style="display:flex; gap:0.5rem;">
+            <input id="weightMin" type="number" class="input" min="0" step="0.001" placeholder="500">
+            <select id="weightMinUnit" class="input" style="max-width:90px;">
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+            </select>
+          </div>
         </div>
         <div>
-          <label class="text-sm">Max (g)</label>
-          <input id="weightMax" type="number" class="input" placeholder="700">
+          <label class="text-sm">Max</label>
+          <div style="display:flex; gap:0.5rem;">
+            <input id="weightMax" type="number" class="input" min="0" step="0.001" placeholder="700">
+            <select id="weightMaxUnit" class="input" style="max-width:90px;">
+              <option value="g">g</option>
+              <option value="kg">kg</option>
+            </select>
+          </div>
         </div>
         <div>
           <label class="text-sm">Frais (HTG)</label>
@@ -472,7 +484,9 @@ const firebaseConfig = {
       weightForm: document.getElementById('weightForm'),
       weightId: document.getElementById('weightId'),
       weightMin: document.getElementById('weightMin'),
+      weightMinUnit: document.getElementById('weightMinUnit'),
       weightMax: document.getElementById('weightMax'),
+      weightMaxUnit: document.getElementById('weightMaxUnit'),
       weightFee: document.getElementById('weightFee'),
       weightActive: document.getElementById('weightActive'),
       weightList: document.getElementById('weightList'),
@@ -497,6 +511,30 @@ const firebaseConfig = {
       ? '<span class="badge badge-active">Actif</span>'
       : '<span class="badge badge-inactive">Inactif</span>';
 
+    const toGrams = (value, unit) => {
+      const numeric = Math.max(0, Number(value || 0));
+      if (!Number.isFinite(numeric) || numeric <= 0) return 0;
+      return Math.round(unit === 'kg' ? numeric * 1000 : numeric);
+    };
+
+    const formatWeight = (grams) => {
+      const value = Number(grams || 0);
+      if (!Number.isFinite(value) || value <= 0) return '0 g';
+      if (value >= 1000 && value % 1000 === 0) return `${value / 1000} kg`;
+      return `${value} g`;
+    };
+
+    const setWeightField = (inputEl, unitEl, grams) => {
+      const value = Number(grams || 0);
+      if (value >= 1000 && value % 1000 === 0) {
+        inputEl.value = String(value / 1000);
+        unitEl.value = 'kg';
+        return;
+      }
+      inputEl.value = value ? String(value) : '';
+      unitEl.value = 'g';
+    };
+
     const resetForm = (group) => {
       els[`${group}Id`].value = '';
       if (group === 'home') {
@@ -519,7 +557,9 @@ const firebaseConfig = {
       }
       if (group === 'weight') {
         els.weightMin.value = '';
+        els.weightMinUnit.value = 'g';
         els.weightMax.value = '';
+        els.weightMaxUnit.value = 'g';
         els.weightFee.value = '';
         els.weightActive.value = 'true';
       }
@@ -603,8 +643,8 @@ const firebaseConfig = {
     const renderWeight = () => {
       els.weightList.innerHTML = state.weight.map(item => `
         <tr>
-          <td>${item.minGrams || 0} g</td>
-          <td>${item.maxGrams || 0} g</td>
+          <td>${formatWeight(item.minGrams)}</td>
+          <td>${formatWeight(item.maxGrams)}</td>
           <td>${formatPrice(item.fee || 0)}</td>
           <td>${badge(item.isActive !== false)}</td>
           <td>
@@ -639,8 +679,8 @@ const firebaseConfig = {
       }
       if (group === 'weight') {
         els.weightId.value = item.id;
-        els.weightMin.value = item.minGrams || '';
-        els.weightMax.value = item.maxGrams || '';
+        setWeightField(els.weightMin, els.weightMinUnit, item.minGrams);
+        setWeightField(els.weightMax, els.weightMaxUnit, item.maxGrams);
         els.weightFee.value = item.fee || '';
         els.weightActive.value = item.isActive !== false ? 'true' : 'false';
       }
@@ -729,12 +769,13 @@ const firebaseConfig = {
     els.weightForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = {
-        minGrams: Number(els.weightMin.value || 0),
-        maxGrams: Number(els.weightMax.value || 0),
+        minGrams: toGrams(els.weightMin.value, els.weightMinUnit.value),
+        maxGrams: toGrams(els.weightMax.value, els.weightMaxUnit.value),
         fee: Number(els.weightFee.value || 0),
         isActive: els.weightActive.value === 'true'
       };
       if (!data.minGrams && !data.maxGrams) return alert('Veuillez definir une plage.');
+      if (data.minGrams > data.maxGrams) return alert('Le poids minimum ne peut pas depasser le poids maximum.');
       if (els.weightId.value) {
         await updateDoc(doc(WEIGHT_COL, els.weightId.value), data);
       } else {
