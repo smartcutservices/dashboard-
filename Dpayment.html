@@ -1250,6 +1250,32 @@
         maximumFractionDigits: 0
       }).format(price || 0);
     }
+
+    function cleanPdfText(value) {
+      const raw = String(value ?? '');
+      const decoded = raw.replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'");
+
+      return decoded
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\u00a0\u202f]/g, ' ')
+        .replace(/[^\x20-\x7E]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function formatPdfPrice(price) {
+      const value = Number(price || 0);
+      return `${new Intl.NumberFormat('fr-FR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(value).replace(/\s+/g, ' ')} HTG`;
+    }
     function getMethodProvider(method = {}) {
       const rawProvider = String(method.provider || method.gateway || method.slug || '').trim().toLowerCase();
       if (rawProvider === 'moncash') return 'moncash';
@@ -1437,11 +1463,11 @@
 
       if (affiliate) {
         const memberName = String(promo?.affiliateMemberName || '').trim();
-        lines.push(`Type: Code affilié${memberName ? ` - ${memberName}` : ''}`);
+        lines.push(`Type: Code affilie${memberName ? ` - ${memberName}` : ''}`);
       }
 
       if (discountAmount > 0) {
-        lines.push(`Réduction appliquée: - ${formatPrice(discountAmount)}`);
+        lines.push(`Reduction appliquee: - ${formatPdfPrice(discountAmount)}`);
       }
 
       return lines;
@@ -2026,6 +2052,7 @@
         const client = clients.find(c => c.id === clientId);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        const pdfText = (text, x, y, options) => doc.text(cleanPdfText(text), x, y, options);
         
         // Couleur principale
         const primaryColor = pdfConfig?.primaryColor || '#C6A75E';
@@ -2038,21 +2065,21 @@
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
-      doc.text(pdfConfig?.companyName || 'Smart Cut Services', 20, 25);
+      pdfText(pdfConfig?.companyName || 'Smart Cut Services', 20, 25);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(pdfConfig?.companyAddress || '', 20, 35);
+        pdfText(pdfConfig?.companyAddress || '', 20, 35);
         
         // Titre
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('REÃ‡U DE PAIEMENT', 20, 60);
+        pdfText('RECU DE PAIEMENT', 20, 60);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('fr-FR', {
+        pdfText(`Date: ${new Date(order.createdAt).toLocaleDateString('fr-FR', {
           day: 'numeric',
           month: 'long',
           year: 'numeric'
@@ -2064,29 +2091,29 @@
         doc.roundedRect(20, 80, 170, 15, 3, 3, 'S');
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text(order.uniqueCode || 'N/A', 105, 90, { align: 'center' });
+        pdfText(order.uniqueCode || 'N/A', 105, 90, { align: 'center' });
         
         // Informations client
         const orderItems = getOrderItems(order);
 
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Informations client', 20, 110);
+        pdfText('Informations client', 20, 110);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Nom: ${order.customerName || client?.name || 'N/A'}`, 20, 120);
-        doc.text(`Email: ${order.customerEmail || client?.email || '-'}`, 20, 130);
-        doc.text(`TÃ©lÃ©phone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
-        doc.text(`Adresse: ${order.customerAddress || client?.address || '-'}`, 20, 150);
-        doc.text(`Ville: ${order.customerCity || client?.city || '-'}`, 20, 160);
+        pdfText(`Nom: ${order.customerName || client?.name || 'N/A'}`, 20, 120);
+        pdfText(`Email: ${order.customerEmail || client?.email || '-'}`, 20, 130);
+        pdfText(`Telephone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
+        pdfText(`Adresse: ${order.customerAddress || client?.address || '-'}`, 20, 150);
+        pdfText(`Ville: ${order.customerCity || client?.city || '-'}`, 20, 160);
         
         // Livraison
         let y = 172;
         const delivery = order.delivery || null;
         if (delivery) {
           const deliveryLabel = delivery.method === 'home'
-            ? 'Livraison Ã  domicile'
+            ? 'Livraison a domicile'
             : delivery.method === 'pickup'
               ? 'Retrait en point de vente'
               : delivery.method === 'meetup'
@@ -2102,31 +2129,31 @@
 
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
-          doc.text('Livraison', 20, y);
+          pdfText('Livraison', 20, y);
           y += 8;
           doc.setFontSize(10);
           doc.setFont('helvetica', 'normal');
-          doc.text(`MÃ©thode: ${deliveryLabel}`, 20, y);
+          pdfText(`Methode: ${deliveryLabel}`, 20, y);
           y += 6;
           if (deliveryTarget) {
-            doc.text(`Zone/Point: ${deliveryTarget}`.slice(0, 110), 20, y);
+            pdfText(`Zone/Point: ${deliveryTarget}`.slice(0, 110), 20, y);
             y += 6;
           }
           if (delivery.address) {
-            doc.text(`Adresse: ${delivery.address}`.slice(0, 110), 20, y);
+            pdfText(`Adresse: ${delivery.address}`.slice(0, 110), 20, y);
             y += 6;
           }
           if (delivery.phone || delivery.whatsapp) {
-            const contact = [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
-            doc.text(contact.slice(0, 110), 20, y);
+            const contact = [delivery.phone ? `Tel: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ');
+            pdfText(contact.slice(0, 110), 20, y);
             y += 6;
           }
           if (delivery.meetupProposal) {
-            doc.text(`Proposition: ${delivery.meetupProposal}`.slice(0, 110), 20, y);
+            pdfText(`Proposition: ${delivery.meetupProposal}`.slice(0, 110), 20, y);
             y += 6;
           }
           if (Number(delivery.totalFee || 0) > 0) {
-            doc.text(`Frais livraison: ${formatPrice(Number(delivery.totalFee || 0))}`, 20, y);
+            pdfText(`Frais livraison: ${formatPdfPrice(Number(delivery.totalFee || 0))}`, 20, y);
             y += 8;
           } else {
             y += 2;
@@ -2136,16 +2163,16 @@
         // Montant
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Paiement', 20, y);
+        pdfText('Paiement', 20, y);
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`MÃ©thode: ${order.methodName || 'N/A'}`, 20, y + 10);
+        pdfText(`Methode: ${order.methodName || 'N/A'}`, 20, y + 10);
         
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(rgb.r, rgb.g, rgb.b);
-        doc.text(`Montant: ${formatPrice(getOrderComputedAmount(order))}`, 20, y + 24);
+        pdfText(`Montant: ${formatPdfPrice(getOrderComputedAmount(order))}`, 20, y + 24);
 
         const promoLines = buildPromoLines(order);
         if (promoLines.length) {
@@ -2154,7 +2181,7 @@
           doc.setFont('helvetica', 'normal');
           let promoY = y + 34;
           promoLines.forEach((line) => {
-            doc.text(line.slice(0, 110), 20, promoY);
+            pdfText(line.slice(0, 110), 20, promoY);
             promoY += 5;
           });
           y = promoY - 28;
@@ -2165,13 +2192,13 @@
         doc.setTextColor(0, 0, 0);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('Produits commandÃ©s', 20, y);
+        pdfText('Produits commandes', 20, y);
         y += 7;
 
         if (orderItems.length === 0) {
           doc.setFontSize(9);
           doc.setFont('helvetica', 'normal');
-          doc.text('Aucun dÃ©tail produit enregistrÃ©.', 20, y);
+          pdfText('Aucun detail produit enregistre.', 20, y);
           y += 6;
         } else {
           orderItems.forEach((item, index) => {
@@ -2182,22 +2209,22 @@
             const qty = Number(item?.quantity) || 1;
             const unitPrice = Number(item?.price) || 0;
             const lineTotal = qty * unitPrice;
-            const itemName = String(item?.name || 'Produit').slice(0, 70);
+            const itemName = cleanPdfText(item?.name || 'Produit').slice(0, 70);
             const productId = item?.productId ? ` | ID: ${item.productId}` : '';
             const sku = item?.sku ? ` | SKU: ${item.sku}` : '';
             const options = formatItemOptions(item);
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'bold');
-            doc.text(`${index + 1}. ${itemName}`, 20, y);
+            pdfText(`${index + 1}. ${itemName}`, 20, y);
             y += 4.5;
 
             doc.setFont('helvetica', 'normal');
-            doc.text(`QtÃ©: ${qty} | PU: ${formatPrice(unitPrice)} | Total: ${formatPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
+            pdfText(`Qte: ${qty} | PU: ${formatPdfPrice(unitPrice)} | Total: ${formatPdfPrice(lineTotal)}${productId}${sku}`.slice(0, 110), 24, y);
             y += 4.2;
 
             if (options && options !== '-') {
-              doc.text(`Options: ${options}`.slice(0, 110), 24, y);
+              pdfText(`Options: ${options}`.slice(0, 110), 24, y);
               y += 4.2;
             }
             y += 1.8;
@@ -2211,26 +2238,26 @@
         }
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('Preuve de paiement', 20, y);
+        pdfText('Preuve de paiement', 20, y);
         y += 5;
         doc.setFont('helvetica', 'normal');
-        doc.text(`Nom sur la preuve: ${order.proofName || '-'}`, 20, y);
+        pdfText(`Nom sur la preuve: ${order.proofName || '-'}`, 20, y);
         y += 5;
         const extracted = String(order.extractedText || '').replace(/\s+/g, ' ').trim();
-        doc.text(`Texte OCR: ${extracted ? extracted.slice(0, 130) : '-'}`, 20, y);
+        pdfText(`Texte OCR: ${extracted ? extracted.slice(0, 130) : '-'}`, 20, y);
         y += 8;
         
         // Message de remerciement
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'italic');
-        doc.text(pdfConfig?.thankYouMessage || 'Merci pour votre confiance !', 20, Math.min(y, 270));
+        pdfText(pdfConfig?.thankYouMessage || 'Merci pour votre confiance !', 20, Math.min(y, 270));
         
         // Pied de page
         doc.setFontSize(8);
         doc.setTextColor(150, 150, 150);
-        doc.text('Ce document est un reÃ§u officiel de paiement.', 20, 280);
-        doc.text(`Code de vÃ©rification: ${order.uniqueCode || 'N/A'}`, 20, 285);
+        pdfText('Ce document est un recu officiel de paiement.', 20, 280);
+        pdfText(`Code de verification: ${order.uniqueCode || 'N/A'}`, 20, 285);
         
         doc.save(`recu-${order.uniqueCode || order.id}.pdf`);
         showToast('PDF gÃ©nÃ©rÃ© avec succÃ¨s !', 'success');
