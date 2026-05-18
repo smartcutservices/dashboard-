@@ -1270,11 +1270,11 @@
     }
 
     function formatPdfPrice(price) {
-      const value = Number(price || 0);
-      return `${new Intl.NumberFormat('fr-FR', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(value).replace(/\s+/g, ' ')} HTG`;
+      const value = Math.round(Number(price || 0));
+      const sign = value < 0 ? '-' : '';
+      const digits = String(Math.abs(value));
+      const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return `${sign}${grouped} HTG`;
     }
     function getMethodProvider(method = {}) {
       const rawProvider = String(method.provider || method.gateway || method.slug || '').trim().toLowerCase();
