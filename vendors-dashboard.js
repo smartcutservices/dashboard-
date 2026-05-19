@@ -26,16 +26,40 @@ const DEFAULT_FORM_SETTINGS = {
     { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'nom@exemple.com' },
     { id: 'phone', type: 'tel', label: 'Telephone', required: true, placeholder: '+509...' },
     { id: 'shopName', type: 'text', label: 'Nom de boutique', required: true, placeholder: 'Nom de votre boutique' },
+    { id: 'identityNumber', type: 'text', label: 'Numero identite (NIF, CIN ou passeport)', required: true, placeholder: 'NIF, CIN ou passeport' },
     { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
     { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
     { id: 'category', type: 'select', label: 'Categorie principale', required: true, options: ['Mode', 'Accessoires', 'Maison & deco', 'Impression', 'Electronique', 'Beaute', 'Autre'] },
     { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison'] },
+    { id: 'bankAccountHolder', type: 'text', label: 'Titulaire du compte bancaire', required: true, placeholder: 'Nom du titulaire' },
+    { id: 'bankName', type: 'text', label: 'Banque', required: true, placeholder: 'Nom de la banque' },
+    { id: 'bankAccountNumber', type: 'text', label: 'Numero de compte / IBAN', required: true, placeholder: 'Numero de compte' },
+    { id: 'bankSwiftBic', type: 'text', label: 'SWIFT / BIC', required: false, placeholder: 'Optionnel' },
+    { id: 'businessName', type: 'text', label: 'Entreprise - nom legal', required: false, placeholder: 'Si applicable' },
+    { id: 'businessNif', type: 'text', label: 'Entreprise - NIF', required: false, placeholder: 'Si applicable' },
+    { id: 'businessAddress', type: 'textarea', label: 'Entreprise - adresse', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankAccountHolder', type: 'text', label: 'Entreprise - titulaire compte bancaire', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankName', type: 'text', label: 'Entreprise - banque', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankAccountNumber', type: 'text', label: 'Entreprise - numero de compte', required: false, placeholder: 'Si applicable' },
     { id: 'socialLink', type: 'url', label: 'Reseau social ou site web', required: false, placeholder: 'https://...' },
     { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' },
     { id: 'agreementAccepted', type: 'checkbox', label: 'Je confirme que les informations envoyees sont exactes et j accepte la revue manuelle de ma candidature.', required: true }
   ]
 };
 const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
+function mergeRequiredVendorFields(fields = []) {
+  const next = Array.isArray(fields) && fields.length ? [...fields] : [...DEFAULT_FORM_SETTINGS.fields];
+  const existingIds = new Set(next.map((field) => String(field?.id || '')));
+  DEFAULT_FORM_SETTINGS.fields.forEach((field) => {
+    if (!existingIds.has(field.id)) next.push(field);
+  });
+  return next.map((field) => (
+    field.id === 'deliveryMode'
+      ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
+      : field
+  ));
+}
+
 const DEFAULT_PLAN_SETTINGS = {
   proPrice: 1750,
   currency: 'HTG',
@@ -99,16 +123,10 @@ class VendorsDashboard {
       ? {
           ...DEFAULT_FORM_SETTINGS,
           ...formSettingsSnap.data(),
-          fields: Array.isArray(formSettingsSnap.data()?.fields) && formSettingsSnap.data().fields.length
-            ? formSettingsSnap.data().fields
-            : DEFAULT_FORM_SETTINGS.fields
+          fields: mergeRequiredVendorFields(formSettingsSnap.data()?.fields)
         }
       : DEFAULT_FORM_SETTINGS;
-    this.formSettings.fields = this.formSettings.fields.map((field) => (
-      field.id === 'deliveryMode'
-        ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
-        : field
-    ));
+    this.formSettings.fields = mergeRequiredVendorFields(this.formSettings.fields);
     this.planSettings = planSettingsSnap.exists()
       ? { ...DEFAULT_PLAN_SETTINGS, ...(planSettingsSnap.data() || {}) }
       : DEFAULT_PLAN_SETTINGS;
@@ -1127,10 +1145,21 @@ class VendorsDashboard {
         applicantName: current.applicantName || '',
         email: current.email || '',
         phone: current.phone || '',
+        identityNumber: current.identityNumber || current.responses?.identityNumber || '',
         city: current.city || '',
         address: current.address || '',
         category: current.category || '',
         deliveryMode: VENDOR_DELIVERY_MODE,
+        bankAccountHolder: current.bankAccountHolder || current.responses?.bankAccountHolder || '',
+        bankName: current.bankName || current.responses?.bankName || '',
+        bankAccountNumber: current.bankAccountNumber || current.responses?.bankAccountNumber || '',
+        bankSwiftBic: current.bankSwiftBic || current.responses?.bankSwiftBic || '',
+        businessName: current.businessName || current.responses?.businessName || '',
+        businessNif: current.businessNif || current.responses?.businessNif || '',
+        businessAddress: current.businessAddress || current.responses?.businessAddress || '',
+        businessBankAccountHolder: current.businessBankAccountHolder || current.responses?.businessBankAccountHolder || '',
+        businessBankName: current.businessBankName || current.responses?.businessBankName || '',
+        businessBankAccountNumber: current.businessBankAccountNumber || current.responses?.businessBankAccountNumber || '',
         planId: current.planId || 'basic',
         planLabel: current.planLabel || (current.planId === 'pro' ? 'PRO' : 'BASIC'),
         planPrice: Number(current.planPrice || 0),
@@ -1395,11 +1424,7 @@ class VendorsDashboard {
       title,
       subtitle,
       submitLabel,
-      fields: fields.map((field) => (
-        field.id === 'deliveryMode'
-          ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
-          : field
-      ))
+      fields: mergeRequiredVendorFields(fields)
     };
   }
 
