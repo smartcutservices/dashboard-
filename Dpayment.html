@@ -2053,6 +2053,14 @@
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
         const pdfText = (text, x, y, options) => doc.text(cleanPdfText(text), x, y, options);
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const footerTop = pageHeight - 18;
+        const ensurePdfSpace = (neededHeight = 10) => {
+          if (y + neededHeight > footerTop) {
+            doc.addPage();
+            y = 20;
+          }
+        };
         
         // Couleur principale
         const primaryColor = pdfConfig?.primaryColor || '#C6A75E';
@@ -2202,10 +2210,7 @@
           y += 6;
         } else {
           orderItems.forEach((item, index) => {
-            if (y > 262) {
-              doc.addPage();
-              y = 20;
-            }
+            ensurePdfSpace(18);
             const qty = Number(item?.quantity) || 1;
             const unitPrice = Number(item?.price) || 0;
             const lineTotal = qty * unitPrice;
@@ -2232,10 +2237,7 @@
         }
 
         // Preuve et extraction OCR
-        if (y > 252) {
-          doc.addPage();
-          y = 20;
-        }
+        ensurePdfSpace(28);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         pdfText('Preuve de paiement', 20, y);
@@ -2248,16 +2250,26 @@
         y += 8;
         
         // Message de remerciement
+        ensurePdfSpace(18);
         doc.setTextColor(100, 100, 100);
         doc.setFontSize(10);
         doc.setFont('helvetica', 'italic');
-        pdfText(pdfConfig?.thankYouMessage || 'Merci pour votre confiance !', 20, Math.min(y, 270));
+        pdfText(pdfConfig?.thankYouMessage || 'Merci pour votre confiance !', 20, y);
+        y += 8;
         
         // Pied de page
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        pdfText('Ce document est un recu officiel de paiement.', 20, 280);
-        pdfText(`Code de verification: ${order.uniqueCode || 'N/A'}`, 20, 285);
+        const totalPages = doc.getNumberOfPages();
+        for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+          doc.setPage(pageNumber);
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(150, 150, 150);
+          pdfText('Ce document est un recu officiel de paiement.', 20, pageHeight - 11);
+          pdfText(`Code de verification: ${order.uniqueCode || 'N/A'}`, 20, pageHeight - 6);
+          if (totalPages > 1) {
+            pdfText(`Page ${pageNumber}/${totalPages}`, 190, pageHeight - 6, { align: 'right' });
+          }
+        }
         
         doc.save(`recu-${order.uniqueCode || order.id}.pdf`);
         showToast('PDF gÃ©nÃ©rÃ© avec succÃ¨s !', 'success');

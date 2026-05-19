@@ -25,12 +25,13 @@ const DEFAULT_FORM_SETTINGS = {
     { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
     { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
     { id: 'category', type: 'select', label: 'Categorie principale', required: true, options: ['Mode', 'Accessoires', 'Maison & deco', 'Impression', 'Electronique', 'Beaute', 'Autre'] },
-    { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison', 'Smart Cut gere la livraison', 'A definir'] },
+    { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison'] },
     { id: 'socialLink', type: 'url', label: 'Reseau social ou site web', required: false, placeholder: 'https://...' },
     { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' },
     { id: 'agreementAccepted', type: 'checkbox', label: 'Je confirme que les informations envoyees sont exactes et j accepte la revue manuelle de ma candidature.', required: true }
   ]
 };
+const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
 
 class VendorsDashboard {
   constructor() {
@@ -87,6 +88,11 @@ class VendorsDashboard {
             : DEFAULT_FORM_SETTINGS.fields
         }
       : DEFAULT_FORM_SETTINGS;
+    this.formSettings.fields = this.formSettings.fields.map((field) => (
+      field.id === 'deliveryMode'
+        ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
+        : field
+    ));
     this.vendorSalesSummaries = this.vendors.map((vendor) => buildVendorSalesSummary({
       vendorId: vendor.id,
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
@@ -494,6 +500,15 @@ class VendorsDashboard {
         value: String(value || '-')
       };
     });
+    const coverage = item.deliveryCoverage || {};
+    if (coverage.nationwide) {
+      configured.push({ label: 'Zones livraison vendeur', value: `Tout le territoire national: ${Number(coverage.nationwideFee || 0)} HTG` });
+    } else if (Array.isArray(coverage.zones) && coverage.zones.length) {
+      configured.push({
+        label: 'Zones livraison vendeur',
+        value: coverage.zones.map((zone) => `${zone.country || 'Haiti'} / ${zone.department || '-'} / ${zone.commune || '-'}: ${Number(zone.fee || 0)} HTG`).join(' | ')
+      });
+    }
     return configured;
   }
 
@@ -930,7 +945,9 @@ class VendorsDashboard {
         city: current.city || '',
         address: current.address || '',
         category: current.category || '',
-        deliveryMode: current.deliveryMode || '',
+        deliveryMode: VENDOR_DELIVERY_MODE,
+        deliveryCoverage: current.deliveryCoverage || null,
+        deliveryZones: Array.isArray(current.deliveryZones) ? current.deliveryZones : (Array.isArray(current.deliveryCoverage?.zones) ? current.deliveryCoverage.zones : []),
         status: 'active',
         role: 'vendor',
         commissionRule: current.commissionRule || null,
@@ -1059,7 +1076,16 @@ class VendorsDashboard {
       };
     }).filter((field) => field.id);
 
-    return { title, subtitle, submitLabel, fields };
+    return {
+      title,
+      subtitle,
+      submitLabel,
+      fields: fields.map((field) => (
+        field.id === 'deliveryMode'
+          ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
+          : field
+      ))
+    };
   }
 
   async saveFormSettings() {

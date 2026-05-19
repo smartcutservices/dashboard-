@@ -1001,10 +1001,28 @@
                   <div id="top-selling-products" class="top-products-list"></div>
                 </div>
               </div>
-            </div>
+              </div>
 
-            <div class="content-card mb-6">
-              <div class="card-header">
+              <div class="content-card mb-6">
+                <div class="card-header">
+                  <div>
+                    <span>Decaissements vendeur</span>
+                    <p id="vendor-payouts-summary" class="text-sm text-text-secondary mt-1">Suivez ici vos demandes de decaissement, votre net disponible et l historique de paiement.</p>
+                  </div>
+                  <button type="button" id="request-payout-btn" class="btn-secondary btn-sm">
+                    <i class="fas fa-wallet"></i>
+                    Demander un decaissement
+                  </button>
+                </div>
+                <div class="card-body">
+                  <div id="vendor-payouts-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="analytics-empty">Les demandes de decaissement apparaitront ici.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="content-card mb-6">
+                <div class="card-header">
                 <div>
                   <span>Commandes vendeur</span>
                   <p id="vendor-orders-summary" class="text-sm text-text-secondary mt-1">Les commandes confirmees apparaitront ici avec les bonnes infos de livraison.</p>
@@ -1428,6 +1446,7 @@
     const COMMISSION_RULES_COLLECTION = "vendorCommissionRules";
     const VENDOR_ANALYTICS_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/getVendorDashboardAnalytics';
     const VENDOR_ORDERS_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/getVendorDashboardOrders';
+    const VENDOR_PAYOUT_REQUEST_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorPayout';
 
     // ========== CLASSE PRODUCT MANAGER ==========
     class ProductManager {
@@ -1437,6 +1456,8 @@
         this.commissionRules = [];
         this.salesAnalytics = null;
         this.vendorOrders = [];
+        this.vendorPayoutHistory = [];
+        this.activePayoutRequest = null;
         this.productLikes = new Map();
         this.likesModal = null;
         this.likesUnsubscribe = null;
@@ -1811,6 +1832,9 @@
             salesStatusDonutValue: document.getElementById('sales-status-donut-value'),
             salesStatusLegend: document.getElementById('sales-status-legend'),
             topSellingProducts: document.getElementById('top-selling-products'),
+            requestPayoutBtn: document.getElementById('request-payout-btn'),
+            vendorPayoutsSummary: document.getElementById('vendor-payouts-summary'),
+            vendorPayoutsList: document.getElementById('vendor-payouts-list'),
             vendorOrdersSummary: document.getElementById('vendor-orders-summary'),
             vendorOrdersList: document.getElementById('vendor-orders-list'),
             
@@ -1944,6 +1968,20 @@
         
         // Search
         this.elements.searchProducts.addEventListener('input', () => this.renderProductsList());
+
+        this.elements.requestPayoutBtn?.addEventListener('click', async () => {
+          try {
+            this.elements.requestPayoutBtn.disabled = true;
+            await this.requestVendorPayout();
+            this.showToast('Demande de decaissement envoyee avec succes.', 'success');
+            await this.loadSalesAnalytics();
+          } catch (error) {
+            console.error('Erreur demande decaissement vendeur:', error);
+            this.showToast(error?.message || 'Impossible d envoyer la demande de decaissement.', 'error');
+          } finally {
+            this.elements.requestPayoutBtn.disabled = false;
+          }
+        });
 
         window.addEventListener('smartcut-notification', (event) => {
           const type = String(event?.detail?.data?.broadcastType || '').trim().toLowerCase();
@@ -2103,6 +2141,30 @@
         this.renderVendorOrders();
       }
 
+      async requestVendorPayout() {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('Utilisateur vendeur non connecte');
+        }
+
+        const token = await user.getIdToken();
+        const response = await fetch(VENDOR_PAYOUT_REQUEST_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({})
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.ok === false) {
+          throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+        }
+
+        return payload?.request || null;
+      }
+
       async fetchVendorSalesAnalytics() {
         const user = auth.currentUser;
         if (!user) {
@@ -2242,6 +2304,11 @@
         );
         onSnapshot(productsQuery, () => {
           this.loadProducts();
+        }, (error) => {
+          console.error('[VENDOR] products realtime:error', {
+            code: error?.code || null,
+            message: error?.message || String(error)
+          });
         });
       }
 
@@ -2307,7 +2374,7 @@
             <div class="product-card" data-id="${product.id}">
               <div class="product-image">
                 ${imageUrl ? 
-                  `<img src="${imageUrl}" alt="${product.name}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=\'fas fa-image text-3xl text-secondary\'></i>'">` : 
+                  `<img src="${this.escapeAttribute(imageUrl)}" alt="${this.escapeAttribute(product.name || 'Image produit')}" class="w-full h-full object-cover" data-image-debug="product-card" data-product-id="${this.escapeAttribute(product.id)}" data-image-url="${this.escapeAttribute(imageUrl)}">` : 
                   `<i class="fas fa-image text-3xl text-secondary"></i>`
                 }
               </div>
@@ -2350,6 +2417,8 @@
         }).join('');
 
         // Attacher événements
+        this.attachImageDebugListeners(this.elements.productsGrid);
+
         document.querySelectorAll('.edit-product').forEach(btn => {
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -2581,7 +2650,7 @@
                   <div class="flex gap-1 flex-wrap">
                     ${variationImages.map(img => `
                       <div class="w-8 h-8 rounded overflow-hidden border border-border">
-                        <img src="${this.getImagePath(img)}" class="w-full h-full object-cover" onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=\'fas fa-image text-xs\'></i>'">
+                        <img src="${this.escapeAttribute(this.getImagePath(img))}" class="w-full h-full object-cover" data-image-debug="variation-card" data-variation-index="${index}" data-image-url="${this.escapeAttribute(this.getImagePath(img))}">
                       </div>
                     `).join('')}
                   </div>
@@ -2606,6 +2675,8 @@
         }).join('');
         
         // Attacher événements
+        this.attachImageDebugListeners(this.elements.variationsContainer);
+
         document.querySelectorAll('.edit-variation').forEach(btn => {
           btn.addEventListener('click', () => this.editVariation(parseInt(btn.dataset.index)));
         });
@@ -2616,23 +2687,75 @@
         
         this.updateTotalStock();
       }
+
+      escapeAttribute(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      attachImageDebugListeners(scope) {
+        scope?.querySelectorAll('img[data-image-debug]').forEach((img) => {
+          if (img.dataset.debugAttached === 'true') return;
+          img.dataset.debugAttached = 'true';
+
+          console.info('[VENDOR_IMAGE_DEBUG] render', {
+            context: img.dataset.imageDebug,
+            productId: img.dataset.productId || null,
+            variationIndex: img.dataset.variationIndex || null,
+            url: img.dataset.imageUrl || img.currentSrc || img.src || null
+          });
+
+          img.addEventListener('load', () => {
+            console.info('[VENDOR_IMAGE_DEBUG] load', {
+              context: img.dataset.imageDebug,
+              productId: img.dataset.productId || null,
+              variationIndex: img.dataset.variationIndex || null,
+              url: img.currentSrc || img.src || null
+            });
+          });
+
+          img.addEventListener('error', () => {
+            console.error('[VENDOR_IMAGE_DEBUG] error', {
+              context: img.dataset.imageDebug,
+              productId: img.dataset.productId || null,
+              variationIndex: img.dataset.variationIndex || null,
+              url: img.currentSrc || img.src || img.dataset.imageUrl || null
+            });
+            img.style.display = 'none';
+            img.parentNode.innerHTML = '<i class="fas fa-image text-xs"></i>';
+          });
+
+          if (img.complete) {
+            if (img.naturalWidth > 0) {
+              console.info('[VENDOR_IMAGE_DEBUG] load-cached', {
+                context: img.dataset.imageDebug,
+                productId: img.dataset.productId || null,
+                variationIndex: img.dataset.variationIndex || null,
+                url: img.currentSrc || img.src || null
+              });
+            } else {
+              console.error('[VENDOR_IMAGE_DEBUG] error-cached', {
+                context: img.dataset.imageDebug,
+                productId: img.dataset.productId || null,
+                variationIndex: img.dataset.variationIndex || null,
+                url: img.currentSrc || img.src || img.dataset.imageUrl || null
+              });
+            }
+          }
+        });
+      }
       
       renderMainImages() {
         const container = this.elements.mainImagesContainer;
         container.innerHTML = '';
         
         this.currentImages.main.forEach((filename, index) => {
-          const div = document.createElement('div');
-          div.className = 'image-item';
-          div.innerHTML = `
-            <img src="${this.getImagePath(filename)}" alt="Image produit" onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=\'fas fa-image text-2xl text-secondary\'></i>'">
-            <button class="remove-image" data-index="${index}">
-              <i class="fas fa-times"></i>
-            </button>
-            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs truncate px-1">${this.getImageLabel(filename)}</div>
-          `;
-          
-          div.querySelector('.remove-image').addEventListener('click', (e) => {
+          const div = this.createImagePreviewItem(filename, 'Image produit', 'main', index);
+
+          div.querySelector('.remove-image')?.addEventListener('click', (e) => {
             e.stopPropagation();
             this.removeImage('main', index);
           });
@@ -2648,23 +2771,53 @@
         const images = this.currentImages.variations[variationIndex] || [];
         
         images.forEach((filename, index) => {
-          const div = document.createElement('div');
-          div.className = 'image-item';
-          div.innerHTML = `
-            <img src="${this.getImagePath(filename)}" alt="Image variation" onerror="this.style.display='none'; this.parentNode.innerHTML='<i class=\'fas fa-image text-2xl text-secondary\'></i>'">
-            <button class="remove-image" data-index="${index}">
-              <i class="fas fa-times"></i>
-            </button>
-            <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs truncate px-1">${this.getImageLabel(filename)}</div>
-          `;
-          
-          div.querySelector('.remove-image').addEventListener('click', (e) => {
+          const div = this.createImagePreviewItem(filename, 'Image variation', 'variation', index);
+
+          div.querySelector('.remove-image')?.addEventListener('click', (e) => {
             e.stopPropagation();
             this.removeImage('variation', index, variationIndex);
           });
           
           container.appendChild(div);
         });
+      }
+
+      createImagePreviewItem(filename, altText, type, index) {
+        const imagePath = this.getImagePath(filename);
+        const div = document.createElement('div');
+        div.className = 'image-item';
+
+        const img = document.createElement('img');
+        img.alt = altText;
+        img.loading = 'lazy';
+        img.referrerPolicy = 'no-referrer';
+        img.src = imagePath;
+        img.addEventListener('error', () => {
+          console.error('[VENDOR_IMAGE_DEBUG] editor-preview-error', {
+            type,
+            index,
+            imagePath,
+            originalValue: filename
+          });
+          img.remove();
+          const fallback = document.createElement('i');
+          fallback.className = 'fas fa-image text-2xl text-secondary';
+          div.insertBefore(fallback, div.firstChild);
+        });
+
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-image';
+        removeButton.dataset.index = String(index);
+        removeButton.innerHTML = '<i class="fas fa-times"></i>';
+
+        const label = document.createElement('div');
+        label.className = 'absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs truncate px-1';
+        label.textContent = this.getImageLabel(filename);
+
+        div.appendChild(img);
+        div.appendChild(removeButton);
+        div.appendChild(label);
+        return div;
       }
       
       updateTotalStock() {
@@ -2762,11 +2915,98 @@
           this.elements.salesGross.textContent = this.formatCurrency(grossAmount);
           this.elements.salesNet.textContent = this.formatCurrency(vendorNetAmount);
 
-          this.renderSalesTrendChart(Array.isArray(analytics.timeline) ? analytics.timeline : []);
-          this.renderSalesStatusChart(analytics.statusBreakdown || {});
-          this.renderTopSellingProducts(Array.isArray(analytics.topProducts) ? analytics.topProducts : []);
-          this.renderVendorOrders();
+        this.renderSalesTrendChart(Array.isArray(analytics.timeline) ? analytics.timeline : []);
+        this.renderSalesStatusChart(analytics.statusBreakdown || {});
+        this.renderTopSellingProducts(Array.isArray(analytics.topProducts) ? analytics.topProducts : []);
+        this.renderVendorPayouts(analytics);
+        this.renderVendorOrders();
+      }
+
+      formatDateTime(value) {
+        const ms = Date.parse(String(value || ''));
+        if (!Number.isFinite(ms)) return '-';
+        return new Date(ms).toLocaleString('fr-FR');
+      }
+
+      getPayoutStatusMeta(status = '') {
+        switch (String(status || '').toLowerCase()) {
+          case 'paid':
+            return { label: 'Paye', color: '#14532D', bg: 'rgba(20, 83, 45, 0.12)' };
+          case 'approved':
+            return { label: 'Approuve', color: '#1D4ED8', bg: 'rgba(29, 78, 216, 0.12)' };
+          case 'rejected':
+            return { label: 'Rejete', color: '#7F1D1D', bg: 'rgba(127, 29, 29, 0.12)' };
+          case 'pending':
+            return { label: 'En attente', color: '#92400E', bg: 'rgba(146, 64, 14, 0.12)' };
+          default:
+            return { label: 'Demande recue', color: '#6D28D9', bg: 'rgba(109, 40, 217, 0.12)' };
         }
+      }
+
+      renderVendorPayouts(analytics = {}) {
+        if (!this.elements.vendorPayoutsList || !this.elements.vendorPayoutsSummary || !this.elements.requestPayoutBtn) return;
+
+        const payouts = Array.isArray(analytics.payoutHistory) ? analytics.payoutHistory : [];
+        this.vendorPayoutHistory = payouts;
+        this.activePayoutRequest = analytics.activePayoutRequest || null;
+        const canRequest = !!analytics.canRequestPayout;
+        const nextRequestAt = analytics.nextRequestAt || '';
+        const pendingNet = Number(analytics.pendingPayoutAmount || 0);
+        const paidCount = Number(analytics.paidPayoutsCount || 0);
+
+        if (this.activePayoutRequest) {
+          this.elements.vendorPayoutsSummary.textContent = `Une demande de decaissement est deja en cours. Net actuellement disponible: ${this.formatCurrency(pendingNet)}.`;
+        } else if (nextRequestAt && !canRequest) {
+          this.elements.vendorPayoutsSummary.textContent = `Prochaine demande possible a partir du ${this.formatDateTime(nextRequestAt)}. Net actuellement disponible: ${this.formatCurrency(pendingNet)}.`;
+        } else {
+          this.elements.vendorPayoutsSummary.textContent = `Net disponible: ${this.formatCurrency(pendingNet)} · ${paidCount} decaissement(s) deja traite(s).`;
+        }
+
+        this.elements.requestPayoutBtn.disabled = !canRequest;
+        this.elements.requestPayoutBtn.innerHTML = this.activePayoutRequest
+          ? '<i class="fas fa-hourglass-half"></i> Demande en cours'
+          : '<i class="fas fa-wallet"></i> Demander un decaissement';
+
+        if (!payouts.length) {
+          this.elements.vendorPayoutsList.innerHTML = '<div class="analytics-empty" style="grid-column:1/-1;">Aucun historique de decaissement pour le moment.</div>';
+          return;
+        }
+
+        this.elements.vendorPayoutsList.innerHTML = payouts.map((payout) => {
+          const meta = this.getPayoutStatusMeta(payout.status);
+          return `
+            <article class="content-card" style="margin-bottom:0;">
+              <div class="card-body" style="display:grid;gap:1rem;">
+                <div style="display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+                  <div>
+                    <h3 style="margin:0 0 .2rem;font-size:1rem;">${this.escape(payout.reportNumber || 'Decaissement')}</h3>
+                    <p style="margin:0;color:var(--text-secondary);font-size:.88rem;">${this.escape(this.formatDateTime(payout.requestedAt || payout.createdAt))}</p>
+                  </div>
+                  <div class="vendor-chip" style="background:${meta.bg};color:${meta.color};">${this.escape(meta.label)}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;">
+                  <div class="analytics-empty" style="padding:.9rem 1rem;text-align:left;"><strong style="display:block;margin-bottom:.25rem;">Brut</strong><span>${this.escape(this.formatCurrency(Number(payout.grossAmount || 0)))}</span></div>
+                  <div class="analytics-empty" style="padding:.9rem 1rem;text-align:left;"><strong style="display:block;margin-bottom:.25rem;">Commission</strong><span>${this.escape(this.formatCurrency(Number(payout.commissionAmount || 0)))}</span></div>
+                  <div class="analytics-empty" style="padding:.9rem 1rem;text-align:left;"><strong style="display:block;margin-bottom:.25rem;">Net</strong><span>${this.escape(this.formatCurrency(Number(payout.netAmount || 0)))}</span></div>
+                  <div class="analytics-empty" style="padding:.9rem 1rem;text-align:left;"><strong style="display:block;margin-bottom:.25rem;">Periode</strong><span>${this.escape(payout.periodStart ? new Date(payout.periodStart).toLocaleDateString('fr-FR') : '-')} -> ${this.escape(payout.periodEnd ? new Date(payout.periodEnd).toLocaleDateString('fr-FR') : '-')}</span></div>
+                </div>
+                ${String(payout.status || '').toLowerCase() === 'paid' ? `
+                  <div style="display:flex;justify-content:flex-end;gap:.75rem;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-secondary" data-download-vendor-payout-pdf="${this.escape(payout.id)}">
+                      <i class="fas fa-file-pdf"></i>
+                      Telecharger le PDF
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            </article>
+          `;
+        }).join('');
+
+        this.elements.vendorPayoutsList.querySelectorAll('[data-download-vendor-payout-pdf]').forEach((button) => {
+          button.addEventListener('click', () => this.downloadVendorPayoutPdf(button.dataset.downloadVendorPayoutPdf));
+        });
+      }
 
         renderSalesTrendChart(timeline = []) {
           if (!this.elements.salesTrendChart) return;
@@ -3038,13 +3278,66 @@
 
             const safeName = String(order.uniqueCode || order.id || 'commande-vendeur').replace(/[^A-Za-z0-9_-]/g, '-');
             doc.save(`commande-vendeur-${safeName}.pdf`);
-          } catch (error) {
-            console.error('Erreur generation PDF vendeur:', error);
-            this.showToast(error?.message || 'Impossible de generer le PDF commande.', 'error');
-          }
+        } catch (error) {
+          console.error('Erreur generation PDF vendeur:', error);
+          this.showToast(error?.message || 'Impossible de generer le PDF commande.', 'error');
         }
+      }
 
-        escape(value) {
+      async downloadVendorPayoutPdf(payoutId) {
+        try {
+          const payout = (this.vendorPayoutHistory || []).find((item) => String(item.id) === String(payoutId));
+          if (!payout || String(payout.status || '').toLowerCase() !== 'paid') {
+            throw new Error('Le PDF n est disponible que pour un decaissement paye.');
+          }
+
+          const { jsPDF } = window.jspdf || {};
+          if (!jsPDF) {
+            throw new Error('Bibliotheque PDF indisponible.');
+          }
+
+          const doc = new jsPDF();
+          let y = 22;
+          doc.setFillColor(198, 167, 94);
+          doc.rect(0, 0, 210, 28, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(18);
+          doc.text('Rapport de decaissement vendeur', 14, 18);
+
+          doc.setTextColor(31, 30, 28);
+          doc.setFontSize(11);
+          y = 40;
+
+          [
+            `Numero: ${payout.reportNumber || payout.id}`,
+            `Date: ${this.formatDateTime(payout.paidAt || payout.reviewedAt || payout.requestedAt || payout.createdAt)}`,
+            `Store: ${payout.shopName || payout.vendorName || '-'}`,
+            `Nom complet: ${payout.fullName || `${payout.firstName || ''} ${payout.lastName || ''}`.trim() || '-'}`,
+            `Prenom: ${payout.firstName || '-'}`,
+            `Nom: ${payout.lastName || '-'}`,
+            `Sexe: ${payout.gender || '-'}`,
+            `Telephone: ${payout.phone || '-'}`,
+            `Adresse: ${payout.address || '-'}`,
+            `Montant decaisse: ${this.formatCurrency(payout.netAmount || 0)}`,
+            `Periode: ${payout.periodStart ? new Date(payout.periodStart).toLocaleDateString('fr-FR') : '-'} -> ${payout.periodEnd ? new Date(payout.periodEnd).toLocaleDateString('fr-FR') : '-'}`,
+            `Brut: ${this.formatCurrency(payout.grossAmount || 0)}`,
+            `Commission: ${this.formatCurrency(payout.commissionAmount || 0)}`
+          ].forEach((line) => {
+            const wrapped = doc.splitTextToSize(line, 178);
+            doc.text(wrapped, 14, y);
+            y += wrapped.length * 6 + 2;
+          });
+
+          const safeName = String(payout.reportNumber || payout.id || 'decaissement-vendeur').replace(/[^A-Za-z0-9_-]/g, '-');
+          doc.save(`decaissement-vendeur-${safeName}.pdf`);
+        } catch (error) {
+          console.error('Erreur generation PDF decaissement vendeur:', error);
+          this.showToast(error?.message || 'Impossible de generer le PDF du decaissement.', 'error');
+        }
+      }
+
+      escape(value) {
           return String(value ?? '')
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -3245,6 +3538,8 @@
           vendorName: this.vendorContext.vendorName || this.vendorContext.shopName || 'Vendeur',
           shopName: this.vendorContext.shopName || '',
           deliveryMode: this.vendorContext.deliveryMode || '',
+          deliveryCoverage: this.vendorContext.deliveryCoverage || null,
+          deliveryZones: Array.isArray(this.vendorContext.deliveryZones) ? this.vendorContext.deliveryZones : [],
           commissionRule: this.buildCommissionRule(selectedCategoryName, now),
           createdBy: 'vendor_dashboard_products',
           adminReviewNote: this.currentProduct?.id
@@ -3256,6 +3551,16 @@
           publishedAt: '',
           updatedAt: now
         };
+
+        console.info('[VENDOR_IMAGE_DEBUG] save-payload', {
+          productId: this.currentProduct?.id || null,
+          mainImages: productData.images,
+          variations: productData.variations.map((variation, index) => ({
+            index,
+            sku: variation.sku || null,
+            images: variation.images || []
+          }))
+        });
 
         if (!productData.name) {
           this.showToast('Le nom du produit est requis', 'error');
@@ -3577,16 +3882,19 @@
         }
 
         try {
-          const currentUser = await this.ensureUploadAuthReady();
-          console.info('Upload vendeur autorise', {
-            uid: currentUser.uid,
-            folder: this.getStorageFolder(type),
-            files: files.length
-          });
+          await this.ensureUploadAuthReady();
           this.showToast('Upload en cours vers Firebase Storage...', 'info');
           const uploads = await Promise.all(
             files.map((file) => uploadImageFile(file, this.getStorageFolder(type)))
           );
+
+          console.info('[VENDOR_IMAGE_DEBUG] upload-result', {
+            type,
+            folder: this.getStorageFolder(type),
+            productId: this.currentProduct?.id || null,
+            variationIndex: type === 'variation' ? parseInt(this.elements.variationIndex.value, 10) : null,
+            uploads
+          });
 
           if (type === 'main') {
             this.currentImages.main.push(...uploads.map((item) => item.url));
@@ -3609,6 +3917,16 @@
           this.showToast(`${uploads.length} image(s) envoyee(s) dans Firebase Storage.`);
         } catch (error) {
           console.error('Erreur Erreur upload Storage:', error);
+          console.error('[VENDOR] uploadSelectedImages:error:details', {
+            code: error?.code || null,
+            message: error?.message || String(error),
+            customData: error?.customData || null,
+            serverResponse: error?.serverResponse || null,
+            authUid: auth.currentUser?.uid || null,
+            vendorUid: this.vendorContext?.uid || null,
+            folder: this.getStorageFolder(type),
+            currentProductId: this.currentProduct?.id || null
+          });
           this.showToast(error?.message || 'Erreur pendant l upload des images.', 'error');
         }
       }
