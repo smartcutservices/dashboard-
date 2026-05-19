@@ -1723,11 +1723,54 @@
     }
 
     // ========== RENDU ==========
+    function getClientFullName(client = {}) {
+      return [client.firstName, client.lastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ')
+        || client.fullName
+        || client.name
+        || client.displayName
+        || client.username
+        || 'N/A';
+    }
+
+    function getClientUsername(client = {}) {
+      return client.username || client.displayName || client.userName || '-';
+    }
+
+    function getClientDefaultAddress(client = {}) {
+      const addresses = Array.isArray(client.addresses) ? client.addresses : [];
+      const selected = addresses.find((address) => address?.id === client.defaultDeliveryAddressId)
+        || addresses.find((address) => address?.isDelivery)
+        || addresses[0]
+        || {};
+      return {
+        address: selected.address || client.address || '',
+        country: selected.country || client.country || 'Haiti',
+        department: selected.department || client.department || '',
+        commune: selected.commune || client.commune || client.city || ''
+      };
+    }
+
+    function formatClientAddress(client = {}) {
+      const address = getClientDefaultAddress(client);
+      return [address.address, address.commune, address.department, address.country].filter(Boolean).join(', ') || '-';
+    }
+
+    function getOrderClientName(order = {}, client = {}) {
+      return [order.customerFirstName, order.customerLastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ')
+        || getClientFullName(client)
+        || order.customerName
+        || 'N/A';
+    }
+
+    function getOrderClientAddress(order = {}, client = {}) {
+      return order.customerAddress || formatClientAddress(client);
+    }
     
     function renderClients() {
       const search = elements.searchClient?.value.toLowerCase() || '';
       const filtered = clients.filter(c => 
-        c.name?.toLowerCase().includes(search) || 
+        getClientFullName(c).toLowerCase().includes(search) ||
+        getClientUsername(c).toLowerCase().includes(search) ||
         c.email?.toLowerCase().includes(search)
       );
 
@@ -1746,24 +1789,37 @@
       elements.clientsList.innerHTML = filtered.map(client => {
         const clientOrders = orders.filter(o => o.clientId === client.id);
         const totalSpent = clientOrders.reduce((sum, o) => sum + getOrderComputedAmount(o), 0);
-        const parsedAge = Number(client.age);
-        const clientAge = Number.isFinite(parsedAge) && parsedAge > 0 ? parsedAge : '-';
-        const clientSexe = client.sexe || '-';
+        const fullName = getClientFullName(client);
+        const username = getClientUsername(client);
+        const address = formatClientAddress(client);
+        const birthDate = client.birthDate ? new Date(client.birthDate).toLocaleDateString('fr-FR') : '-';
         const memberSince = client.createdAt ? new Date(client.createdAt).toLocaleDateString('fr-FR') : '-';
         
         return `
           <div class="content-card p-4">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-secondary rounded-full flex items-center justify-center text-white font-bold">
-                ${(client.name || 'C')[0].toUpperCase()}
+                ${(fullName || 'C')[0].toUpperCase()}
               </div>
               <div>
-                <h3 class="font-medium">${client.name || 'N/A'}</h3>
+                <h3 class="font-medium">${fullName}</h3>
                 <p class="text-xs text-text-secondary">${client.email || ''}</p>
               </div>
             </div>
             
             <div class="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <p class="text-text-secondary">Nom</p>
+                <p>${client.lastName || '-'}</p>
+              </div>
+              <div>
+                <p class="text-text-secondary">Prénom</p>
+                <p>${client.firstName || '-'}</p>
+              </div>
+              <div>
+                <p class="text-text-secondary">Nom utilisateur</p>
+                <p>${username}</p>
+              </div>
               <div>
                 <p class="text-text-secondary">Téléphone</p>
                 <p>${client.phone || '-'}</p>
@@ -1773,12 +1829,16 @@
                 <p>${clientOrders.length}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Âge</p>
-                <p>${clientAge}</p>
+                <p class="text-text-secondary">Date naissance</p>
+                <p>${birthDate}</p>
               </div>
               <div>
-                <p class="text-text-secondary">Sexe</p>
-                <p>${clientSexe}</p>
+                <p class="text-text-secondary">Adresses</p>
+                <p>${Array.isArray(client.addresses) ? client.addresses.length : (client.address ? 1 : 0)}</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-text-secondary">Adresse</p>
+                <p>${address}</p>
               </div>
               <div>
                 <p class="text-text-secondary">Total dépensé</p>
@@ -1834,11 +1894,12 @@
       
       elements.ordersTable.innerHTML = filtered.map(order => {
         const client = clients.find(c => c.id === order.clientId);
+        const clientName = getOrderClientName(order, client);
         
         return `
           <tr class="cursor-pointer hover:bg-background/50 order-row" data-id="${order.id}" data-client-id="${order.clientId}">
             <td>${new Date(order.createdAt).toLocaleDateString('fr-FR')}</td>
-            <td class="font-medium">${order.customerName || client?.name || 'N/A'}</td>
+            <td class="font-medium">${clientName}</td>
             <td>${order.customerEmail || client?.email || '-'}</td>
             <td class="font-medium">${formatPrice(getOrderComputedAmount(order))}</td>
             <td>${renderPromoCell(order)}</td>
@@ -1955,10 +2016,12 @@
 
       // DerniÃ¨res commandes
       const recent = orders.slice(0, 5);
-      elements.recentOrders.innerHTML = recent.map(order => `
-        <div class="flex justify-between items-center p-2 hover:bg-background rounded">
-          <div>
-            <p class="font-medium">${order.customerName || 'Client'}</p>
+      elements.recentOrders.innerHTML = recent.map(order => {
+        const client = clients.find(c => c.id === order.clientId);
+        return `
+          <div class="flex justify-between items-center p-2 hover:bg-background rounded">
+            <div>
+              <p class="font-medium">${getOrderClientName(order, client)}</p>
             <p class="text-xs text-text-secondary">${new Date(order.createdAt).toLocaleDateString()}</p>
           </div>
           <div class="text-right">
@@ -1966,7 +2029,8 @@
             <span class="badge badge-${order.status}">${getStatusText(order.status)}</span>
           </div>
         </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function updateClientFilter() {
@@ -1975,7 +2039,7 @@
       clients.forEach(c => {
         const option = document.createElement('option');
         option.value = c.id;
-        option.textContent = c.name || c.email;
+        option.textContent = getClientFullName(c) || c.email;
         select.appendChild(option);
       });
     }
@@ -2110,10 +2174,10 @@
         
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        pdfText(`Nom: ${order.customerName || client?.name || 'N/A'}`, 20, 120);
+        pdfText(`Nom: ${getOrderClientName(order, client)}`, 20, 120);
         pdfText(`Email: ${order.customerEmail || client?.email || '-'}`, 20, 130);
         pdfText(`Telephone: ${order.customerPhone || client?.phone || '-'}`, 20, 140);
-        pdfText(`Adresse: ${order.customerAddress || client?.address || '-'}`, 20, 150);
+        pdfText(`Adresse: ${getOrderClientAddress(order, client)}`, 20, 150);
         pdfText(`Ville: ${order.customerCity || client?.city || '-'}`, 20, 160);
         
         // Livraison
@@ -2313,13 +2377,23 @@
         ? [delivery.phone ? `TÃ©l: ${delivery.phone}` : '', delivery.whatsapp ? `WA: ${delivery.whatsapp}` : ''].filter(Boolean).join(' | ')
         : '';
       const deliveryFee = Number(delivery?.totalFee || 0);
+      const clientName = getOrderClientName(order, client);
+      const clientAddress = getOrderClientAddress(order, client);
       
       elements.orderContent.innerHTML = `
         <div class="space-y-4">
           <div class="grid grid-cols-2 gap-4">
             <div>
               <p class="text-xs text-text-secondary">Client</p>
-              <p class="font-medium">${order.customerName || client?.name || 'N/A'}</p>
+              <p class="font-medium">${clientName}</p>
+            </div>
+            <div>
+              <p class="text-xs text-text-secondary">Nom</p>
+              <p>${order.customerLastName || client?.lastName || '-'}</p>
+            </div>
+            <div>
+              <p class="text-xs text-text-secondary">Prénom</p>
+              <p>${order.customerFirstName || client?.firstName || '-'}</p>
             </div>
             <div>
               <p class="text-xs text-text-secondary">Email</p>
@@ -2341,7 +2415,7 @@
           
           <div>
             <p class="text-xs text-text-secondary">Adresse</p>
-            <p>${order.customerAddress || client?.address || '-'}</p>
+            <p>${clientAddress}</p>
           </div>
 
           <div>

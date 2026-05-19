@@ -192,17 +192,49 @@ function getClientById(clientId) {
   return state.clients.find((client) => client.id === clientId) || null;
 }
 
+function getClientFullName(client = {}) {
+  return [client.firstName, client.lastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ')
+    || client.fullName
+    || client.name
+    || client.displayName
+    || client.username
+    || 'Client';
+}
+
+function getClientDefaultAddress(client = {}) {
+  const addresses = Array.isArray(client.addresses) ? client.addresses : [];
+  const selected = addresses.find((address) => address?.id === client.defaultDeliveryAddressId)
+    || addresses.find((address) => address?.isDelivery)
+    || addresses[0]
+    || {};
+  return [selected.address || client.address || '', selected.commune || client.commune || client.city || '', selected.department || client.department || '', selected.country || client.country || 'Haiti']
+    .filter(Boolean)
+    .join(', ')
+    || '-';
+}
+
+function getOrderClientName(order = {}, client = {}) {
+  return [order.customerFirstName, order.customerLastName].map((part) => String(part || '').trim()).filter(Boolean).join(' ')
+    || getClientFullName(client)
+    || order.customerName
+    || 'Client';
+}
+
+function getOrderClientAddress(order = {}, client = {}) {
+  return order.customerAddress || getClientDefaultAddress(client);
+}
+
 function populateClientFilter() {
   const currentValue = elements.clientFilter.value || 'all';
   elements.clientFilter.innerHTML = '<option value="all">Tous les clients</option>';
 
   state.clients
     .slice()
-    .sort((a, b) => String(a.name || a.email || '').localeCompare(String(b.name || b.email || '')))
+    .sort((a, b) => String(getClientFullName(a) || a.email || '').localeCompare(String(getClientFullName(b) || b.email || '')))
     .forEach((client) => {
       const option = document.createElement('option');
       option.value = client.id;
-      option.textContent = client.name || client.email || client.id;
+      option.textContent = getClientFullName(client) || client.email || client.id;
       elements.clientFilter.appendChild(option);
     });
 
@@ -272,8 +304,12 @@ function getFilteredOrders() {
       getOrderPromo(order)?.label,
       getOrderPromo(order)?.affiliateMemberName,
       order.customerName,
+      order.customerFirstName,
+      order.customerLastName,
       order.customerEmail,
-      client?.name,
+      getClientFullName(client),
+      client?.username,
+      client?.displayName,
       client?.email
     ].join(' ').toLowerCase();
 
@@ -400,6 +436,7 @@ function renderOrdersTable() {
   elements.ordersEmptyState.hidden = true;
   elements.ordersTableBody.innerHTML = filteredOrders.map((order) => {
     const client = getClientById(order.clientId);
+    const clientName = getOrderClientName(order, client);
     const paymentColor = getPaymentStatusColor(order.status);
     const fulfillmentKey = getFulfillmentStatus(order);
     const fulfillmentColor = getFulfillmentStatusColor(fulfillmentKey);
@@ -408,7 +445,7 @@ function renderOrdersTable() {
       <tr class="${order.id === activeOrderId ? 'active' : ''}" data-order-id="${order.id}">
         <td>${new Date(order.createdAt).toLocaleDateString('fr-FR')}</td>
         <td>
-          <strong>${escapeHtml(order.customerName || client?.name || 'Client')}</strong>
+          <strong>${escapeHtml(clientName)}</strong>
           <div class="muted">${escapeHtml(order.customerEmail || client?.email || '-')}</div>
         </td>
         <td>${formatPrice(getOrderAmount(order))}</td>
@@ -633,6 +670,8 @@ function renderOrderDetail() {
   }
 
   const client = getClientById(order.clientId);
+  const clientName = getOrderClientName(order, client);
+  const clientAddress = getOrderClientAddress(order, client);
   const paymentColor = getPaymentStatusColor(order.status);
   const fulfillmentKey = getFulfillmentStatus(order);
   const fulfillmentColor = getFulfillmentStatusColor(fulfillmentKey);
@@ -642,7 +681,15 @@ function renderOrderDetail() {
       <div class="detail-grid">
         <div>
           <strong>Client</strong>
-          <div>${escapeHtml(order.customerName || client?.name || 'Client')}</div>
+          <div>${escapeHtml(clientName)}</div>
+        </div>
+        <div>
+          <strong>Nom</strong>
+          <div>${escapeHtml(order.customerLastName || client?.lastName || '-')}</div>
+        </div>
+        <div>
+          <strong>Prenom</strong>
+          <div>${escapeHtml(order.customerFirstName || client?.firstName || '-')}</div>
         </div>
         <div>
           <strong>Email</strong>
@@ -660,7 +707,7 @@ function renderOrderDetail() {
 
       <div class="detail-section">
         <strong>Adresse</strong>
-        <div>${escapeHtml(order.customerAddress || client?.address || '-')}</div>
+        <div>${escapeHtml(clientAddress)}</div>
       </div>
 
       <div class="detail-section">

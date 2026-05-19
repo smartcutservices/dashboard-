@@ -7,13 +7,16 @@ import {
   getDocs,
   orderBy,
   query,
-  setDoc
+  setDoc,
+  where
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
 const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
+const VENDOR_SERVICE_FEES_COLLECTION = 'vendorServiceFees';
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
+const REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorServiceFee';
 const DEFAULT_FORM_SETTINGS = {
   title: 'Candidature vendeur',
   subtitle: 'Remplissez simplement le formulaire ci-dessous pour demander l ouverture de votre espace vendeur.',
@@ -47,9 +50,11 @@ class VendorsDashboard {
     this.vendorProducts = [];
     this.commissionRules = [];
     this.categories = [];
+    this.allVendors = [];
     this.vendors = [];
     this.vendorSalesSummaries = [];
     this.vendorPayouts = [];
+    this.vendorServiceFees = [];
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
@@ -63,7 +68,7 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
@@ -72,7 +77,8 @@ class VendorsDashboard {
       loadAllOrdersWithClients(),
       getDoc(doc(db, ...FORM_SETTINGS_REF)),
       getDoc(doc(db, ...PLAN_SETTINGS_REF)),
-      getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc')))
+      getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc'))),
+      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc')))
     ]);
     this.applications = applicationSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendorProducts = productSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -81,12 +87,14 @@ class VendorsDashboard {
       .filter((item) => item.active !== false)
       .sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')));
     this.categories = categorySnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    this.vendors = vendorSnapshot.docs
-      .map((item) => ({ id: item.id, ...item.data() }))
-      .filter((item) => item.status === 'active');
+    this.allVendors = vendorSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    this.vendors = this.allVendors.filter((item) => item.status === 'active');
     this.vendorPayouts = payoutSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((a, b) => Date.parse(String(b.createdAt || '')) - Date.parse(String(a.createdAt || '')));
+    this.vendorServiceFees = serviceFeeSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => Date.parse(String(b.createdAt || b.requestedAt || b.paidAt || '')) - Date.parse(String(a.createdAt || a.requestedAt || a.paidAt || '')));
     this.formSettings = formSettingsSnap.exists()
       ? {
           ...DEFAULT_FORM_SETTINGS,
@@ -375,6 +383,17 @@ class VendorsDashboard {
             `}
           </section>
 
+          <section class="panel vendors-section-panel ${this.activeSection === 'service-fees' ? 'is-active' : ''}" data-section-panel="service-fees">
+            <div class="panel-head">
+              <div>
+                <small>Abonnements vendeurs</small>
+                <h2>Frais de service mensuel</h2>
+              </div>
+            </div>
+            <p>Ce module montre les stores qui ont un abonnement mensuel, leur dernier paiement et permet de demander le paiement du nouveau cycle de 30 jours.</p>
+            ${this.renderVendorServiceFees()}
+          </section>
+
           <section class="panel vendors-section-panel ${this.activeSection === 'overview' ? 'is-active' : ''}" data-section-panel="overview">
             <div class="panel-head">
               <div>
@@ -404,7 +423,8 @@ class VendorsDashboard {
       { id: 'products', icon: 'fa-box-open', label: 'Produits', meta: `${this.vendorProducts.length} soumission(s)` },
       { id: 'commissions', icon: 'fa-percent', label: 'Commissions', meta: `${this.commissionRules.length} regle(s)` },
       { id: 'performance', icon: 'fa-chart-line', label: 'Performance', meta: `${this.vendorSalesSummaries.length} vendeur(s)` },
-      { id: 'payouts', icon: 'fa-wallet', label: 'Decaissements', meta: `${this.vendorPayouts.length} rapport(s)` }
+      { id: 'payouts', icon: 'fa-wallet', label: 'Decaissements', meta: `${this.vendorPayouts.length} rapport(s)` },
+      { id: 'service-fees', icon: 'fa-receipt', label: 'Frais mensuel', meta: `${this.getMonthlyServiceVendors().length} store(s)` }
     ];
 
     return sections.map((section) => `
@@ -470,6 +490,47 @@ class VendorsDashboard {
     const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '-';
     return date.toLocaleString('fr-FR');
+  }
+
+  addDays(value, days = 30) {
+    const date = value ? new Date(value) : new Date();
+    if (Number.isNaN(date.getTime())) return '';
+    date.setDate(date.getDate() + Number(days || 0));
+    return date.toISOString();
+  }
+
+  getVendorServiceFeeAmount(vendor = {}) {
+    const configured = Number(vendor.monthlyServiceFee || vendor.serviceFeeAmount);
+    if (Number.isFinite(configured) && configured > 0) return configured;
+    const planPrice = Number(vendor.planPrice);
+    const planId = String(vendor.planId || '').toLowerCase();
+    const planPaymentRequired = Boolean(vendor.planPaymentRequired);
+    if ((planPaymentRequired || planId === 'pro') && Number.isFinite(planPrice) && planPrice > 0) return planPrice;
+    return 0;
+  }
+
+  getMonthlyServiceVendors() {
+    return this.allVendors
+      .filter((vendor) => this.getVendorServiceFeeAmount(vendor) > 0)
+      .sort((a, b) => String(a.vendorName || a.shopName || '').localeCompare(String(b.vendorName || b.shopName || '')));
+  }
+
+  getLatestServiceFee(vendorId, status = '') {
+    const normalizedVendorId = String(vendorId || '').trim();
+    const normalizedStatus = String(status || '').trim().toLowerCase();
+    return this.vendorServiceFees.find((fee) => {
+      if (String(fee.vendorId || '').trim() !== normalizedVendorId) return false;
+      if (!normalizedStatus) return true;
+      return String(fee.status || '').trim().toLowerCase() === normalizedStatus;
+    }) || null;
+  }
+
+  getServiceFeePaymentLabel(method = '') {
+    const value = String(method || '').toLowerCase();
+    if (value === 'natcash') return 'NatCash';
+    if (value === 'card') return 'Carte bancaire';
+    if (value === 'moncash') return 'MonCash';
+    return method || '-';
   }
 
   renderCommissionRules() {
@@ -749,6 +810,77 @@ class VendorsDashboard {
     `;
   }
 
+  renderVendorServiceFees() {
+    const vendors = this.getMonthlyServiceVendors();
+    if (!vendors.length) {
+      return `
+        <div class="empty-state">
+          <i class="fas fa-receipt"></i>
+          <p>Aucun store avec abonnement mensuel pour le moment.</p>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="applications" style="margin-top:1.2rem;">
+        ${vendors.map((vendor) => this.renderVendorServiceFeeCard(vendor)).join('')}
+      </div>
+    `;
+  }
+
+  renderVendorServiceFeeCard(vendor) {
+    const vendorId = vendor.vendorId || vendor.uid || vendor.id;
+    const pending = this.getLatestServiceFee(vendorId, 'pending') || this.getLatestServiceFee(vendorId, 'payment_initiated') || this.getLatestServiceFee(vendorId, 'redirect_ready') || this.getLatestServiceFee(vendorId, 'payment_pending');
+    const paid = this.getLatestServiceFee(vendorId, 'paid');
+    const amount = this.getVendorServiceFeeAmount(vendor);
+    const paidAt = paid?.paidAt || vendor.serviceFeeLastPaidAt || '';
+    const nextDueAt = paid?.nextDueAt || vendor.serviceFeeNextDueAt || (paidAt ? this.addDays(paidAt, 30) : '');
+    const isCyclePaid = paidAt && Date.parse(nextDueAt || '') > Date.now();
+    const storeName = vendor.vendorName || vendor.shopName || 'Store vendeur';
+    const paymentLine = isCyclePaid
+      ? `Paye le ${this.formatDateTime(paidAt)} - ${this.getServiceFeePaymentLabel(paid?.paymentMethod || vendor.serviceFeePaymentMethod)}`
+      : pending
+        ? 'Request payment for this store'
+        : 'Request payment for this store';
+    const badge = isCyclePaid
+      ? '<div class="badge" style="color:#14532D;background:rgba(20,83,45,.12);">A jour</div>'
+      : '<div class="badge" style="color:#7F1D1D;background:rgba(127,29,29,.12);">Paiement requis</div>';
+
+    return `
+      <div class="application-card">
+        <div class="application-top">
+          <div>
+            <h3>${this.escape(storeName)}</h3>
+            <p>${this.escape(vendor.email || '-')} Â· ${this.escape(vendor.planLabel || vendor.planId || 'Abonnement mensuel')}</p>
+          </div>
+          ${badge}
+        </div>
+        <div class="application-grid">
+          <div><strong>Montant mensuel</strong><span>${this.formatPrice(amount)}</span></div>
+          <div><strong>Statut store</strong><span>${this.escape(vendor.status || vendor.vendorStatus || '-')}</span></div>
+          <div><strong>Date paiement</strong><span>${this.escape(this.formatDateTime(paidAt))}</span></div>
+          <div><strong>Methode paiement</strong><span>${this.escape(this.getServiceFeePaymentLabel(paid?.paymentMethod || vendor.serviceFeePaymentMethod))}</span></div>
+          <div><strong>Prochaine echeance</strong><span>${this.escape(this.formatDateTime(nextDueAt))}</span></div>
+          <div><strong>Request actuel</strong><span>${this.escape(pending?.id || '-')}</span></div>
+        </div>
+        <div class="application-copy" style="border-color:${isCyclePaid ? 'rgba(20,83,45,.18)' : 'rgba(127,29,29,.22)'};">
+          <strong style="color:${isCyclePaid ? '#14532D' : '#B91C1C'};">${this.escape(paymentLine)}</strong>
+          <p>${isCyclePaid ? 'Le bouton reste bloque jusqu au prochain cycle de 30 jours.' : 'Le store sera suspendu tant que le paiement du frais mensuel n est pas confirme.'}</p>
+        </div>
+        <div class="actions">
+          <button type="button" data-request-service-fee="${this.escape(vendorId)}" class="approve" ${isCyclePaid || Boolean(pending) ? 'disabled' : ''}>
+            Request frais de service mensuel
+          </button>
+          ${pending ? `
+            <button type="button" data-confirm-service-fee="${this.escape(pending.id)}" class="approve">
+              Marquer paye
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
   async ensureJsPdfLoaded() {
     if (window.jspdf?.jsPDF) return window.jspdf.jsPDF;
 
@@ -909,6 +1041,18 @@ class VendorsDashboard {
         const payout = this.vendorPayouts.find((item) => item.id === button.dataset.downloadPayout);
         if (!payout) return;
         await this.downloadPayoutPdf(payout);
+      });
+    });
+
+    this.root.querySelectorAll('[data-request-service-fee]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.requestVendorServiceFee(button.dataset.requestServiceFee, button);
+      });
+    });
+
+    this.root.querySelectorAll('[data-confirm-service-fee]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.confirmVendorServiceFeePaid(button.dataset.confirmServiceFee, button);
       });
     });
 
@@ -1077,6 +1221,129 @@ class VendorsDashboard {
     await this.loadData();
     this.render();
     this.attachEvents();
+  }
+
+  async requestVendorServiceFee(vendorId, button = null) {
+    const user = auth.currentUser;
+    if (!user) {
+      window.alert('Session admin indisponible.');
+      return;
+    }
+
+    const confirmed = window.confirm('Demander le frais de service mensuel pour ce store ? Le store sera suspendu jusqu au paiement confirme.');
+    if (!confirmed) return;
+
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Request en cours...';
+      }
+
+      const token = await user.getIdToken();
+      const response = await fetch(REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ vendorId })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
+      }
+
+      await this.loadData();
+      this.render();
+      this.attachEvents();
+
+      if (payload?.alreadyPaid) {
+        window.alert('Ce store a deja paye son cycle courant. Nouveau request bloque jusqu au prochain cycle.');
+      } else {
+        window.alert('Request frais mensuel envoye. Le store est suspendu jusqu au paiement.');
+      }
+    } catch (error) {
+      console.error('Erreur request frais mensuel vendeur:', error);
+      window.alert(error?.message || 'Impossible de demander le frais mensuel.');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Request frais de service mensuel';
+      }
+    }
+  }
+
+  async confirmVendorServiceFeePaid(feeId, button = null) {
+    const fee = this.vendorServiceFees.find((item) => String(item.id) === String(feeId));
+    if (!fee) return;
+
+    const methodInput = window.prompt('Methode de paiement confirmee ? (MonCash, NatCash ou Carte bancaire)', fee.paymentMethod || 'MonCash');
+    if (methodInput === null) return;
+
+    const method = String(methodInput || 'MonCash').trim() || 'MonCash';
+    const now = new Date().toISOString();
+    const nextDueAt = this.addDays(now, 30);
+    const vendorId = fee.vendorId;
+
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Confirmation...';
+      }
+
+      const productSnapshot = await getDocs(query(collection(db, 'vendorProducts'), where('vendorId', '==', vendorId)));
+      const productUpdates = productSnapshot.docs.map((item) => setDoc(item.ref, {
+        vendorServiceFeeStatus: 'active',
+        vendorServiceFeeUpdatedAt: now,
+        updatedAt: now
+      }, { merge: true }));
+
+      await Promise.all([
+        setDoc(doc(db, VENDOR_SERVICE_FEES_COLLECTION, feeId), {
+          status: 'paid',
+          paidAt: now,
+          nextDueAt,
+          paymentMethod: method,
+          paymentProvider: method,
+          updatedAt: now,
+          confirmedBy: 'dashboard_admin'
+        }, { merge: true }),
+        setDoc(doc(db, 'vendors', vendorId), {
+          status: 'active',
+          vendorStatus: 'active',
+          serviceFeeStatus: 'paid',
+          serviceFeeCurrentId: feeId,
+          serviceFeeLastPaidAt: now,
+          serviceFeeNextDueAt: nextDueAt,
+          serviceFeePaymentMethod: method,
+          updatedAt: now
+        }, { merge: true }),
+        setDoc(doc(db, 'clients', vendorId), {
+          uid: vendorId,
+          role: 'vendor',
+          vendorStatus: 'active',
+          serviceFeeStatus: 'paid',
+          serviceFeeCurrentId: feeId,
+          serviceFeeLastPaidAt: now,
+          serviceFeeNextDueAt: nextDueAt,
+          updatedAt: now
+        }, { merge: true }),
+        ...productUpdates
+      ]);
+
+      await this.loadData();
+      this.render();
+      this.attachEvents();
+      window.alert('Frais mensuel confirme. Store reactive automatiquement.');
+    } catch (error) {
+      console.error('Erreur confirmation frais mensuel:', error);
+      window.alert(error?.message || 'Impossible de confirmer ce paiement.');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Marquer paye';
+      }
+    }
   }
 
   async saveCommissionRules() {
