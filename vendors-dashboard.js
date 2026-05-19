@@ -11,6 +11,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
+const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 const DEFAULT_FORM_SETTINGS = {
@@ -32,6 +33,11 @@ const DEFAULT_FORM_SETTINGS = {
   ]
 };
 const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
+const DEFAULT_PLAN_SETTINGS = {
+  proPrice: 1750,
+  currency: 'HTG',
+  payoutDelayDays: 30
+};
 
 class VendorsDashboard {
   constructor() {
@@ -45,6 +51,7 @@ class VendorsDashboard {
     this.vendorSalesSummaries = [];
     this.vendorPayouts = [];
     this.formSettings = DEFAULT_FORM_SETTINGS;
+    this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
     this.init();
   }
@@ -56,7 +63,7 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, payoutSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
@@ -64,6 +71,7 @@ class VendorsDashboard {
       getDocs(query(collection(db, 'vendors'), orderBy('updatedAt', 'desc'))),
       loadAllOrdersWithClients(),
       getDoc(doc(db, ...FORM_SETTINGS_REF)),
+      getDoc(doc(db, ...PLAN_SETTINGS_REF)),
       getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc')))
     ]);
     this.applications = applicationSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -93,6 +101,9 @@ class VendorsDashboard {
         ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
         : field
     ));
+    this.planSettings = planSettingsSnap.exists()
+      ? { ...DEFAULT_PLAN_SETTINGS, ...(planSettingsSnap.data() || {}) }
+      : DEFAULT_PLAN_SETTINGS;
     this.vendorSalesSummaries = this.vendors.map((vendor) => buildVendorSalesSummary({
       vendorId: vendor.id,
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
@@ -283,6 +294,7 @@ class VendorsDashboard {
               </div>
             </div>
             <p>Cette section pilote directement la page publique de candidature. Vous pouvez changer les noms de champs, leur type, ajouter des options, en ajouter ou en supprimer.</p>
+            ${this.renderPlanSettings()}
             ${this.renderFormBuilder()}
           </section>
 
@@ -554,6 +566,31 @@ class VendorsDashboard {
       <div class="actions">
         <button type="button" data-add-form-field>Ajouter un champ</button>
         <button type="button" data-save-form-settings class="approve">Enregistrer le formulaire</button>
+      </div>
+    `;
+  }
+
+  renderPlanSettings() {
+    return `
+      <div class="application-card" style="margin-top:1.2rem;">
+        <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+          <div>
+            <strong>Prix Plan PRO</strong>
+            <input id="vendorPlanProPrice" type="number" min="0" step="1" value="${this.escape(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}" style="${this.adminInputStyle()}">
+          </div>
+          <div>
+            <strong>Devise</strong>
+            <input id="vendorPlanCurrency" value="${this.escape(this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency)}" style="${this.adminInputStyle()}">
+          </div>
+          <div>
+            <strong>Request payment chaque</strong>
+            <input id="vendorPlanPayoutDelay" type="number" min="1" step="1" value="${this.escape(this.planSettings.payoutDelayDays || DEFAULT_PLAN_SETTINGS.payoutDelayDays)}" style="${this.adminInputStyle()}">
+          </div>
+        </div>
+        <p class="application-copy" style="margin-top:.8rem;">Ces reglages pilotent les plans affiches avant la candidature vendeur. Le Plan Basic reste gratuit.</p>
+        <div class="actions">
+          <button type="button" data-save-plan-settings class="approve">Enregistrer les plans</button>
+        </div>
       </div>
     `;
   }
@@ -908,6 +945,10 @@ class VendorsDashboard {
     this.root.querySelector('[data-save-form-settings]')?.addEventListener('click', async () => {
       await this.saveFormSettings();
     });
+
+    this.root.querySelector('[data-save-plan-settings]')?.addEventListener('click', async () => {
+      await this.savePlanSettings();
+    });
   }
 
   async updateStatus(id, status) {
@@ -946,6 +987,13 @@ class VendorsDashboard {
         address: current.address || '',
         category: current.category || '',
         deliveryMode: VENDOR_DELIVERY_MODE,
+        planId: current.planId || 'basic',
+        planLabel: current.planLabel || (current.planId === 'pro' ? 'PRO' : 'BASIC'),
+        planPrice: Number(current.planPrice || 0),
+        planCurrency: current.planCurrency || this.planSettings.currency || 'HTG',
+        planPaymentRequired: Boolean(current.planPaymentRequired),
+        planPaymentStatus: current.planPaymentStatus || (current.planPaymentRequired ? 'pending' : 'not_required'),
+        payoutRequestIntervalDays: Number(current.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30),
         deliveryCoverage: current.deliveryCoverage || null,
         deliveryZones: Array.isArray(current.deliveryZones) ? current.deliveryZones : (Array.isArray(current.deliveryCoverage?.zones) ? current.deliveryCoverage.zones : []),
         status: 'active',
@@ -1099,6 +1147,22 @@ class VendorsDashboard {
     }, { merge: true });
 
     this.formSettings = nextSettings;
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async savePlanSettings() {
+    const payload = {
+      proPrice: Number(this.root.querySelector('#vendorPlanProPrice')?.value || DEFAULT_PLAN_SETTINGS.proPrice),
+      currency: String(this.root.querySelector('#vendorPlanCurrency')?.value || DEFAULT_PLAN_SETTINGS.currency).trim() || 'HTG',
+      payoutDelayDays: Number(this.root.querySelector('#vendorPlanPayoutDelay')?.value || DEFAULT_PLAN_SETTINGS.payoutDelayDays),
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard_admin'
+    };
+
+    await setDoc(doc(db, ...PLAN_SETTINGS_REF), payload, { merge: true });
+    this.planSettings = { ...DEFAULT_PLAN_SETTINGS, ...payload };
     await this.loadData();
     this.render();
     this.attachEvents();
