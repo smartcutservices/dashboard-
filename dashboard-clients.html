@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Cut Services - Dashboard Clients</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    :root {
+      --bg: #f7f1e7;
+      --surface: rgba(255,255,255,0.94);
+      --surface-soft: rgba(255,255,255,0.75);
+      --text: #1d1b18;
+      --muted: #6d6559;
+      --accent: #c6a75e;
+      --border: rgba(29,27,24,0.09);
+      --shadow: 0 24px 60px rgba(31,30,28,0.08);
+      --danger: #b91c1c;
+      --success: #047857;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Manrope', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(198,167,94,0.20), transparent 24%),
+        linear-gradient(180deg, #fcf7ee 0%, #f2eadf 100%);
+    }
+    .shell { min-height: 100vh; padding: 2rem; display: grid; gap: 1.2rem; }
+    .hero, .panel, .stat-card {
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .hero, .panel { padding: 1.5rem; }
+    .hero small, .panel small {
+      display: inline-block;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: .75rem;
+      font-weight: 800;
+      margin-bottom: .8rem;
+    }
+    .hero h1, .panel h2 { margin: 0; font-family: 'Cormorant Garamond', serif; }
+    .hero h1 { font-size: clamp(2.5rem, 6vw, 4.2rem); line-height: .92; }
+    .hero p, .panel p { color: var(--muted); line-height: 1.8; }
+    .hero p { max-width: 76ch; margin: 1rem 0 0; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; }
+    .stat-card { padding: 1rem 1.1rem; }
+    .stat-card strong { display: block; font-size: 1.65rem; line-height: 1; }
+    .stat-card span { color: var(--muted); font-size: .84rem; }
+    .layout { display: grid; grid-template-columns: minmax(280px, 410px) minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+    .toolbar { display: grid; gap: .75rem; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid rgba(29,27,24,0.12);
+      border-radius: 16px;
+      padding: .9rem 1rem;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+    label { display: grid; gap: .4rem; color: var(--muted); font-size: .82rem; font-weight: 800; }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: .85rem 1rem;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .btn-primary { background: #1f1e1c; color: #f8f5ef; }
+    .btn-soft { background: rgba(198,167,94,.14); color: #806329; }
+    .btn-danger { background: rgba(185,28,28,.10); color: var(--danger); border: 1px solid rgba(185,28,28,.22); }
+    .client-list { display: grid; gap: .75rem; max-height: 64vh; overflow: auto; padding-right: .2rem; }
+    .client-card {
+      text-align: left;
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      color: var(--text);
+      border-radius: 22px;
+      padding: 1rem;
+      display: grid;
+      gap: .35rem;
+    }
+    .client-card.active { border-color: rgba(198,167,94,.65); box-shadow: 0 14px 34px rgba(198,167,94,.16); }
+    .client-card strong { font-size: 1rem; }
+    .muted { color: var(--muted); font-size: .86rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+    .full { grid-column: 1 / -1; }
+    .address-card {
+      border: 1px dashed rgba(198,167,94,.35);
+      border-radius: 20px;
+      padding: 1rem;
+      display: grid;
+      gap: .75rem;
+      background: rgba(198,167,94,.06);
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+    .notice {
+      display: none;
+      border-radius: 18px;
+      padding: .9rem 1rem;
+      font-weight: 800;
+    }
+    .notice.show { display: block; }
+    .notice.success { background: rgba(4,120,87,.10); color: var(--success); }
+    .notice.error { background: rgba(185,28,28,.10); color: var(--danger); }
+    @media (max-width: 900px) {
+      .shell { padding: 1rem; }
+      .layout, .form-grid { grid-template-columns: 1fr; }
+      .client-list { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <small>Gestion clients</small>
+      <h1>Clients</h1>
+      <p>Consulte, modifie ou supprime les profils clients. La suppression est volontairement protegee: elle passe par une fonction admin et ne doit etre utilisee que quand tu veux vraiment retirer le compte.</p>
+    </section>
+
+    <section class="stats">
+      <article class="stat-card"><strong id="statClients">0</strong><span>Clients</span></article>
+      <article class="stat-card"><strong id="statAdmins">0</strong><span>Admins proteges</span></article>
+      <article class="stat-card"><strong id="statVendors">0</strong><span>Profils vendeurs</span></article>
+      <article class="stat-card"><strong id="statSelected">-</strong><span>Selection active</span></article>
+    </section>
+
+    <section class="layout">
+      <aside class="panel">
+        <small>Recherche</small>
+        <div class="toolbar">
+          <input id="clientSearch" type="search" placeholder="Nom, email, telephone, username...">
+          <select id="roleFilter">
+            <option value="all">Tous les roles</option>
+            <option value="client">Clients</option>
+            <option value="vendor">Vendeurs</option>
+            <option value="admin">Admins</option>
+          </select>
+          <button id="refreshClientsBtn" class="btn-soft" type="button"><i class="fas fa-rotate"></i> Actualiser</button>
+        </div>
+        <div id="clientsList" class="client-list" style="margin-top:1rem;"></div>
+      </aside>
+
+      <section class="panel">
+        <small>Fiche client</small>
+        <div id="clientNotice" class="notice"></div>
+        <div id="clientEditor">
+          <p>Selectionne un client pour modifier ses informations ou supprimer son compte.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./dashboard-clients.js?v=20260520-1"></script>
+  <script src="./dashboard-nav-bubble.js"></script>
+</body>
+</html>

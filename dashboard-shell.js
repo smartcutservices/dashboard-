@@ -72,8 +72,8 @@ const DASHBOARD_SECTIONS = [
   {
     id: 'clients',
     label: 'Clients',
-    description: 'Base clients, historique et acces rapide aux fiches client.',
-    href: './Dpayment.html?tab=clients',
+    description: 'Base clients, modification des profils et suppression securisee.',
+    href: './dashboard-clients.html',
     icon: 'fa-users'
   },
   {
