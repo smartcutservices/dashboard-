@@ -94,6 +94,7 @@ class VendorsDashboard {
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
+    this.editingApplicationId = '';
     this.init();
   }
 
@@ -475,6 +476,7 @@ class VendorsDashboard {
   renderApplication(item) {
     const meta = this.statusMeta(item.status);
     const responseEntries = this.getReadableApplicationFields(item);
+    const isEditing = this.editingApplicationId === item.id;
     return `
       <div class="application-card">
         <div class="application-top">
@@ -494,9 +496,178 @@ class VendorsDashboard {
         ${item.adminNote ? `<div class="application-copy admin-note"><strong>Note admin</strong><p>${item.adminNote}</p></div>` : ''}
 
         <div class="actions">
+          <button type="button" data-edit-application="${this.escape(item.id)}">${isEditing ? 'Fermer edition admin' : 'Modifier candidature'}</button>
           <button type="button" data-action="pending" data-id="${item.id}">Mettre en attente</button>
           <button type="button" data-action="approved" data-id="${item.id}" class="approve">Approuver</button>
           <button type="button" data-action="rejected" data-id="${item.id}" class="reject">Refuser</button>
+        </div>
+        ${isEditing ? this.renderApplicationEditor(item) : ''}
+      </div>
+    `;
+  }
+
+  getApplicationFieldValue(item = {}, fieldId = '') {
+    const responses = item.responses || {};
+    let value = responses[fieldId];
+    if (value === undefined || value === null || value === '') {
+      value = item[fieldId] ?? item[this.mapLegacyKey(fieldId)] ?? '';
+    }
+    return fieldId === 'deliveryMode' ? VENDOR_DELIVERY_MODE : value;
+  }
+
+  renderApplicationEditField(item, field) {
+    const value = this.getApplicationFieldValue(item, field.id);
+    const label = `${field.label || field.id}${field.required ? ' *' : ''}`;
+    const fieldId = this.escape(field.id);
+    const fieldType = String(field.type || 'text').toLowerCase();
+    const inputType = ['email', 'tel', 'url', 'number', 'text'].includes(fieldType) ? fieldType : 'text';
+
+    if (fieldType === 'checkbox') {
+      const checked = value === true || ['true', 'oui', '1', 'yes'].includes(String(value).toLowerCase());
+      return `
+        <div>
+          <strong>${this.escape(label)}</strong>
+          <label class="check" style="margin-top:.55rem;">
+            <input type="checkbox" data-application-edit-field="${fieldId}" ${checked ? 'checked' : ''}>
+            <span>${this.escape(field.label || field.id)}</span>
+          </label>
+        </div>
+      `;
+    }
+
+    if (fieldType === 'textarea') {
+      return `
+        <div>
+          <strong>${this.escape(label)}</strong>
+          <textarea data-application-edit-field="${fieldId}" rows="3" style="${this.adminInputStyle(true)}">${this.escape(value)}</textarea>
+        </div>
+      `;
+    }
+
+    if (fieldType === 'select' || fieldType === 'radio') {
+      const configuredOptions = field.id === 'deliveryMode'
+        ? [VENDOR_DELIVERY_MODE]
+        : (Array.isArray(field.options) ? field.options : []);
+      const options = [...configuredOptions];
+      if (value && !options.includes(value)) options.unshift(value);
+      return `
+        <div>
+          <strong>${this.escape(label)}</strong>
+          <select data-application-edit-field="${fieldId}" style="${this.adminInputStyle()}">
+            ${options.map((option) => `<option value="${this.escape(option)}" ${String(option) === String(value) ? 'selected' : ''}>${this.escape(option)}</option>`).join('')}
+          </select>
+        </div>
+      `;
+    }
+
+    return `
+      <div>
+        <strong>${this.escape(label)}</strong>
+        <input type="${inputType}" data-application-edit-field="${fieldId}" value="${this.escape(value)}" style="${this.adminInputStyle()}">
+      </div>
+    `;
+  }
+
+  renderApplicationEditor(item) {
+    const fields = mergeRequiredVendorFields(this.formSettings.fields);
+    const coverage = item.deliveryCoverage || {};
+    const zones = Array.isArray(coverage.zones)
+      ? coverage.zones
+      : (Array.isArray(item.deliveryZones) ? item.deliveryZones : []);
+    const zonesText = zones.map((zone) => [
+      zone.country || 'Haiti',
+      zone.department || '',
+      zone.commune || '',
+      Number(zone.fee || 0)
+    ].join(' | ')).join('\n');
+    const planId = String(item.planId || (item.planPaymentRequired ? 'pro' : 'basic') || 'basic').toLowerCase();
+    const planLabel = item.planLabel || (planId === 'pro' ? 'PRO' : 'BASIC');
+    const kycDocuments = item.kycDocuments || {};
+    const kycRectoUrl = kycDocuments.recto?.url || kycDocuments.recto?.downloadURL || '';
+    const kycVersoUrl = kycDocuments.verso?.url || kycDocuments.verso?.downloadURL || '';
+
+    return `
+      <div class="application-copy admin-note" data-application-editor="${this.escape(item.id)}" style="margin-top:1rem;">
+        <strong>Edition admin candidature</strong>
+        <p>Admin uniquement: corrigez ou completez les informations manquantes du vendeur. Le vendeur ne peut pas modifier cette fiche apres envoi.</p>
+
+        <div class="application-grid" style="margin-top:1rem;">
+          ${fields.map((field) => this.renderApplicationEditField(item, field)).join('')}
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Plan vendeur</strong>
+          <div class="application-grid" style="margin-top:.7rem;">
+            <div>
+              <strong>Plan</strong>
+              <select data-application-edit-field="planId" style="${this.adminInputStyle()}">
+                <option value="basic" ${planId === 'basic' ? 'selected' : ''}>BASIC</option>
+                <option value="pro" ${planId === 'pro' ? 'selected' : ''}>PRO</option>
+              </select>
+            </div>
+            <div>
+              <strong>Libelle plan</strong>
+              <input data-application-edit-field="planLabel" value="${this.escape(planLabel)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Prix plan</strong>
+              <input type="number" min="0" step="1" data-application-edit-field="planPrice" value="${this.escape(item.planPrice || 0)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Devise</strong>
+              <input data-application-edit-field="planCurrency" value="${this.escape(item.planCurrency || this.planSettings.currency || 'HTG')}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Request payment chaque</strong>
+              <input type="number" min="1" step="1" data-application-edit-field="payoutRequestIntervalDays" value="${this.escape(item.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Paiement plan</strong>
+              <label class="check" style="margin-top:.55rem;">
+                <input type="checkbox" data-application-edit-field="planPaymentRequired" ${item.planPaymentRequired ? 'checked' : ''}>
+                <span>Plan payant requis</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Zones livraison vendeur</strong>
+          <label class="check" style="margin:.55rem 0;">
+            <input type="checkbox" data-application-edit-field="deliveryNationwide" ${coverage.nationwide ? 'checked' : ''}>
+            <span>Le vendeur livre sur tout le territoire national</span>
+          </label>
+          <div class="application-grid">
+            <div>
+              <strong>Prix national HTG</strong>
+              <input type="number" min="0" step="1" data-application-edit-field="deliveryNationwideFee" value="${this.escape(coverage.nationwideFee || '')}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Statut KYC</strong>
+              <input data-application-edit-field="kycStatus" value="${this.escape(item.kycStatus || '')}" style="${this.adminInputStyle()}">
+            </div>
+          </div>
+          <p style="margin:.75rem 0 .35rem;color:rgba(246,241,232,.72);font-size:.9rem;">Une zone par ligne: Haiti | Ouest | Delmas | 500</p>
+          <textarea data-application-edit-field="deliveryZonesText" rows="4" style="${this.adminInputStyle(true)}">${this.escape(zonesText)}</textarea>
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Documents KYC</strong>
+          <p>
+            Recto: ${kycRectoUrl ? `<a href="${this.escape(kycRectoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
+            &nbsp; | &nbsp;
+            Verso: ${kycVersoUrl ? `<a href="${this.escape(kycVersoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
+          </p>
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Note admin</strong>
+          <textarea data-application-edit-field="adminNote" rows="3" style="${this.adminInputStyle(true)}">${this.escape(item.adminNote || '')}</textarea>
+        </div>
+
+        <div class="actions">
+          <button type="button" data-save-application-edit="${this.escape(item.id)}" class="approve">Enregistrer modifications admin</button>
+          <button type="button" data-cancel-application-edit>Annuler</button>
         </div>
       </div>
     `;
@@ -1046,6 +1217,29 @@ class VendorsDashboard {
       });
     });
 
+    this.root.querySelectorAll('[data-edit-application]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.dataset.editApplication || '';
+        this.editingApplicationId = this.editingApplicationId === id ? '' : id;
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelectorAll('[data-cancel-application-edit]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.editingApplicationId = '';
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelectorAll('[data-save-application-edit]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.saveApplicationEdits(button.dataset.saveApplicationEdit);
+      });
+    });
+
     this.root.querySelectorAll('[data-section-link]').forEach((button) => {
       button.addEventListener('click', () => {
         this.activeSection = button.dataset.sectionLink;
@@ -1125,6 +1319,199 @@ class VendorsDashboard {
     });
   }
 
+  getApplicationEditControl(fieldId) {
+    return Array.from(this.root.querySelectorAll('[data-application-edit-field]'))
+      .find((input) => input.dataset.applicationEditField === fieldId) || null;
+  }
+
+  parseDeliveryZonesText(value = '') {
+    return String(value || '')
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [country, department, commune, fee] = line.split('|').map((part) => String(part || '').trim());
+        return {
+          country: country || 'Haiti',
+          department: department || '',
+          commune: commune || '',
+          fee: Number(fee || 0)
+        };
+      })
+      .filter((zone) => zone.department || zone.commune || Number(zone.fee || 0) > 0);
+  }
+
+  collectApplicationEditPayload(current) {
+    const now = new Date().toISOString();
+    const fields = mergeRequiredVendorFields(this.formSettings.fields);
+    const responses = { ...(current.responses || {}) };
+    const payload = {
+      updatedAt: now,
+      updatedBy: 'dashboard_admin',
+      adminEditedAt: now,
+      adminEditedBy: 'dashboard_admin'
+    };
+
+    fields.forEach((field) => {
+      const input = this.getApplicationEditControl(field.id);
+      if (!input) return;
+      const value = field.type === 'checkbox'
+        ? Boolean(input.checked)
+        : String(input.value || '').trim();
+      const normalizedValue = field.id === 'deliveryMode' ? VENDOR_DELIVERY_MODE : value;
+      responses[field.id] = normalizedValue;
+      payload[field.id] = normalizedValue;
+    });
+
+    const planId = String(this.getApplicationEditControl('planId')?.value || current.planId || 'basic').trim().toLowerCase() || 'basic';
+    const planLabelInput = String(this.getApplicationEditControl('planLabel')?.value || '').trim();
+    const planPrice = Number(this.getApplicationEditControl('planPrice')?.value || 0);
+    const planCurrency = String(this.getApplicationEditControl('planCurrency')?.value || this.planSettings.currency || 'HTG').trim() || 'HTG';
+    const planPaymentRequired = planId === 'pro' || Boolean(this.getApplicationEditControl('planPaymentRequired')?.checked);
+    const currentPlanPaymentStatus = String(current.planPaymentStatus || '').trim().toLowerCase();
+    const payoutRequestIntervalDays = Number(this.getApplicationEditControl('payoutRequestIntervalDays')?.value || this.planSettings.payoutDelayDays || 30);
+    const deliveryNationwide = Boolean(this.getApplicationEditControl('deliveryNationwide')?.checked);
+    const deliveryNationwideFee = Number(this.getApplicationEditControl('deliveryNationwideFee')?.value || 0);
+    const deliveryZones = this.parseDeliveryZonesText(this.getApplicationEditControl('deliveryZonesText')?.value || '');
+    const kycStatus = String(this.getApplicationEditControl('kycStatus')?.value || current.kycStatus || '').trim();
+    const adminNote = String(this.getApplicationEditControl('adminNote')?.value || '').trim();
+
+    payload.responses = responses;
+    payload.deliveryMode = VENDOR_DELIVERY_MODE;
+    payload.planId = planId;
+    payload.planLabel = planLabelInput || (planId === 'pro' ? 'PRO' : 'BASIC');
+    payload.planPrice = Number.isFinite(planPrice) ? planPrice : 0;
+    payload.planCurrency = planCurrency;
+    payload.planPaymentRequired = planPaymentRequired;
+    payload.planPaymentStatus = planPaymentRequired
+      ? (currentPlanPaymentStatus && currentPlanPaymentStatus !== 'not_required' ? current.planPaymentStatus : 'pending')
+      : 'not_required';
+    payload.payoutRequestIntervalDays = Number.isFinite(payoutRequestIntervalDays) && payoutRequestIntervalDays > 0
+      ? payoutRequestIntervalDays
+      : 30;
+    payload.deliveryCoverage = {
+      nationwide: deliveryNationwide,
+      nationwideFee: deliveryNationwide ? (Number.isFinite(deliveryNationwideFee) ? deliveryNationwideFee : 0) : 0,
+      zones: deliveryNationwide ? [] : deliveryZones
+    };
+    payload.deliveryZones = deliveryNationwide ? [] : deliveryZones;
+    payload.kycStatus = kycStatus;
+    payload.adminNote = adminNote;
+
+    return payload;
+  }
+
+  buildVendorProfileFromApplication(application, now = new Date().toISOString()) {
+    const value = (key, fallback = '') => {
+      const direct = application[key];
+      if (direct !== undefined && direct !== null && direct !== '') return direct;
+      const responseValue = application.responses?.[key];
+      if (responseValue !== undefined && responseValue !== null && responseValue !== '') return responseValue;
+      return fallback;
+    };
+    const vendorId = application.uid || application.id;
+    const planId = String(application.planId || 'basic').toLowerCase();
+    const planPaymentRequired = planId === 'pro' || Boolean(application.planPaymentRequired);
+
+    return {
+      uid: vendorId,
+      applicationId: application.id || vendorId,
+      vendorId,
+      vendorName: value('shopName', value('applicantName', 'Vendeur')),
+      shopName: value('shopName'),
+      applicantName: value('applicantName'),
+      email: value('email'),
+      phone: value('phone'),
+      identityNumber: value('identityNumber'),
+      city: value('city'),
+      address: value('address'),
+      category: value('category'),
+      deliveryMode: VENDOR_DELIVERY_MODE,
+      bankAccountHolder: value('bankAccountHolder'),
+      bankName: value('bankName'),
+      bankAccountNumber: value('bankAccountNumber'),
+      bankSwiftBic: value('bankSwiftBic'),
+      businessName: value('businessName'),
+      businessNif: value('businessNif'),
+      businessAddress: value('businessAddress'),
+      businessBankAccountHolder: value('businessBankAccountHolder'),
+      businessBankName: value('businessBankName'),
+      businessBankAccountNumber: value('businessBankAccountNumber'),
+      socialLink: value('socialLink'),
+      description: value('description'),
+      planId,
+      planLabel: application.planLabel || (planId === 'pro' ? 'PRO' : 'BASIC'),
+      planPrice: Number(application.planPrice || 0),
+      planCurrency: application.planCurrency || this.planSettings.currency || 'HTG',
+      planPaymentRequired,
+      planPaymentStatus: application.planPaymentStatus || (planPaymentRequired ? 'pending' : 'not_required'),
+      payoutRequestIntervalDays: Number(application.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30),
+      kycStatus: application.kycStatus || '',
+      kycDocuments: application.kycDocuments || null,
+      deliveryCoverage: application.deliveryCoverage || null,
+      deliveryZones: Array.isArray(application.deliveryZones)
+        ? application.deliveryZones
+        : (Array.isArray(application.deliveryCoverage?.zones) ? application.deliveryCoverage.zones : []),
+      status: 'active',
+      role: 'vendor',
+      commissionRule: application.commissionRule || null,
+      createdAt: application.createdAt || now,
+      updatedAt: now,
+      approvedAt: application.approvedAt || application.sellerActivatedAt || now,
+      approvedBy: 'dashboard_admin'
+    };
+  }
+
+  async syncApplicationToVendorProfile(application, now = new Date().toISOString()) {
+    const vendorProfile = this.buildVendorProfileFromApplication(application, now);
+    await setDoc(doc(db, 'vendors', vendorProfile.vendorId), vendorProfile, { merge: true });
+    await setDoc(doc(db, 'clients', vendorProfile.vendorId), {
+      uid: vendorProfile.vendorId,
+      role: 'vendor',
+      vendorStatus: 'active',
+      vendorId: vendorProfile.vendorId,
+      vendorName: vendorProfile.vendorName,
+      shopName: vendorProfile.shopName,
+      email: vendorProfile.email,
+      phone: vendorProfile.phone,
+      updatedAt: now
+    }, { merge: true });
+  }
+
+  async saveApplicationEdits(id) {
+    const current = this.applications.find((item) => item.id === id);
+    if (!current) return;
+
+    try {
+      const payload = this.collectApplicationEditPayload(current);
+      const nextApplication = {
+        ...current,
+        ...payload,
+        responses: {
+          ...(current.responses || {}),
+          ...(payload.responses || {})
+        }
+      };
+
+      await setDoc(doc(db, 'vendorApplications', id), payload, { merge: true });
+
+      const vendorId = nextApplication.uid || id;
+      const alreadyVendor = this.allVendors.some((vendor) => vendor.id === vendorId || vendor.vendorId === vendorId);
+      if (String(nextApplication.status || '').toLowerCase() === 'approved' || alreadyVendor) {
+        await this.syncApplicationToVendorProfile(nextApplication, payload.updatedAt);
+      }
+
+      this.editingApplicationId = '';
+      await this.loadData();
+      this.render();
+      this.attachEvents();
+      window.alert('Candidature vendeur mise a jour par admin.');
+    } catch (error) {
+      console.error('Erreur edition candidature vendeur:', error);
+      window.alert(error?.message || 'Impossible de mettre a jour la candidature vendeur.');
+    }
+  }
+
   async updateStatus(id, status) {
     const current = this.applications.find((item) => item.id === id);
     if (!current) return;
@@ -1148,57 +1535,7 @@ class VendorsDashboard {
     await setDoc(doc(db, 'vendorApplications', id), payload, { merge: true });
 
     if (status === 'approved') {
-      const vendorProfile = {
-        uid: current.uid || id,
-        applicationId: id,
-        vendorId: current.uid || id,
-        vendorName: current.shopName || current.applicantName || 'Vendeur',
-        shopName: current.shopName || '',
-        applicantName: current.applicantName || '',
-        email: current.email || '',
-        phone: current.phone || '',
-        identityNumber: current.identityNumber || current.responses?.identityNumber || '',
-        city: current.city || '',
-        address: current.address || '',
-        category: current.category || '',
-        deliveryMode: VENDOR_DELIVERY_MODE,
-        bankAccountHolder: current.bankAccountHolder || current.responses?.bankAccountHolder || '',
-        bankName: current.bankName || current.responses?.bankName || '',
-        bankAccountNumber: current.bankAccountNumber || current.responses?.bankAccountNumber || '',
-        bankSwiftBic: current.bankSwiftBic || current.responses?.bankSwiftBic || '',
-        businessName: current.businessName || current.responses?.businessName || '',
-        businessNif: current.businessNif || current.responses?.businessNif || '',
-        businessAddress: current.businessAddress || current.responses?.businessAddress || '',
-        businessBankAccountHolder: current.businessBankAccountHolder || current.responses?.businessBankAccountHolder || '',
-        businessBankName: current.businessBankName || current.responses?.businessBankName || '',
-        businessBankAccountNumber: current.businessBankAccountNumber || current.responses?.businessBankAccountNumber || '',
-        planId: current.planId || 'basic',
-        planLabel: current.planLabel || (current.planId === 'pro' ? 'PRO' : 'BASIC'),
-        planPrice: Number(current.planPrice || 0),
-        planCurrency: current.planCurrency || this.planSettings.currency || 'HTG',
-        planPaymentRequired: Boolean(current.planPaymentRequired),
-        planPaymentStatus: current.planPaymentStatus || (current.planPaymentRequired ? 'pending' : 'not_required'),
-        payoutRequestIntervalDays: Number(current.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30),
-        deliveryCoverage: current.deliveryCoverage || null,
-        deliveryZones: Array.isArray(current.deliveryZones) ? current.deliveryZones : (Array.isArray(current.deliveryCoverage?.zones) ? current.deliveryCoverage.zones : []),
-        status: 'active',
-        role: 'vendor',
-        commissionRule: current.commissionRule || null,
-        createdAt: current.createdAt || now,
-        updatedAt: now,
-        approvedAt: now,
-        approvedBy: 'dashboard_admin'
-      };
-
-      await setDoc(doc(db, 'vendors', vendorProfile.vendorId), vendorProfile, { merge: true });
-      await setDoc(doc(db, 'clients', vendorProfile.vendorId), {
-        uid: vendorProfile.vendorId,
-        role: 'vendor',
-        vendorStatus: 'active',
-        vendorId: vendorProfile.vendorId,
-        vendorName: vendorProfile.vendorName,
-        updatedAt: now
-      }, { merge: true });
+      await this.syncApplicationToVendorProfile(payload, now);
     } else if (status === 'rejected') {
       await setDoc(doc(db, 'clients', current.uid || id), {
         uid: current.uid || id,
