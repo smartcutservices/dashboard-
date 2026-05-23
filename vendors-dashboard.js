@@ -25,51 +25,24 @@ const DEFAULT_FORM_SETTINGS = {
     { id: 'applicantName', type: 'text', label: 'Nom complet', required: true, placeholder: 'Votre nom complet' },
     { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'nom@exemple.com' },
     { id: 'phone', type: 'tel', label: 'Telephone', required: true, placeholder: '+509...' },
-    { id: 'shopName', type: 'text', label: 'Nom de boutique', required: true, placeholder: 'Nom de votre boutique' },
-    { id: 'identityNumber', type: 'text', label: 'Numero identite (NIF, CIN ou passeport)', required: true, placeholder: 'NIF, CIN ou passeport' },
-    { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
     { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
-    { id: 'category', type: 'select', label: 'Categorie principale', required: true, options: ['Mode', 'Accessoires', 'Maison & deco', 'Impression', 'Electronique', 'Beaute', 'Autre'] },
-    { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison'] },
-    { id: 'bankAccountHolder', type: 'text', label: 'Titulaire du compte bancaire', required: true, placeholder: 'Nom du titulaire' },
-    { id: 'bankName', type: 'text', label: 'Banque', required: true, placeholder: 'Nom de la banque' },
-    { id: 'bankAccountNumber', type: 'text', label: 'Numero de compte / IBAN', required: true, placeholder: 'Numero de compte' },
-    { id: 'bankSwiftBic', type: 'text', label: 'SWIFT / BIC', required: false, placeholder: 'Optionnel' },
-    { id: 'businessName', type: 'text', label: 'Entreprise - nom legal', required: false, placeholder: 'Si applicable' },
-    { id: 'businessNif', type: 'text', label: 'Entreprise - NIF', required: false, placeholder: 'Si applicable' },
-    { id: 'businessAddress', type: 'textarea', label: 'Entreprise - adresse', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankAccountHolder', type: 'text', label: 'Entreprise - titulaire compte bancaire', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankName', type: 'text', label: 'Entreprise - banque', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankAccountNumber', type: 'text', label: 'Entreprise - numero de compte', required: false, placeholder: 'Si applicable' },
-    { id: 'socialLink', type: 'url', label: 'Reseau social ou site web', required: false, placeholder: 'https://...' },
-    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' },
-    { id: 'agreementAccepted', type: 'checkbox', label: 'Je confirme que les informations envoyees sont exactes et j accepte la revue manuelle de ma candidature.', required: true }
+    { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
+    { id: 'identityType', type: 'select', label: 'Identification', required: true, options: ['CIN', 'NIF', 'Licence', 'Passeport'] },
+    { id: 'identityNumber', type: 'text', label: 'Numero', required: true, placeholder: 'Numero de la piece choisie' },
+    { id: 'shopName', type: 'text', label: 'Nom de la boutique', required: true, placeholder: 'Nom de votre boutique' },
+    { id: 'bankName', type: 'select', label: 'Banque', required: true, options: ['UNIBANK', 'SOGEBANK', 'BNC', 'CAPITAL BANK', 'BUH'] },
+    { id: 'bankCurrency', type: 'select', label: 'Devise', required: true, options: ['Gourdes', 'USD'] },
+    { id: 'bankAccountHolder', type: 'text', label: 'Nom du compte', required: true, placeholder: 'Nom exact du compte' },
+    { id: 'bankAccountNumber', type: 'text', label: 'Numero du compte', required: true, placeholder: 'Numero du compte' },
+    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' }
   ]
 };
 const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
 function mergeRequiredVendorFields(fields = []) {
-  const next = [];
-  const seenIds = new Set();
-  const sourceFields = Array.isArray(fields) && fields.length ? fields : DEFAULT_FORM_SETTINGS.fields;
-
-  sourceFields.forEach((field) => {
-    const id = String(field?.id || '').trim();
-    if (!id || seenIds.has(id)) return;
-    seenIds.add(id);
-    next.push(field);
-  });
-
-  DEFAULT_FORM_SETTINGS.fields.forEach((field) => {
-    if (seenIds.has(field.id)) return;
-    seenIds.add(field.id);
-    next.push(field);
-  });
-
-  return next.map((field) => (
-    field.id === 'deliveryMode'
-      ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
-      : field
-  ));
+  return DEFAULT_FORM_SETTINGS.fields.map((field) => ({
+    ...field,
+    options: Array.isArray(field.options) ? [...field.options] : field.options
+  }));
 }
 
 const DEFAULT_PLAN_SETTINGS = {
@@ -482,7 +455,7 @@ class VendorsDashboard {
         <div class="application-top">
           <div>
             <h3>${item.shopName || 'Boutique sans nom'}</h3>
-            <p>${item.applicantName || 'Sans nom'} · ${item.category || 'Categorie non definie'}</p>
+            <p>${item.applicantName || 'Sans nom'} · ${item.shopName || item.vendorName || 'Boutique non definie'}</p>
           </div>
           <div class="badge" style="color:${meta.color}; background:${meta.bg};">${meta.label}</div>
         </div>
@@ -792,10 +765,12 @@ class VendorsDashboard {
       email: 'email',
       phone: 'phone',
       shopName: 'shopName',
+      identityType: 'identityType',
       city: 'city',
       address: 'address',
       category: 'category',
       deliveryMode: 'deliveryMode',
+      bankCurrency: 'bankCurrency',
       socialLink: 'socialLink',
       description: 'description',
       experience: 'experience',
@@ -1422,6 +1397,7 @@ class VendorsDashboard {
       applicantName: value('applicantName'),
       email: value('email'),
       phone: value('phone'),
+      identityType: value('identityType'),
       identityNumber: value('identityNumber'),
       city: value('city'),
       address: value('address'),
@@ -1429,6 +1405,7 @@ class VendorsDashboard {
       deliveryMode: VENDOR_DELIVERY_MODE,
       bankAccountHolder: value('bankAccountHolder'),
       bankName: value('bankName'),
+      bankCurrency: value('bankCurrency'),
       bankAccountNumber: value('bankAccountNumber'),
       bankSwiftBic: value('bankSwiftBic'),
       businessName: value('businessName'),
