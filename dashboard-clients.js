@@ -1,7 +1,6 @@
 import { auth, db, authReadyPromise } from './firebase-init.js';
 import {
   collection,
-  deleteDoc,
   doc,
   getDocs,
   setDoc
@@ -270,7 +269,7 @@ function renderEditor() {
           <i class="fas fa-trash"></i> Supprimer ce client
         </button>
       </div>
-      <p class="muted">Attention: la suppression retire le profil client, ses sous-donnees Firestore et le compte Auth si possible. Les admins sont proteges.</p>
+      <p class="muted">Attention: la suppression passe par la Cloud Function admin et retire le compte Auth ainsi que les donnees Firestore. Les admins sont proteges.</p>
     </form>
   `;
 
@@ -402,11 +401,11 @@ async function deleteSelectedClient() {
     if (!response.ok || payload?.ok === false) {
       throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
     }
-    showNotice('Client supprime.');
+    showNotice(payload?.authDeleted === false ? 'Client supprime. Aucun compte Auth correspondant n existait.' : 'Compte client supprime.');
   } catch (error) {
-    console.warn('Suppression via function impossible, fallback Firestore:', error);
-    await deleteDoc(doc(db, 'clients', client.id));
-    showNotice('Profil client supprime. Si le compte Auth existe encore, la Cloud Function devra etre redeployee/verifiee.', 'success');
+    console.error('Suppression client impossible:', error);
+    showNotice(error?.message || 'Impossible de supprimer ce compte client.', 'error');
+    return;
   }
 
   state.selectedId = '';
