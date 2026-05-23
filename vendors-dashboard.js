@@ -1,8 +1,7 @@
 import { db, auth } from './firebase-init.js';
-import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js?v=20260812-1';
+import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js';
 import {
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -16,8 +15,6 @@ const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
 const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
 const VENDOR_SERVICE_FEES_COLLECTION = 'vendorServiceFees';
-const VENDOR_PLAN_BONUSES_COLLECTION = 'vendorPlanBonuses';
-const PRO_VENDOR_COMMISSION_RATE = 10;
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 const REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorServiceFee';
 const DEFAULT_FORM_SETTINGS = {
@@ -28,35 +25,57 @@ const DEFAULT_FORM_SETTINGS = {
     { id: 'applicantName', type: 'text', label: 'Nom complet', required: true, placeholder: 'Votre nom complet' },
     { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'nom@exemple.com' },
     { id: 'phone', type: 'tel', label: 'Telephone', required: true, placeholder: '+509...' },
-    { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
+    { id: 'shopName', type: 'text', label: 'Nom de boutique', required: true, placeholder: 'Nom de votre boutique' },
+    { id: 'identityNumber', type: 'text', label: 'Numero identite (NIF, CIN ou passeport)', required: true, placeholder: 'NIF, CIN ou passeport' },
     { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
-    { id: 'identityType', type: 'select', label: 'Identification', required: true, options: ['CIN', 'NIF', 'Licence', 'Passeport'] },
-    { id: 'identityNumber', type: 'text', label: 'Numero', required: true, placeholder: 'Numero de la piece choisie' },
-    { id: 'shopName', type: 'text', label: 'Nom de la boutique', required: true, placeholder: 'Nom de votre boutique' },
-    { id: 'bankName', type: 'select', label: 'Banque', required: true, options: ['UNIBANK', 'SOGEBANK', 'BNC', 'CAPITAL BANK', 'BUH'] },
-    { id: 'bankCurrency', type: 'select', label: 'Devise', required: true, options: ['Gourdes', 'USD'] },
-    { id: 'bankAccountHolder', type: 'text', label: 'Nom du compte', required: true, placeholder: 'Nom exact du compte' },
-    { id: 'bankAccountNumber', type: 'text', label: 'Numero du compte', required: true, placeholder: 'Numero du compte' },
-    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' }
+    { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
+    { id: 'category', type: 'select', label: 'Categorie principale', required: true, options: ['Mode', 'Accessoires', 'Maison & deco', 'Impression', 'Electronique', 'Beaute', 'Autre'] },
+    { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison'] },
+    { id: 'bankAccountHolder', type: 'text', label: 'Titulaire du compte bancaire', required: true, placeholder: 'Nom du titulaire' },
+    { id: 'bankName', type: 'text', label: 'Banque', required: true, placeholder: 'Nom de la banque' },
+    { id: 'bankAccountNumber', type: 'text', label: 'Numero de compte / IBAN', required: true, placeholder: 'Numero de compte' },
+    { id: 'bankSwiftBic', type: 'text', label: 'SWIFT / BIC', required: false, placeholder: 'Optionnel' },
+    { id: 'businessName', type: 'text', label: 'Entreprise - nom legal', required: false, placeholder: 'Si applicable' },
+    { id: 'businessNif', type: 'text', label: 'Entreprise - NIF', required: false, placeholder: 'Si applicable' },
+    { id: 'businessAddress', type: 'textarea', label: 'Entreprise - adresse', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankAccountHolder', type: 'text', label: 'Entreprise - titulaire compte bancaire', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankName', type: 'text', label: 'Entreprise - banque', required: false, placeholder: 'Si applicable' },
+    { id: 'businessBankAccountNumber', type: 'text', label: 'Entreprise - numero de compte', required: false, placeholder: 'Si applicable' },
+    { id: 'socialLink', type: 'url', label: 'Reseau social ou site web', required: false, placeholder: 'https://...' },
+    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' },
+    { id: 'agreementAccepted', type: 'checkbox', label: 'Je confirme que les informations envoyees sont exactes et j accepte la revue manuelle de ma candidature.', required: true }
   ]
 };
 const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
 function mergeRequiredVendorFields(fields = []) {
-  return DEFAULT_FORM_SETTINGS.fields.map((field) => ({
-    ...field,
-    options: Array.isArray(field.options) ? [...field.options] : field.options
-  }));
+  const next = [];
+  const seenIds = new Set();
+  const sourceFields = Array.isArray(fields) && fields.length ? fields : DEFAULT_FORM_SETTINGS.fields;
+
+  sourceFields.forEach((field) => {
+    const id = String(field?.id || '').trim();
+    if (!id || seenIds.has(id)) return;
+    seenIds.add(id);
+    next.push(field);
+  });
+
+  DEFAULT_FORM_SETTINGS.fields.forEach((field) => {
+    if (seenIds.has(field.id)) return;
+    seenIds.add(field.id);
+    next.push(field);
+  });
+
+  return next.map((field) => (
+    field.id === 'deliveryMode'
+      ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
+      : field
+  ));
 }
 
 const DEFAULT_PLAN_SETTINGS = {
   proPrice: 1750,
   currency: 'HTG',
-  payoutDelayDays: 30,
-  firstActivationBonus: {
-    enabled: false,
-    amount: 0,
-    durationDays: 30
-  }
+  payoutDelayDays: 30
 };
 
 class VendorsDashboard {
@@ -72,8 +91,6 @@ class VendorsDashboard {
     this.vendorSalesSummaries = [];
     this.vendorPayouts = [];
     this.vendorServiceFees = [];
-    this.vendorPlanBonuses = [];
-    this.editingSpecialBonusId = '';
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
@@ -83,14 +100,12 @@ class VendorsDashboard {
 
   async init() {
     await this.loadData();
-    const removedExpiredBonuses = await this.cleanupExpiredVendorPlanBonuses();
-    if (removedExpiredBonuses) await this.loadData();
     this.render();
     this.attachEvents();
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot, bonusSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
@@ -100,8 +115,7 @@ class VendorsDashboard {
       getDoc(doc(db, ...FORM_SETTINGS_REF)),
       getDoc(doc(db, ...PLAN_SETTINGS_REF)),
       getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc'))),
-      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc'))),
-      getDocs(query(collection(db, VENDOR_PLAN_BONUSES_COLLECTION), orderBy('updatedAt', 'desc')))
+      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc')))
     ]);
     this.applications = applicationSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendorProducts = productSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -118,9 +132,6 @@ class VendorsDashboard {
     this.vendorServiceFees = serviceFeeSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((a, b) => Date.parse(String(b.createdAt || b.requestedAt || b.paidAt || '')) - Date.parse(String(a.createdAt || a.requestedAt || a.paidAt || '')));
-    this.vendorPlanBonuses = bonusSnapshot.docs
-      .map((item) => ({ id: item.id, ...item.data() }))
-      .sort((a, b) => Date.parse(String(b.updatedAt || b.createdAt || '')) - Date.parse(String(a.updatedAt || a.createdAt || '')));
     this.formSettings = formSettingsSnap.exists()
       ? {
           ...DEFAULT_FORM_SETTINGS,
@@ -137,19 +148,8 @@ class VendorsDashboard {
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
       orders: ordersData.orders,
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id)),
-      vendorProducts: this.vendorProducts.filter((item) => item.vendorId === vendor.id),
-      commissionRules: this.commissionRules,
-      payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id),
-      vendorPlanActive: this.isVendorProPlanActive(vendor)
+      payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id)
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);
-  }
-
-  async cleanupExpiredVendorPlanBonuses() {
-    const expiredBonuses = (this.vendorPlanBonuses || []).filter((bonus) => this.getVendorPlanBonusStatus(bonus) === 'expiree');
-    if (!expiredBonuses.length) return 0;
-    await Promise.all(expiredBonuses.map((bonus) => deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, bonus.id))));
-    this.vendorPlanBonuses = this.vendorPlanBonuses.filter((bonus) => this.getVendorPlanBonusStatus(bonus) !== 'expiree');
-    return expiredBonuses.length;
   }
 
   normalizeCategory(value) {
@@ -263,10 +263,6 @@ class VendorsDashboard {
   }
 
   getProductStockLabel(item = {}) {
-    if (item?.isDigitalProduct) {
-      return 'Produit digital';
-    }
-
     const variations = Array.isArray(item.variations) ? item.variations : [];
     const variationStocks = variations
       .map((variation) => Number(variation?.stock))
@@ -486,7 +482,7 @@ class VendorsDashboard {
         <div class="application-top">
           <div>
             <h3>${item.shopName || 'Boutique sans nom'}</h3>
-            <p>${item.applicantName || 'Sans nom'} - ${item.email || '-'}</p>
+            <p>${item.applicantName || 'Sans nom'} · ${item.category || 'Categorie non definie'}</p>
           </div>
           <div class="badge" style="color:${meta.color}; background:${meta.bg};">${meta.label}</div>
         </div>
@@ -574,6 +570,21 @@ class VendorsDashboard {
 
   renderApplicationEditor(item) {
     const fields = mergeRequiredVendorFields(this.formSettings.fields);
+    const coverage = item.deliveryCoverage || {};
+    const zones = Array.isArray(coverage.zones)
+      ? coverage.zones
+      : (Array.isArray(item.deliveryZones) ? item.deliveryZones : []);
+    const zonesText = zones.map((zone) => [
+      zone.country || 'Haiti',
+      zone.department || '',
+      zone.commune || '',
+      Number(zone.fee || 0)
+    ].join(' | ')).join('\n');
+    const planId = String(item.planId || (item.planPaymentRequired ? 'pro' : 'basic') || 'basic').toLowerCase();
+    const planLabel = item.planLabel || (planId === 'pro' ? 'PRO' : 'BASIC');
+    const kycDocuments = item.kycDocuments || {};
+    const kycRectoUrl = kycDocuments.recto?.url || kycDocuments.recto?.downloadURL || '';
+    const kycVersoUrl = kycDocuments.verso?.url || kycDocuments.verso?.downloadURL || '';
 
     return `
       <div class="application-copy admin-note" data-application-editor="${this.escape(item.id)}" style="margin-top:1rem;">
@@ -582,6 +593,71 @@ class VendorsDashboard {
 
         <div class="application-grid" style="margin-top:1rem;">
           ${fields.map((field) => this.renderApplicationEditField(item, field)).join('')}
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Plan vendeur</strong>
+          <div class="application-grid" style="margin-top:.7rem;">
+            <div>
+              <strong>Plan</strong>
+              <select data-application-edit-field="planId" style="${this.adminInputStyle()}">
+                <option value="basic" ${planId === 'basic' ? 'selected' : ''}>BASIC</option>
+                <option value="pro" ${planId === 'pro' ? 'selected' : ''}>PRO</option>
+              </select>
+            </div>
+            <div>
+              <strong>Libelle plan</strong>
+              <input data-application-edit-field="planLabel" value="${this.escape(planLabel)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Prix plan</strong>
+              <input type="number" min="0" step="1" data-application-edit-field="planPrice" value="${this.escape(item.planPrice || 0)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Devise</strong>
+              <input data-application-edit-field="planCurrency" value="${this.escape(item.planCurrency || this.planSettings.currency || 'HTG')}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Request payment chaque</strong>
+              <input type="number" min="1" step="1" data-application-edit-field="payoutRequestIntervalDays" value="${this.escape(item.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30)}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Paiement plan</strong>
+              <label class="check" style="margin-top:.55rem;">
+                <input type="checkbox" data-application-edit-field="planPaymentRequired" ${item.planPaymentRequired ? 'checked' : ''}>
+                <span>Plan payant requis</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Zones livraison vendeur</strong>
+          <label class="check" style="margin:.55rem 0;">
+            <input type="checkbox" data-application-edit-field="deliveryNationwide" ${coverage.nationwide ? 'checked' : ''}>
+            <span>Le vendeur livre sur tout le territoire national</span>
+          </label>
+          <div class="application-grid">
+            <div>
+              <strong>Prix national HTG</strong>
+              <input type="number" min="0" step="1" data-application-edit-field="deliveryNationwideFee" value="${this.escape(coverage.nationwideFee || '')}" style="${this.adminInputStyle()}">
+            </div>
+            <div>
+              <strong>Statut KYC</strong>
+              <input data-application-edit-field="kycStatus" value="${this.escape(item.kycStatus || '')}" style="${this.adminInputStyle()}">
+            </div>
+          </div>
+          <p style="margin:.75rem 0 .35rem;color:rgba(246,241,232,.72);font-size:.9rem;">Une zone par ligne: Haiti | Ouest | Delmas | 500</p>
+          <textarea data-application-edit-field="deliveryZonesText" rows="4" style="${this.adminInputStyle(true)}">${this.escape(zonesText)}</textarea>
+        </div>
+
+        <div class="application-copy" style="margin-top:1rem;">
+          <strong>Documents KYC</strong>
+          <p>
+            Recto: ${kycRectoUrl ? `<a href="${this.escape(kycRectoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
+            &nbsp; | &nbsp;
+            Verso: ${kycVersoUrl ? `<a href="${this.escape(kycVersoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
+          </p>
         </div>
 
         <div class="application-copy" style="margin-top:1rem;">
@@ -632,21 +708,6 @@ class VendorsDashboard {
     const planPaymentRequired = Boolean(vendor.planPaymentRequired);
     if ((planPaymentRequired || planId === 'pro') && Number.isFinite(planPrice) && planPrice > 0) return planPrice;
     return 0;
-  }
-
-  isVendorProPlanActive(vendor = {}) {
-    const planId = String(vendor?.planId || '').trim().toLowerCase();
-    const planLabel = String(vendor?.planLabel || '').trim().toLowerCase();
-    if (planId !== 'pro' && !planLabel.includes('pro')) return false;
-
-    const serviceStatus = String(vendor?.serviceFeeStatus || '').trim().toLowerCase();
-    if (['basic_limited', 'expired', 'unpaid'].includes(serviceStatus)) return false;
-
-    const nextDueValue = vendor?.serviceFeeNextDueAt || vendor?.serviceFeePaidPeriodEndAt || '';
-    const nextDueMs = nextDueValue
-      ? (typeof nextDueValue?.toDate === 'function' ? nextDueValue.toDate().getTime() : Date.parse(String(nextDueValue)))
-      : 0;
-    return !Number.isFinite(nextDueMs) || nextDueMs <= 0 || nextDueMs > Date.now();
   }
 
   getMonthlyServiceVendors() {
@@ -700,7 +761,7 @@ class VendorsDashboard {
 
   getReadableApplicationFields(item) {
     const responses = item.responses || {};
-    const configured = mergeRequiredVendorFields(this.formSettings.fields).map((field) => {
+    const configured = this.formSettings.fields.map((field) => {
       let value = responses[field.id];
       if (value === undefined || value === null || value === '') {
         value = item[field.id] ?? item[this.mapLegacyKey(field.id)] ?? '';
@@ -713,6 +774,15 @@ class VendorsDashboard {
         value: String(value || '-')
       };
     });
+    const coverage = item.deliveryCoverage || {};
+    if (coverage.nationwide) {
+      configured.push({ label: 'Zones livraison vendeur', value: `Tout le territoire national: ${Number(coverage.nationwideFee || 0)} HTG` });
+    } else if (Array.isArray(coverage.zones) && coverage.zones.length) {
+      configured.push({
+        label: 'Zones livraison vendeur',
+        value: coverage.zones.map((zone) => `${zone.country || 'Haiti'} / ${zone.department || '-'} / ${zone.commune || '-'}: ${Number(zone.fee || 0)} HTG`).join(' | ')
+      });
+    }
     return configured;
   }
 
@@ -722,62 +792,16 @@ class VendorsDashboard {
       email: 'email',
       phone: 'phone',
       shopName: 'shopName',
-      identityType: 'identityType',
-      identityNumber: 'identityNumber',
       city: 'city',
       address: 'address',
-      bankName: 'bankName',
-      bankCurrency: 'bankCurrency',
-      bankAccountHolder: 'bankAccountHolder',
-      bankAccountNumber: 'bankAccountNumber',
+      category: 'category',
+      deliveryMode: 'deliveryMode',
+      socialLink: 'socialLink',
       description: 'description',
+      experience: 'experience',
+      agreementAccepted: 'agreementAccepted'
     };
     return map[id] || id;
-  }
-
-  getVendorNameById(vendorId) {
-    const id = String(vendorId || '').trim();
-    const vendor = this.allVendors.find((item) => String(item.vendorId || item.uid || item.id) === id);
-    return vendor?.vendorName || vendor?.shopName || vendor?.email || '';
-  }
-
-  getVendorPlanBonusStatus(bonus = {}) {
-    if (String(bonus.status || '').toLowerCase() === 'consumed') return 'consommee';
-    if (bonus.enabled === false || String(bonus.status || '').toLowerCase() === 'disabled') return 'desactivee';
-    const now = Date.now();
-    const startMs = Date.parse(String(bonus.startAt || ''));
-    const endMs = Date.parse(String(bonus.endAt || ''));
-    if (Number.isFinite(startMs) && startMs > now) return 'programmee';
-    if (Number.isFinite(endMs) && endMs <= now) return 'expiree';
-    return 'active';
-  }
-
-  normalizeBonusDurationDays(source = {}) {
-    const days = Number(source.durationDays || source.bonusDurationDays || source.offerDurationDays || 0);
-    if ([30, 90, 180].includes(days)) return days;
-    const months = Number(source.durationMonths || source.bonusDurationMonths || source.offerDurationMonths || 0);
-    if (months === 1) return 30;
-    if (months === 3) return 90;
-    if (months === 6) return 180;
-    const startMs = Date.parse(String(source.startAt || source.bonusStartAt || source.offerStartAt || source.startDate || ''));
-    const endMs = Date.parse(String(source.endAt || source.bonusEndAt || source.offerEndAt || source.endDate || ''));
-    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs) {
-      const diffDays = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000));
-      if (diffDays >= 150) return 180;
-      if (diffDays >= 60) return 90;
-      return 30;
-    }
-    return 30;
-  }
-
-  bonusDurationMonthsLabel(days = 30) {
-    const durationDays = this.normalizeBonusDurationDays({ durationDays: days });
-    return durationDays === 180 ? 6 : durationDays === 90 ? 3 : 1;
-  }
-
-  toIsoFromLocalInput(value = '') {
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
   }
 
   renderFormBuilder() {
@@ -809,14 +833,6 @@ class VendorsDashboard {
   }
 
   renderPlanSettings() {
-    const firstBonus = {
-      ...DEFAULT_PLAN_SETTINGS.firstActivationBonus,
-      ...(this.planSettings.firstActivationBonus || {})
-    };
-    const firstBonusDurationDays = this.normalizeBonusDurationDays(this.planSettings.firstActivationBonus || firstBonus);
-    const editingSpecialBonus = this.vendorPlanBonuses.find((bonus) => String(bonus.id) === String(this.editingSpecialBonusId)) || null;
-    const editingVendorId = editingSpecialBonus?.vendorId || '';
-    const editingDurationDays = editingSpecialBonus ? this.normalizeBonusDurationDays(editingSpecialBonus) : 30;
     return `
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -837,126 +853,6 @@ class VendorsDashboard {
         <div class="actions">
           <button type="button" data-save-plan-settings class="approve">Enregistrer les plans</button>
         </div>
-      </div>
-      <div class="application-card" style="margin-top:1.2rem;">
-        <div class="application-top">
-          <div>
-            <h3>Bonification de premiere activation</h3>
-            <p>Offre globale appliquee aux vendeurs admissibles. Le montant est un prix bonifie par periode de 30 jours.</p>
-          </div>
-          <div class="badge" style="color:${firstBonus.enabled ? '#14532D' : '#7F1D1D'};background:${firstBonus.enabled ? 'rgba(20,83,45,.12)' : 'rgba(127,29,29,.12)'};">${firstBonus.enabled ? 'Activee' : 'Desactivee'}</div>
-        </div>
-        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
-          <label>
-            <strong>Etat</strong>
-            <select id="vendorFirstBonusEnabled" style="${this.adminInputStyle()}">
-              <option value="false" ${firstBonus.enabled ? '' : 'selected'}>Desactivee</option>
-              <option value="true" ${firstBonus.enabled ? 'selected' : ''}>Activee</option>
-            </select>
-          </label>
-          <label>
-            <strong>Montant mensuel bonifie</strong>
-            <input id="vendorFirstBonusAmount" type="number" min="0" step="1" value="${this.escape(firstBonus.amount || 0)}" style="${this.adminInputStyle()}">
-          </label>
-          <label>
-            <strong>Duree</strong>
-            <select id="vendorFirstBonusDuration" style="${this.adminInputStyle()}">
-              ${[30, 90, 180].map((days) => `<option value="${days}" ${firstBonusDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
-            </select>
-          </label>
-          <div>
-            <strong>Prix normal</strong>
-            <span style="display:block;margin-top:.75rem;font-weight:800;">${this.formatPrice(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span>
-          </div>
-        </div>
-        <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. Chaque paiement donne uniquement 30 jours de Plan Pro; la duree indique seulement la fenetre pendant laquelle le prix bonifie reste disponible.</p>
-        <div class="actions">
-          <button type="button" data-save-plan-settings class="approve">Enregistrer la bonification</button>
-        </div>
-      </div>
-      <div class="application-card" style="margin-top:1.2rem;">
-        <div class="application-top">
-          <div>
-            <h3>Bonifications speciales</h3>
-            <p>Accordez un prix Plan Pro temporaire a un store precis. Le montant est paye tous les 30 jours; une offre speciale active passe avant l offre globale.</p>
-          </div>
-        </div>
-        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
-          <label>
-            <strong>Vendeur</strong>
-            <select id="vendorSpecialBonusVendor" style="${this.adminInputStyle()}">
-              <option value="">Selectionner...</option>
-              ${this.allVendors.map((vendor) => {
-                const vendorId = vendor.vendorId || vendor.uid || vendor.id;
-                const label = vendor.vendorName || vendor.shopName || vendor.email || vendorId;
-                return `<option value="${this.escape(vendorId)}" ${String(editingVendorId) === String(vendorId) ? 'selected' : ''}>${this.escape(label)}</option>`;
-              }).join('')}
-            </select>
-          </label>
-          <label>
-            <strong>Montant mensuel special</strong>
-            <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" value="${this.escape(editingSpecialBonus?.amount || '')}" style="${this.adminInputStyle()}">
-          </label>
-          <label>
-            <strong>Duree</strong>
-            <select id="vendorSpecialBonusDuration" style="${this.adminInputStyle()}">
-              ${[30, 90, 180].map((days) => `<option value="${days}" ${editingDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
-            </select>
-          </label>
-          <label>
-            <strong>Etat</strong>
-            <select id="vendorSpecialBonusEnabled" style="${this.adminInputStyle()}">
-              <option value="true" ${editingSpecialBonus?.enabled === false ? '' : 'selected'}>Activee</option>
-              <option value="false" ${editingSpecialBonus?.enabled === false ? 'selected' : ''}>Desactivee</option>
-            </select>
-          </label>
-        </div>
-        <div class="actions">
-          <button type="button" data-save-special-bonus class="approve">${editingSpecialBonus ? 'Mettre a jour la bonification speciale' : 'Enregistrer la bonification speciale'}</button>
-          ${editingSpecialBonus ? '<button type="button" data-cancel-special-bonus-edit>Annuler la modification</button>' : ''}
-        </div>
-        ${this.renderVendorPlanBonusesTable()}
-      </div>
-    `;
-  }
-
-  renderVendorPlanBonusesTable() {
-    if (!this.vendorPlanBonuses.length) {
-      return '<p class="application-copy" style="margin-top:1rem;">Aucune bonification speciale enregistree pour le moment.</p>';
-    }
-
-    return `
-      <div class="applications" style="margin-top:1rem;">
-        ${this.vendorPlanBonuses.map((bonus) => {
-          const status = this.getVendorPlanBonusStatus(bonus);
-          const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || bonus.vendorId || 'Vendeur';
-          const durationDays = this.normalizeBonusDurationDays(bonus);
-          return `
-            <div class="application-card" style="box-shadow:none;">
-              <div class="application-top">
-                <div>
-                  <h3>${this.escape(vendorName)}</h3>
-                  <p>Duree activee a partir du paiement confirme.</p>
-                </div>
-                <div class="badge">${this.escape(status)}</div>
-              </div>
-              <div class="application-grid">
-                <div><strong>Montant / 30 jours</strong><span>${this.formatPrice(bonus.amount || 0)}</span></div>
-                <div><strong>Duree</strong><span>${durationDays} jours</span></div>
-                <div><strong>Prix normal</strong><span>${this.formatPrice(bonus.normalAmount || this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span></div>
-                <div><strong>Etat</strong><span>${bonus.enabled === false ? 'Desactivee' : 'Activee'}</span></div>
-                <div><strong>Derniere mise a jour</strong><span>${this.escape(this.formatDateTime(bonus.updatedAt))}</span></div>
-              </div>
-              <div class="actions">
-                <button type="button" data-edit-special-bonus="${this.escape(bonus.id)}">Modifier</button>
-                <button type="button" data-toggle-special-bonus="${this.escape(bonus.id)}" data-next-enabled="${bonus.enabled === false ? 'true' : 'false'}">
-                  ${bonus.enabled === false ? 'Activer' : 'Desactiver'}
-                </button>
-                <button type="button" class="reject" data-delete-special-bonus="${this.escape(bonus.id)}">Supprimer</button>
-              </div>
-            </div>
-          `;
-        }).join('')}
       </div>
     `;
   }
@@ -1010,16 +906,12 @@ class VendorsDashboard {
     const meta = this.productStatusMeta(item.status);
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
     const { resolvedCategory, categoryRule, effectiveRate, effectiveRule } = this.resolveProductCommissionState(item);
-    const vendor = this.allVendors.find((entry) => String(entry.vendorId || entry.uid || entry.id) === String(item.vendorId || '')) || {};
-    const vendorProActive = this.isVendorProPlanActive(vendor);
     const stockLabel = this.getProductStockLabel(item);
-    const commissionValue = vendorProActive ? PRO_VENDOR_COMMISSION_RATE : (effectiveRate ?? '');
+    const commissionValue = effectiveRate ?? '';
     const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
-    const commissionHint = vendorProActive
-      ? 'Plan Pro actif : commission uniforme de 10% sur toutes les categories'
-      : (effectiveRule?.source === 'product_override'
+    const commissionHint = effectiveRule?.source === 'product_override'
       ? 'Commission specifique a ce produit'
-      : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee'));
+      : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee');
     return `
       <div class="application-card">
         <div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;">
@@ -1049,7 +941,7 @@ class VendorsDashboard {
             <div class="actions" style="align-items:center;">
               <label style="display:flex;align-items:center;gap:.55rem;color:rgba(246,241,232,0.75);font-size:.85rem;">
                 <span>Commission %</span>
-                <input id="productCommission-${item.id}" type="number" min="0" max="100" step="0.01" value="${commissionValue}" ${vendorProActive ? 'disabled title="Le Plan Pro applique automatiquement 10% a toutes les categories"' : ''} style="width:92px;border:1px solid rgba(198,167,94,0.18);background:rgba(255,255,255,0.04);color:#f6f1e8;border-radius:999px;padding:.65rem .9rem;font:inherit;">
+                <input id="productCommission-${item.id}" type="number" min="0" max="100" step="0.01" value="${commissionValue}" style="width:92px;border:1px solid rgba(198,167,94,0.18);background:rgba(255,255,255,0.04);color:#f6f1e8;border-radius:999px;padding:.65rem .9rem;font:inherit;">
               </label>
               <button type="button" data-product-action="pending_review" data-product-id="${item.id}">Repasser en revue</button>
               <button type="button" data-product-action="active" data-product-id="${item.id}" class="approve">Approuver</button>
@@ -1074,16 +966,12 @@ class VendorsDashboard {
           <div class="badge" style="color:#14532D; background:rgba(20, 83, 45, 0.12);">A payer ${this.formatPrice(pendingPayout)}</div>
         </div>
         <div class="application-grid">
-          <div><strong>Base commission (produits)</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
-          <div><strong>Livraison vendeur</strong><span>${this.formatPrice(summary.deliveryAmount)}</span></div>
+          <div><strong>Brut</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
           <div><strong>Commission</strong><span>${this.formatPrice(summary.commissionAmount)}</span></div>
           <div><strong>Net vendeur</strong><span>${this.formatPrice(summary.vendorNetAmount)}</span></div>
           <div><strong>Commandes</strong><span>${summary.totalOrders}</span></div>
           <div><strong>Deja decaisse</strong><span>${this.formatPrice(settledAmount)}</span></div>
           <div><strong>Solde a payer</strong><span>${this.formatPrice(pendingPayout)}</span></div>
-        </div>
-        <div class="application-copy">
-          <p>La commission est calculée uniquement sur le prix des produits. Les frais de livraison sont ajoutés intégralement au net du vendeur.</p>
         </div>
         <div class="actions">
           <button type="button" data-create-payout="${summary.vendorId}" class="approve" ${pendingPayout <= 0 ? 'disabled' : ''}>Payer le vendeur</button>
@@ -1426,40 +1314,8 @@ class VendorsDashboard {
       await this.saveFormSettings();
     });
 
-    this.root.querySelectorAll('[data-save-plan-settings]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await this.savePlanSettings();
-      });
-    });
-
-    this.root.querySelector('[data-save-special-bonus]')?.addEventListener('click', async () => {
-      await this.saveSpecialVendorBonus();
-    });
-
-    this.root.querySelector('[data-cancel-special-bonus-edit]')?.addEventListener('click', () => {
-      this.editingSpecialBonusId = '';
-      this.render();
-      this.attachEvents();
-    });
-
-    this.root.querySelectorAll('[data-edit-special-bonus]').forEach((button) => {
-      button.addEventListener('click', () => {
-        this.editingSpecialBonusId = button.dataset.editSpecialBonus || '';
-        this.render();
-        this.attachEvents();
-      });
-    });
-
-    this.root.querySelectorAll('[data-toggle-special-bonus]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await this.toggleSpecialVendorBonus(button.dataset.toggleSpecialBonus, button.dataset.nextEnabled === 'true');
-      });
-    });
-
-    this.root.querySelectorAll('[data-delete-special-bonus]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await this.deleteSpecialVendorBonus(button.dataset.deleteSpecialBonus);
-      });
+    this.root.querySelector('[data-save-plan-settings]')?.addEventListener('click', async () => {
+      await this.savePlanSettings();
     });
   }
 
@@ -1507,10 +1363,39 @@ class VendorsDashboard {
       payload[field.id] = normalizedValue;
     });
 
+    const planId = String(this.getApplicationEditControl('planId')?.value || current.planId || 'basic').trim().toLowerCase() || 'basic';
+    const planLabelInput = String(this.getApplicationEditControl('planLabel')?.value || '').trim();
+    const planPrice = Number(this.getApplicationEditControl('planPrice')?.value || 0);
+    const planCurrency = String(this.getApplicationEditControl('planCurrency')?.value || this.planSettings.currency || 'HTG').trim() || 'HTG';
+    const planPaymentRequired = planId === 'pro' || Boolean(this.getApplicationEditControl('planPaymentRequired')?.checked);
+    const currentPlanPaymentStatus = String(current.planPaymentStatus || '').trim().toLowerCase();
+    const payoutRequestIntervalDays = Number(this.getApplicationEditControl('payoutRequestIntervalDays')?.value || this.planSettings.payoutDelayDays || 30);
+    const deliveryNationwide = Boolean(this.getApplicationEditControl('deliveryNationwide')?.checked);
+    const deliveryNationwideFee = Number(this.getApplicationEditControl('deliveryNationwideFee')?.value || 0);
+    const deliveryZones = this.parseDeliveryZonesText(this.getApplicationEditControl('deliveryZonesText')?.value || '');
+    const kycStatus = String(this.getApplicationEditControl('kycStatus')?.value || current.kycStatus || '').trim();
     const adminNote = String(this.getApplicationEditControl('adminNote')?.value || '').trim();
 
     payload.responses = responses;
     payload.deliveryMode = VENDOR_DELIVERY_MODE;
+    payload.planId = planId;
+    payload.planLabel = planLabelInput || (planId === 'pro' ? 'PRO' : 'BASIC');
+    payload.planPrice = Number.isFinite(planPrice) ? planPrice : 0;
+    payload.planCurrency = planCurrency;
+    payload.planPaymentRequired = planPaymentRequired;
+    payload.planPaymentStatus = planPaymentRequired
+      ? (currentPlanPaymentStatus && currentPlanPaymentStatus !== 'not_required' ? current.planPaymentStatus : 'pending')
+      : 'not_required';
+    payload.payoutRequestIntervalDays = Number.isFinite(payoutRequestIntervalDays) && payoutRequestIntervalDays > 0
+      ? payoutRequestIntervalDays
+      : 30;
+    payload.deliveryCoverage = {
+      nationwide: deliveryNationwide,
+      nationwideFee: deliveryNationwide ? (Number.isFinite(deliveryNationwideFee) ? deliveryNationwideFee : 0) : 0,
+      zones: deliveryNationwide ? [] : deliveryZones
+    };
+    payload.deliveryZones = deliveryNationwide ? [] : deliveryZones;
+    payload.kycStatus = kycStatus;
     payload.adminNote = adminNote;
 
     return payload;
@@ -1672,19 +1557,7 @@ class VendorsDashboard {
     const commissionInput = document.getElementById(`productCommission-${id}`);
     const commissionRate = Number.parseFloat(commissionInput?.value || '');
     const { resolvedCategory, categoryRule, effectiveRule } = this.resolveProductCommissionState(current);
-    const vendor = this.allVendors.find((entry) => String(entry.vendorId || entry.uid || entry.id) === String(current.vendorId || '')) || {};
-    const vendorProActive = this.isVendorProPlanActive(vendor);
-    const normalizedCommission = vendorProActive
-      ? (categoryRule
-          ? {
-              category: categoryRule.category || resolvedCategory || '',
-              categoryRate: Number(categoryRule.rate) || 0,
-              source: 'vendorCommissionRules',
-              updatedAt: now,
-              updatedBy: 'dashboard_admin'
-            }
-          : null)
-      : Number.isFinite(commissionRate)
+    const normalizedCommission = Number.isFinite(commissionRate)
       ? {
           ...(effectiveRule || {}),
           category: resolvedCategory || effectiveRule?.category || '',
@@ -1693,7 +1566,7 @@ class VendorsDashboard {
           updatedAt: now,
           updatedBy: 'dashboard_admin'
         }
-        : (effectiveRule || current.commissionRule || (
+      : (effectiveRule || current.commissionRule || (
           categoryRule
             ? {
                 category: categoryRule.category || resolvedCategory || '',
@@ -1921,119 +1794,16 @@ class VendorsDashboard {
   }
 
   async savePlanSettings() {
-    const firstBonusEnabled = this.root.querySelector('#vendorFirstBonusEnabled')?.value === 'true';
-    const firstBonusAmount = Number(this.root.querySelector('#vendorFirstBonusAmount')?.value || 0);
-    const firstBonusDuration = Number(this.root.querySelector('#vendorFirstBonusDuration')?.value || 30);
-    if (firstBonusEnabled && firstBonusAmount <= 0) {
-      window.alert('Montant promotionnel invalide.');
-      return;
-    }
-
     const payload = {
       proPrice: Number(this.root.querySelector('#vendorPlanProPrice')?.value || DEFAULT_PLAN_SETTINGS.proPrice),
       currency: String(this.root.querySelector('#vendorPlanCurrency')?.value || DEFAULT_PLAN_SETTINGS.currency).trim() || 'HTG',
       payoutDelayDays: Number(this.root.querySelector('#vendorPlanPayoutDelay')?.value || DEFAULT_PLAN_SETTINGS.payoutDelayDays),
-      firstActivationBonus: {
-        enabled: firstBonusEnabled,
-        amount: Math.max(0, firstBonusAmount),
-        durationDays: [30, 90, 180].includes(firstBonusDuration) ? firstBonusDuration : 30
-      },
       updatedAt: new Date().toISOString(),
       updatedBy: 'dashboard_admin'
     };
 
     await setDoc(doc(db, ...PLAN_SETTINGS_REF), payload, { merge: true });
     this.planSettings = { ...DEFAULT_PLAN_SETTINGS, ...payload };
-    await this.loadData();
-    this.render();
-    this.attachEvents();
-  }
-
-  async saveSpecialVendorBonus() {
-    const vendorId = String(this.root.querySelector('#vendorSpecialBonusVendor')?.value || '').trim();
-    const amount = Number(this.root.querySelector('#vendorSpecialBonusAmount')?.value || 0);
-    const durationDays = Number(this.root.querySelector('#vendorSpecialBonusDuration')?.value || 30);
-    const normalizedDurationDays = [30, 90, 180].includes(durationDays) ? durationDays : 30;
-    const enabled = this.root.querySelector('#vendorSpecialBonusEnabled')?.value !== 'false';
-    const vendorName = this.getVendorNameById(vendorId);
-
-    if (!vendorId) {
-      window.alert('Selectionnez un vendeur.');
-      return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) {
-      window.alert('Montant special invalide.');
-      return;
-    }
-    const editingId = String(this.editingSpecialBonusId || '').trim();
-    const existingBonus = editingId ? this.vendorPlanBonuses.find((bonus) => String(bonus.id) === editingId) : null;
-    const hasOverlap = this.vendorPlanBonuses.some((bonus) => {
-      if (editingId && String(bonus.id) === editingId) return false;
-      if (String(bonus.vendorId || '') !== vendorId) return false;
-      if (bonus.enabled === false) return false;
-      const status = this.getVendorPlanBonusStatus(bonus);
-      return ['active', 'programmee'].includes(status);
-    });
-    if (hasOverlap) {
-      window.alert('Une bonification active ou programmee existe deja pour ce vendeur.');
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const id = editingId || `bonus-${vendorId}-${Date.now()}`;
-    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
-      id,
-      type: 'special_vendor',
-      vendorId,
-      vendorName,
-      amount,
-      normalAmount: Number(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice),
-      currency: this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency,
-      durationDays: normalizedDurationDays,
-      durationMonths: this.bonusDurationMonthsLabel(normalizedDurationDays),
-      startAt: '',
-      endAt: '',
-      enabled,
-      status: enabled ? 'active' : 'disabled',
-      createdAt: existingBonus?.createdAt || now,
-      updatedAt: now,
-      updatedBy: 'dashboard_admin'
-    }, { merge: true });
-
-    this.editingSpecialBonusId = '';
-    await this.loadData();
-    this.render();
-    this.attachEvents();
-    window.alert(editingId ? 'Bonification speciale mise a jour.' : 'Bonification speciale enregistree.');
-  }
-
-  async toggleSpecialVendorBonus(id, enabled) {
-    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
-    if (!bonus) return;
-    const confirmed = window.confirm(`${enabled ? 'Activer' : 'Desactiver'} cette bonification speciale ?`);
-    if (!confirmed) return;
-
-    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
-      enabled,
-      status: enabled ? this.getVendorPlanBonusStatus({ ...bonus, enabled }) : 'disabled',
-      updatedAt: new Date().toISOString(),
-      updatedBy: 'dashboard_admin'
-    }, { merge: true });
-
-    await this.loadData();
-    this.render();
-    this.attachEvents();
-  }
-
-  async deleteSpecialVendorBonus(id) {
-    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
-    if (!bonus) return;
-    const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || 'ce vendeur';
-    const confirmed = window.confirm(`Supprimer definitivement la bonification speciale de ${vendorName} ?`);
-    if (!confirmed) return;
-
-    await deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id));
-    if (this.editingSpecialBonusId === id) this.editingSpecialBonusId = '';
     await this.loadData();
     this.render();
     this.attachEvents();
