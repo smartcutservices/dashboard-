@@ -401,7 +401,14 @@ async function deleteSelectedClient() {
     if (!response.ok || payload?.ok === false) {
       throw new Error(payload?.message || payload?.error || `HTTP ${response.status}`);
     }
-    showNotice(payload?.authDeleted === false ? 'Client supprime. Aucun compte Auth correspondant n existait.' : 'Compte client supprime.');
+    const vendorDeleted = Boolean(
+      payload?.vendorCleanup?.vendorDeleted ||
+      payload?.vendorCleanup?.vendorApplicationDeleted ||
+      Number(payload?.vendorCleanup?.vendorProductsDeleted || 0) > 0
+    );
+    showNotice(vendorDeleted
+      ? 'Compte client et profil vendeur supprimes.'
+      : (payload?.authDeleted === false ? 'Client supprime. Aucun compte Auth correspondant n existait.' : 'Compte client supprime.'));
   } catch (error) {
     console.error('Suppression client impossible:', error);
     showNotice(error?.message || 'Impossible de supprimer ce compte client.', 'error');
