@@ -1087,6 +1087,7 @@
           <!-- Tabs de navigation -->
           <div class="section-tabs">
             <button class="section-tab active" data-tab="general">Général</button>
+            <button class="section-tab" data-tab="delivery">Livraison</button>
             <button class="section-tab" data-tab="category">Catégorie & attributs</button>
             <button class="section-tab" data-tab="variations">Variations</button>
             <button class="section-tab" data-tab="gallery">Galerie</button>
@@ -1146,43 +1147,6 @@
                     </div>
                   </div>
 
-                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
-                    <div class="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <h4 class="font-semibold text-text-primary">Livraison par produit</h4>
-                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit et les zones ou ce produit peut etre livre. Le client ne pourra commander que si son adresse correspond a une zone disponible.</p>
-                      </div>
-                      <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
-                        Haiti uniquement
-                      </span>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
-                        <div class="flex gap-2">
-                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
-                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
-                            <option value="g">g</option>
-                            <option value="kg">kg</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <div>
-                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
-                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs communes avec le prix facture au client pour ce produit.</p>
-                        </div>
-                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
-                          <i class="fas fa-plus"></i>
-                          Ajouter une zone
-                        </button>
-                      </div>
-                      <div id="productDeliveryZonesList" class="space-y-3"></div>
-                    </div>
-                  </div>
-
                   <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(198,167,94,0.06)] p-4 space-y-4">
                     <div class="flex items-start justify-between gap-3 flex-wrap">
                       <div>
@@ -1209,6 +1173,53 @@
                         <label class="block text-sm text-text-secondary mb-1">Date fin</label>
                         <input type="datetime-local" id="discountEndAt" class="form-input">
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== TAB 2: LIVRAISON ===== -->
+            <div id="tab-delivery" class="tab-content hidden">
+              <div class="content-card">
+                <div class="card-header">
+                  <span>Livraison du produit</span>
+                  <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
+                    Haiti uniquement
+                  </span>
+                </div>
+                <div class="card-body space-y-4">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
+                    <div class="flex items-start justify-between gap-3 flex-wrap">
+                      <div>
+                        <h4 class="font-semibold text-text-primary">Zones de livraison et prix</h4>
+                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit, puis ajoutez les communes ou ce produit peut etre livre avec le prix facture au client. Si l'adresse du client ne correspond pas, il ne pourra pas commander ce produit.</p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
+                        <div class="flex gap-2">
+                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
+                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <div>
+                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
+                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs zones: pays, departement, commune et prix de livraison.</p>
+                        </div>
+                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
+                          <i class="fas fa-plus"></i>
+                          Ajouter une zone
+                        </button>
+                      </div>
+                      <div id="productDeliveryZonesList" class="space-y-3"></div>
                     </div>
                   </div>
                 </div>
