@@ -2929,9 +2929,19 @@
           .join('');
       }
 
+      renderProductCountryOptions(selected = 'Haiti') {
+        return `<option value="Haiti" ${String(selected || 'Haiti') === 'Haiti' ? 'selected' : ''}>Haiti</option>`;
+      }
+
       renderProductDeliveryZoneRow(zone = {}, index = 0) {
         return `
-          <div data-product-delivery-zone="${index}" class="grid grid-cols-1 md:grid-cols-[1fr_1fr_120px_auto] gap-3 items-end rounded-xl border border-[rgba(198,167,94,0.18)] bg-white p-3">
+          <div data-product-delivery-zone="${index}" class="grid grid-cols-1 md:grid-cols-[130px_1fr_1fr_120px_auto] gap-3 items-end rounded-xl border border-[rgba(198,167,94,0.18)] bg-white p-3">
+            <div>
+              <label class="block text-sm text-text-secondary mb-1">Pays</label>
+              <select data-product-zone-field="country" class="form-input">
+                ${this.renderProductCountryOptions(zone.country || 'Haiti')}
+              </select>
+            </div>
             <div>
               <label class="block text-sm text-text-secondary mb-1">Departement</label>
               <select data-product-zone-field="department" class="form-input">
@@ -2994,12 +3004,12 @@
       collectProductDeliveryCoverage() {
         const zones = Array.from(this.elements.productDeliveryZonesList?.querySelectorAll('[data-product-delivery-zone]') || [])
           .map((row) => ({
-            country: 'Haiti',
+            country: row.querySelector('[data-product-zone-field="country"]')?.value || 'Haiti',
             department: row.querySelector('[data-product-zone-field="department"]')?.value || '',
             commune: row.querySelector('[data-product-zone-field="commune"]')?.value || '',
             fee: Number(row.querySelector('[data-product-zone-field="fee"]')?.value || 0)
           }))
-          .filter((zone) => zone.department && zone.commune && Number.isFinite(zone.fee) && zone.fee >= 0);
+          .filter((zone) => zone.country && zone.department && zone.commune && Number.isFinite(zone.fee) && zone.fee >= 0);
         return {
           country: 'Haiti',
           mode: 'product_zones',
