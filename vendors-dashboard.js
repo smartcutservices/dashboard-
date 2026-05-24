@@ -555,9 +555,6 @@ class VendorsDashboard {
     ].join(' | ')).join('\n');
     const planId = String(item.planId || (item.planPaymentRequired ? 'pro' : 'basic') || 'basic').toLowerCase();
     const planLabel = item.planLabel || (planId === 'pro' ? 'PRO' : 'BASIC');
-    const kycDocuments = item.kycDocuments || {};
-    const kycRectoUrl = kycDocuments.recto?.url || kycDocuments.recto?.downloadURL || '';
-    const kycVersoUrl = kycDocuments.verso?.url || kycDocuments.verso?.downloadURL || '';
 
     return `
       <div class="application-copy admin-note" data-application-editor="${this.escape(item.id)}" style="margin-top:1rem;">
@@ -615,22 +612,9 @@ class VendorsDashboard {
               <strong>Prix national HTG</strong>
               <input type="number" min="0" step="1" data-application-edit-field="deliveryNationwideFee" value="${this.escape(coverage.nationwideFee || '')}" style="${this.adminInputStyle()}">
             </div>
-            <div>
-              <strong>Statut KYC</strong>
-              <input data-application-edit-field="kycStatus" value="${this.escape(item.kycStatus || '')}" style="${this.adminInputStyle()}">
-            </div>
           </div>
           <p style="margin:.75rem 0 .35rem;color:rgba(246,241,232,.72);font-size:.9rem;">Une zone par ligne: Haiti | Ouest | Delmas | 500</p>
           <textarea data-application-edit-field="deliveryZonesText" rows="4" style="${this.adminInputStyle(true)}">${this.escape(zonesText)}</textarea>
-        </div>
-
-        <div class="application-copy" style="margin-top:1rem;">
-          <strong>Documents KYC</strong>
-          <p>
-            Recto: ${kycRectoUrl ? `<a href="${this.escape(kycRectoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
-            &nbsp; | &nbsp;
-            Verso: ${kycVersoUrl ? `<a href="${this.escape(kycVersoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
-          </p>
         </div>
 
         <div class="application-copy" style="margin-top:1rem;">
@@ -1348,7 +1332,6 @@ class VendorsDashboard {
     const deliveryNationwide = Boolean(this.getApplicationEditControl('deliveryNationwide')?.checked);
     const deliveryNationwideFee = Number(this.getApplicationEditControl('deliveryNationwideFee')?.value || 0);
     const deliveryZones = this.parseDeliveryZonesText(this.getApplicationEditControl('deliveryZonesText')?.value || '');
-    const kycStatus = String(this.getApplicationEditControl('kycStatus')?.value || current.kycStatus || '').trim();
     const adminNote = String(this.getApplicationEditControl('adminNote')?.value || '').trim();
 
     payload.responses = responses;
@@ -1370,7 +1353,6 @@ class VendorsDashboard {
       zones: deliveryNationwide ? [] : deliveryZones
     };
     payload.deliveryZones = deliveryNationwide ? [] : deliveryZones;
-    payload.kycStatus = kycStatus;
     payload.adminNote = adminNote;
 
     return payload;
@@ -1423,8 +1405,6 @@ class VendorsDashboard {
       planPaymentRequired,
       planPaymentStatus: application.planPaymentStatus || (planPaymentRequired ? 'pending' : 'not_required'),
       payoutRequestIntervalDays: Number(application.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30),
-      kycStatus: application.kycStatus || '',
-      kycDocuments: application.kycDocuments || null,
       deliveryCoverage: application.deliveryCoverage || null,
       deliveryZones: Array.isArray(application.deliveryZones)
         ? application.deliveryZones
