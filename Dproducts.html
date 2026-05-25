@@ -862,7 +862,7 @@
                       <input type="checkbox" id="isDigitalProduct" class="mt-1">
                       <span>
                         <span class="block font-semibold text-text-primary">Article digital</span>
-                        <span class="block text-sm text-text-secondary">Livraison gratuite et instantanee. Le client recoit le fichier ou le lien apres confirmation de paiement.</span>
+                        <span class="block text-sm text-text-secondary">Livraison gratuite et instantanee, disponible partout. Aucun stock n est gere pour un produit digital.</span>
                       </span>
                     </label>
 
@@ -877,6 +877,10 @@
                     <div>
                       <label class="block text-sm text-text-secondary mb-1">Delai de livraison</label>
                       <input type="text" id="deliveryDelay" class="form-input" value="Instantanee" placeholder="Instantanee">
+                    </div>
+                    <div class="rounded-xl bg-white border border-[rgba(198,167,94,0.16)] p-4 text-sm text-text-secondary">
+                      <p class="font-semibold text-text-primary mb-1">Photos du produit digital</p>
+                      <p>Ajoutez les photos dans l'onglet Galerie. Maximum 3 photos, 1 Mo par photo.</p>
                     </div>
                   </div>
                 </div>
@@ -2260,6 +2264,7 @@
           deliveryDelay: isDigitalProduct ? 'Instantanee' : (this.elements.deliveryDelay?.value?.trim() || ''),
           deliveryMode: isDigitalProduct ? 'Digital - livraison instantanee' : '',
           weightGrams: isDigitalProduct ? 0 : this.collectProductWeightGrams(),
+          stock: isDigitalProduct ? null : Number(this.elements.totalStock?.value || 0),
           deliveryCoverage,
           deliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
           productDeliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
@@ -2272,11 +2277,11 @@
           status: this.elements.productStatus.checked ? 'active' : 'draft',
           categoryId: this.elements.categorySelect.value || null,
           categorySelections: this.categorySelections,
-          variations: this.currentVariations.map((v, index) => ({
+          variations: isDigitalProduct ? [] : this.currentVariations.map((v, index) => ({
             ...v,
             images: this.currentImages.variations[index] || []
           })),
-          images: this.currentImages.main,
+          images: isDigitalProduct ? this.currentImages.main.slice(0, 3) : this.currentImages.main,
           updatedAt: new Date().toISOString()
         };
 
@@ -2288,6 +2293,12 @@
         if (productData.isDigitalProduct && !productData.digitalDownloadLink) {
           this.showToast('Ajoutez le lien de telechargement pour cet article digital.', 'error');
           this.switchEditorTab('digital');
+          return;
+        }
+
+        if (productData.isDigitalProduct && this.currentImages.main.length > 3) {
+          this.showToast('Produit digital: maximum 3 photos.', 'error');
+          this.switchEditorTab('gallery');
           return;
         }
 
@@ -2523,6 +2534,7 @@
         if (type === 'main') {
           const filename = this.elements.mainImageNameInput.value.trim();
           if (filename) {
+            if (!this.validateDigitalMainImages([])) return;
             this.currentImages.main.push(filename);
             this.renderMainImages();
             this.elements.mainImageNameInput.value = '';
@@ -2579,6 +2591,9 @@
           this.elements.deliveryDelay.readOnly = isDigital;
           if (isDigital) this.elements.deliveryDelay.value = 'Instantanee';
         }
+        if (isDigital && this.elements.totalStock) {
+          this.elements.totalStock.value = '0';
+        }
         if (this.elements.productWeightValue) {
           this.elements.productWeightValue.disabled = isDigital;
           if (isDigital) this.elements.productWeightValue.value = '0';
@@ -2589,12 +2604,36 @@
         }
       }
 
+      isDigitalModeActive() {
+        return Boolean(this.elements.isDigitalProduct?.checked)
+          || Boolean(this.elements.digitalDownloadLink?.value?.trim());
+      }
+
+      validateDigitalMainImages(incomingFiles = []) {
+        if (!this.isDigitalModeActive()) return true;
+        const currentCount = Array.isArray(this.currentImages.main) ? this.currentImages.main.length : 0;
+        if (currentCount + incomingFiles.length > 3) {
+          this.showToast('Produit digital: maximum 3 photos.', 'error');
+          return false;
+        }
+        const tooLarge = incomingFiles.find((file) => Number(file?.size || 0) > 1024 * 1024);
+        if (tooLarge) {
+          this.showToast(`Produit digital: "${tooLarge.name}" depasse 1 Mo.`, 'error');
+          return false;
+        }
+        return true;
+      }
+
       async uploadSelectedImages(type) {
         const fileInput = type === 'main' ? this.elements.mainImageFileInput : this.elements.varImageFileInput;
         const files = Array.from(fileInput?.files || []);
 
         if (files.length === 0) {
           this.showToast('Selectionnez au moins une image a envoyer.', 'error');
+          return;
+        }
+
+        if (type === 'main' && !this.validateDigitalMainImages(files)) {
           return;
         }
 
