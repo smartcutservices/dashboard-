@@ -868,18 +868,9 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label class="block text-sm text-text-secondary mb-1">Fichier digital</label>
-                        <input type="file" id="digitalProductFileInput" class="form-input">
-                        <button type="button" id="uploadDigitalProductBtn" class="btn btn-secondary btn-sm mt-2">
-                          <i class="fas fa-cloud-upload-alt"></i>
-                          Uploader le fichier
-                        </button>
-                        <div id="digitalFileInfo" class="text-xs text-text-secondary mt-2"></div>
-                      </div>
-                      <div>
                         <label class="block text-sm text-text-secondary mb-1">Lien de telechargement</label>
-                        <input type="url" id="digitalDownloadLink" class="form-input" placeholder="https://... ou lien genere apres upload">
-                        <p class="text-xs text-text-secondary mt-1">Vous pouvez uploader un fichier ou coller un lien direct.</p>
+                        <input type="url" id="digitalDownloadLink" class="form-input" placeholder="https://...">
+                        <p class="text-xs text-text-secondary mt-1">Collez uniquement un lien externe. Aucun fichier digital n est stocke sur Smart Cut.</p>
                       </div>
                     </div>
 
@@ -1112,7 +1103,7 @@
 
   <script type="module">
     // ========== CONFIGURATION FIREBASE ==========
-    import { uploadImageFile, uploadStorageFile } from './firebase-storage.js';
+    import { uploadImageFile } from './firebase-storage.js';
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
     import { sendBroadcastNotification, NotificationComponent } from './notification.js';
     import { 
@@ -1241,9 +1232,6 @@
           productDeliveryZonesList: document.getElementById('productDeliveryZonesList'),
           addProductDeliveryZoneBtn: document.getElementById('addProductDeliveryZoneBtn'),
           isDigitalProduct: document.getElementById('isDigitalProduct'),
-          digitalProductFileInput: document.getElementById('digitalProductFileInput'),
-          uploadDigitalProductBtn: document.getElementById('uploadDigitalProductBtn'),
-          digitalFileInfo: document.getElementById('digitalFileInfo'),
           digitalDownloadLink: document.getElementById('digitalDownloadLink'),
           deliveryDelay: document.getElementById('deliveryDelay'),
           discountType: document.getElementById('discountType'),
@@ -1354,7 +1342,6 @@
         this.elements.uploadVarImageBtn?.addEventListener('click', () => this.uploadSelectedImages('variation'));
         this.elements.addProductDeliveryZoneBtn?.addEventListener('click', () => this.addProductDeliveryZoneRow());
         this.elements.isDigitalProduct?.addEventListener('change', () => this.updateDigitalProductUi());
-        this.elements.uploadDigitalProductBtn?.addEventListener('click', () => this.uploadDigitalProductFile());
         
         // Search
         this.elements.searchProducts.addEventListener('input', () => this.renderProductsList());
@@ -2170,8 +2157,6 @@
           if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = Boolean(this.currentProduct.isDigitalProduct);
           if (this.elements.digitalDownloadLink) {
             this.elements.digitalDownloadLink.value = this.currentProduct.digitalDownloadLink || '';
-            this.elements.digitalDownloadLink.dataset.storagePath = this.currentProduct.digitalDownloadStoragePath || '';
-            this.elements.digitalDownloadLink.dataset.fileName = this.currentProduct.digitalDownloadFileName || '';
           }
           if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = this.currentProduct.deliveryDelay || (this.currentProduct.isDigitalProduct ? 'Instantanee' : '');
           this.updateDigitalProductUi();
@@ -2210,10 +2195,7 @@
         if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = false;
         if (this.elements.digitalDownloadLink) {
           this.elements.digitalDownloadLink.value = '';
-          this.elements.digitalDownloadLink.dataset.storagePath = '';
-          this.elements.digitalDownloadLink.dataset.fileName = '';
         }
-        if (this.elements.digitalProductFileInput) this.elements.digitalProductFileInput.value = '';
         if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = 'Instantanee';
         this.updateDigitalProductUi();
         this.populateDiscountFields(null);
@@ -2250,8 +2232,8 @@
           comparePrice: parseFloat(this.elements.comparePrice.value) || null,
           isDigitalProduct,
           digitalDownloadLink: this.elements.digitalDownloadLink?.value?.trim() || '',
-          digitalDownloadStoragePath: this.elements.digitalDownloadLink?.dataset?.storagePath || this.currentProduct?.digitalDownloadStoragePath || '',
-          digitalDownloadFileName: this.elements.digitalDownloadLink?.dataset?.fileName || this.currentProduct?.digitalDownloadFileName || '',
+          digitalDownloadStoragePath: '',
+          digitalDownloadFileName: '',
           deliveryDelay: isDigitalProduct ? 'Instantanee' : (this.elements.deliveryDelay?.value?.trim() || ''),
           deliveryMode: isDigitalProduct ? 'Digital - livraison instantanee' : '',
           weightGrams: isDigitalProduct ? 0 : this.collectProductWeightGrams(),
@@ -2568,11 +2550,6 @@
           : `products/${productId}/variations`;
       }
 
-      getDigitalStorageFolder() {
-        const productId = this.currentProduct?.id || 'draft';
-        return `products/${productId}/digital`;
-      }
-
       updateDigitalProductUi() {
         const isDigital = Boolean(this.elements.isDigitalProduct?.checked);
         if (this.elements.deliveryDelay) {
@@ -2586,55 +2563,6 @@
         if (this.elements.productWeightUnit) {
           this.elements.productWeightUnit.disabled = isDigital;
           if (isDigital) this.elements.productWeightUnit.value = 'g';
-        }
-        this.renderDigitalFileInfo(this.currentProduct);
-      }
-
-      renderDigitalFileInfo(product = null) {
-        const info = this.elements.digitalFileInfo;
-        if (!info) return;
-        const link = this.elements.digitalDownloadLink?.value?.trim() || product?.digitalDownloadLink || '';
-        const fileName = this.elements.digitalDownloadLink?.dataset?.fileName || product?.digitalDownloadFileName || '';
-        const storagePath = this.elements.digitalDownloadLink?.dataset?.storagePath || product?.digitalDownloadStoragePath || '';
-        if (!link && !fileName && !storagePath) {
-          info.textContent = 'Aucun fichier digital enregistre.';
-          return;
-        }
-        info.innerHTML = `
-          <div class="rounded-lg border border-[rgba(198,167,94,0.2)] bg-white p-3">
-            <div class="font-semibold text-text-primary">${fileName || 'Fichier digital'}</div>
-            <div class="break-all">${storagePath || link}</div>
-          </div>
-        `;
-      }
-
-      async uploadDigitalProductFile() {
-        const file = this.elements.digitalProductFileInput?.files?.[0];
-        if (!file) {
-          this.showToast('Selectionnez un fichier digital a envoyer.', 'error');
-          return;
-        }
-        if (!this.elements.isDigitalProduct?.checked) {
-          this.showToast('Activez Article digital avant d uploader le fichier.', 'error');
-          return;
-        }
-
-        try {
-          this.showToast('Upload du fichier digital en cours...', 'info');
-          const upload = await uploadStorageFile(file, this.getDigitalStorageFolder(), { maxSizeMb: 20 });
-          if (this.elements.digitalDownloadLink) {
-            this.elements.digitalDownloadLink.value = upload.url || '';
-            this.elements.digitalDownloadLink.dataset.storagePath = upload.path || '';
-            this.elements.digitalDownloadLink.dataset.fileName = upload.name || file.name;
-          }
-          if (this.elements.digitalProductFileInput) {
-            this.elements.digitalProductFileInput.value = '';
-          }
-          this.renderDigitalFileInfo();
-          this.showToast('Fichier digital envoye. La livraison sera gratuite et instantanee.');
-        } catch (error) {
-          console.error('Erreur upload fichier digital:', error);
-          this.showToast(error?.message || 'Erreur pendant l upload du fichier digital.', 'error');
         }
       }
 
