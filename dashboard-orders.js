@@ -53,6 +53,36 @@ const elements = {
   orderDetailRoot: document.getElementById('orderDetailRoot')
 };
 
+function waitForAdminAccess(timeoutMs = 8000) {
+  if (document.body?.dataset?.adminAccess === 'granted') {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      document.removeEventListener('adminAccessGranted', onGranted);
+      document.removeEventListener('adminAccessDenied', onDenied);
+      clearTimeout(timer);
+    };
+    const finish = (callback) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const onGranted = () => finish(resolve);
+    const onDenied = () => finish(() => reject(new Error('admin-access-denied')));
+    const timer = setTimeout(() => {
+      // Fallback local/dev: if admin-access did not dispatch, let Firestore rules decide.
+      finish(resolve);
+    }, timeoutMs);
+
+    document.addEventListener('adminAccessGranted', onGranted, { once: true });
+    document.addEventListener('adminAccessDenied', onDenied, { once: true });
+  });
+}
+
 function showToast(message, type = 'success') {
   const palette = {
     success: '#0f9f6e',
@@ -259,7 +289,47 @@ async function loadOrders() {
     }));
   } catch (error) {
     console.error('Erreur chargement commandes globales:', error);
+    await loadOrdersFromClients();
+  }
+}
+
+function getOrderCreatedTime(order = {}) {
+  const value = order?.createdAt;
+  if (value?.toDate) return value.toDate().getTime();
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function loadOrdersFromClients() {
+  try {
+    const clients = state.clients.length
+      ? state.clients
+      : (await getDocs(collection(db, CLIENTS_COLLECTION))).docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+
+    const batches = await Promise.all(clients.map(async (client) => {
+      try {
+        const snapshot = await getDocs(query(
+          collection(db, CLIENTS_COLLECTION, client.id, 'orders'),
+          orderBy('createdAt', 'desc')
+        ));
+        return snapshot.docs.map((entry) => ({
+          id: entry.id,
+          clientId: client.id,
+          ...entry.data()
+        }));
+      } catch (error) {
+        console.warn('Commande client ignoree pendant fallback:', client.id, error);
+        return [];
+      }
+    }));
+
+    state.orders = batches
+      .flat()
+      .sort((a, b) => getOrderCreatedTime(b) - getOrderCreatedTime(a));
+  } catch (fallbackError) {
+    console.error('Erreur fallback chargement commandes par client:', fallbackError);
     state.orders = [];
+    throw fallbackError;
   }
 }
 
@@ -284,9 +354,15 @@ function scheduleReload() {
 function setupRealtimeListeners() {
   clearRealtimeListeners();
 
-  const unsubscribe = onSnapshot(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')), () => {
-    scheduleReload();
-  });
+  const unsubscribe = onSnapshot(
+    query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')),
+    () => {
+      scheduleReload();
+    },
+    (error) => {
+      console.warn('Realtime commandes indisponible, rechargement manuel utilise:', error);
+    }
+  );
   state.unsubscribers.push(unsubscribe);
 }
 
@@ -897,6 +973,7 @@ function attachEvents() {
 
 async function init() {
   attachEvents();
+  await waitForAdminAccess();
   await loadClients();
   await loadOrders();
   setupRealtimeListeners();
