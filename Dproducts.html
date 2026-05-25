@@ -708,6 +708,8 @@
           <!-- Tabs de navigation -->
           <div class="section-tabs">
             <button class="section-tab active" data-tab="general">Général</button>
+            <button class="section-tab" data-tab="delivery">Livraison</button>
+            <button class="section-tab" data-tab="digital">Digital</button>
             <button class="section-tab" data-tab="category">Catégorie & attributs</button>
             <button class="section-tab" data-tab="variations">Variations</button>
             <button class="section-tab" data-tab="gallery">Galerie</button>
@@ -767,45 +769,6 @@
                     </div>
                   </div>
 
-                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
-                    <div class="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <h4 class="font-semibold text-text-primary">Livraison par produit</h4>
-                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit et les zones ou ce produit peut etre livre. Le client ne pourra commander que si son adresse correspond a une zone disponible.</p>
-                      </div>
-                      <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
-                        Haiti uniquement
-                      </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
-                        <div class="flex gap-2">
-                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
-                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
-                            <option value="g">g</option>
-                            <option value="kg">kg</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <div>
-                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
-                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs communes avec le prix facture au client pour ce produit.</p>
-                        </div>
-                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
-                          <i class="fas fa-plus"></i>
-                          Ajouter une zone
-                        </button>
-                      </div>
-                      <div id="productDeliveryZonesList" class="space-y-3"></div>
-                    </div>
-                  </div>
-
                   <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(198,167,94,0.06)] p-4 space-y-4">
                     <div class="flex items-start justify-between gap-3 flex-wrap">
                       <div>
@@ -839,6 +802,96 @@
             </div>
 
             <!-- ===== TAB 2: CATÉGORIE & ATTRIBUTS ===== -->
+            <div id="tab-delivery" class="tab-content hidden">
+              <div class="content-card">
+                <div class="card-header">
+                  <span>Livraison par produit</span>
+                </div>
+                <div class="card-body space-y-4">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
+                    <div class="flex items-start justify-between gap-3 flex-wrap">
+                      <div>
+                        <h4 class="font-semibold text-text-primary">Zones et poids du produit</h4>
+                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit et les zones ou ce produit peut etre livre. Le client ne pourra commander que si son adresse correspond a une zone disponible.</p>
+                      </div>
+                      <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
+                        Haiti uniquement
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
+                        <div class="flex gap-2">
+                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
+                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                          </select>
+                        </div>
+                        <p class="text-xs text-text-secondary mt-1">Pour un produit digital, le poids est force a 0 et la livraison est gratuite.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <div>
+                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
+                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs communes avec le prix facture au client pour ce produit.</p>
+                        </div>
+                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
+                          <i class="fas fa-plus"></i>
+                          Ajouter une zone
+                        </button>
+                      </div>
+                      <div id="productDeliveryZonesList" class="space-y-3"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="tab-digital" class="tab-content hidden">
+              <div class="content-card">
+                <div class="card-header">
+                  <span>Produit digital</span>
+                </div>
+                <div class="card-body space-y-4">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(198,167,94,0.06)] p-4 space-y-4">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                      <input type="checkbox" id="isDigitalProduct" class="mt-1">
+                      <span>
+                        <span class="block font-semibold text-text-primary">Article digital</span>
+                        <span class="block text-sm text-text-secondary">Livraison gratuite et instantanee. Le client recoit le fichier ou le lien apres confirmation de paiement.</span>
+                      </span>
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Fichier digital</label>
+                        <input type="file" id="digitalProductFileInput" class="form-input">
+                        <button type="button" id="uploadDigitalProductBtn" class="btn btn-secondary btn-sm mt-2">
+                          <i class="fas fa-cloud-upload-alt"></i>
+                          Uploader le fichier
+                        </button>
+                        <div id="digitalFileInfo" class="text-xs text-text-secondary mt-2"></div>
+                      </div>
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Lien de telechargement</label>
+                        <input type="url" id="digitalDownloadLink" class="form-input" placeholder="https://... ou lien genere apres upload">
+                        <p class="text-xs text-text-secondary mt-1">Vous pouvez uploader un fichier ou coller un lien direct.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm text-text-secondary mb-1">Delai de livraison</label>
+                      <input type="text" id="deliveryDelay" class="form-input" value="Instantanee" placeholder="Instantanee">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div id="tab-category" class="tab-content hidden">
               <div class="content-card">
                 <div class="card-header">
@@ -1059,7 +1112,7 @@
 
   <script type="module">
     // ========== CONFIGURATION FIREBASE ==========
-    import { uploadImageFile } from './firebase-storage.js';
+    import { uploadImageFile, uploadStorageFile } from './firebase-storage.js';
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
     import { sendBroadcastNotification, NotificationComponent } from './notification.js';
     import { 
@@ -1187,6 +1240,12 @@
           productWeightUnit: document.getElementById('productWeightUnit'),
           productDeliveryZonesList: document.getElementById('productDeliveryZonesList'),
           addProductDeliveryZoneBtn: document.getElementById('addProductDeliveryZoneBtn'),
+          isDigitalProduct: document.getElementById('isDigitalProduct'),
+          digitalProductFileInput: document.getElementById('digitalProductFileInput'),
+          uploadDigitalProductBtn: document.getElementById('uploadDigitalProductBtn'),
+          digitalFileInfo: document.getElementById('digitalFileInfo'),
+          digitalDownloadLink: document.getElementById('digitalDownloadLink'),
+          deliveryDelay: document.getElementById('deliveryDelay'),
           discountType: document.getElementById('discountType'),
           discountValue: document.getElementById('discountValue'),
           discountStartAt: document.getElementById('discountStartAt'),
@@ -1294,6 +1353,8 @@
         this.elements.uploadMainImageBtn?.addEventListener('click', () => this.uploadSelectedImages('main'));
         this.elements.uploadVarImageBtn?.addEventListener('click', () => this.uploadSelectedImages('variation'));
         this.elements.addProductDeliveryZoneBtn?.addEventListener('click', () => this.addProductDeliveryZoneRow());
+        this.elements.isDigitalProduct?.addEventListener('change', () => this.updateDigitalProductUi());
+        this.elements.uploadDigitalProductBtn?.addEventListener('click', () => this.uploadDigitalProductFile());
         
         // Search
         this.elements.searchProducts.addEventListener('input', () => this.renderProductsList());
@@ -2106,6 +2167,14 @@
           this.elements.comparePrice.value = this.currentProduct.comparePrice || '';
           this.setProductWeightInputs(this.currentProduct.weightGrams || this.currentProduct.weight || 0);
           this.renderProductDeliveryZones(this.currentProduct.deliveryZones || this.currentProduct.productDeliveryZones || this.currentProduct.deliveryCoverage?.zones || []);
+          if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = Boolean(this.currentProduct.isDigitalProduct);
+          if (this.elements.digitalDownloadLink) {
+            this.elements.digitalDownloadLink.value = this.currentProduct.digitalDownloadLink || '';
+            this.elements.digitalDownloadLink.dataset.storagePath = this.currentProduct.digitalDownloadStoragePath || '';
+            this.elements.digitalDownloadLink.dataset.fileName = this.currentProduct.digitalDownloadFileName || '';
+          }
+          if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = this.currentProduct.deliveryDelay || (this.currentProduct.isDigitalProduct ? 'Instantanee' : '');
+          this.updateDigitalProductUi();
           this.populateDiscountFields(this.currentProduct);
           this.elements.productStatus.checked = this.currentProduct.status !== 'draft';
           
@@ -2138,6 +2207,15 @@
         this.elements.comparePrice.value = '';
         this.setProductWeightInputs(0);
         this.renderProductDeliveryZones([]);
+        if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = false;
+        if (this.elements.digitalDownloadLink) {
+          this.elements.digitalDownloadLink.value = '';
+          this.elements.digitalDownloadLink.dataset.storagePath = '';
+          this.elements.digitalDownloadLink.dataset.fileName = '';
+        }
+        if (this.elements.digitalProductFileInput) this.elements.digitalProductFileInput.value = '';
+        if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = 'Instantanee';
+        this.updateDigitalProductUi();
         this.populateDiscountFields(null);
         this.elements.totalStock.value = '0';
         this.elements.productStatus.checked = true;
@@ -2159,7 +2237,10 @@
           this.showToast(discount.__error, 'error');
           return;
         }
-        const deliveryCoverage = this.collectProductDeliveryCoverage();
+        const isDigitalProduct = Boolean(this.elements.isDigitalProduct?.checked);
+        const deliveryCoverage = isDigitalProduct
+          ? { country: 'Haiti', mode: 'digital', nationwide: false, nationwideFee: 0, zones: [] }
+          : this.collectProductDeliveryCoverage();
         const productData = {
           name: this.elements.productName.value.trim(),
           sku: this.elements.mainSku.value.trim() || this.generateMainSku(),
@@ -2167,10 +2248,16 @@
           longDescription: this.elements.longDescription.value.trim(),
           price: parseFloat(this.elements.basePrice.value) || 0,
           comparePrice: parseFloat(this.elements.comparePrice.value) || null,
-          weightGrams: this.collectProductWeightGrams(),
+          isDigitalProduct,
+          digitalDownloadLink: this.elements.digitalDownloadLink?.value?.trim() || '',
+          digitalDownloadStoragePath: this.elements.digitalDownloadLink?.dataset?.storagePath || this.currentProduct?.digitalDownloadStoragePath || '',
+          digitalDownloadFileName: this.elements.digitalDownloadLink?.dataset?.fileName || this.currentProduct?.digitalDownloadFileName || '',
+          deliveryDelay: isDigitalProduct ? 'Instantanee' : (this.elements.deliveryDelay?.value?.trim() || ''),
+          deliveryMode: isDigitalProduct ? 'Digital - livraison instantanee' : '',
+          weightGrams: isDigitalProduct ? 0 : this.collectProductWeightGrams(),
           deliveryCoverage,
-          deliveryZones: deliveryCoverage.zones,
-          productDeliveryZones: deliveryCoverage.zones,
+          deliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
+          productDeliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
           discount,
           discountEnabled: Boolean(discount?.enabled),
           discountType: discount?.type || '',
@@ -2190,6 +2277,18 @@
 
         if (!productData.name) {
           this.showToast('Le nom du produit est requis', 'error');
+          return;
+        }
+
+        if (productData.isDigitalProduct && !productData.digitalDownloadLink) {
+          this.showToast('Ajoutez le fichier ou le lien de telechargement pour cet article digital.', 'error');
+          this.switchEditorTab('digital');
+          return;
+        }
+
+        if (!productData.isDigitalProduct && !deliveryCoverage.zones.length) {
+          this.showToast('Ajoutez au moins une zone de livraison pour ce produit.', 'error');
+          this.switchEditorTab('delivery');
           return;
         }
 
@@ -2467,6 +2566,76 @@
         return type === 'main'
           ? `products/${productId}/main`
           : `products/${productId}/variations`;
+      }
+
+      getDigitalStorageFolder() {
+        const productId = this.currentProduct?.id || 'draft';
+        return `products/${productId}/digital`;
+      }
+
+      updateDigitalProductUi() {
+        const isDigital = Boolean(this.elements.isDigitalProduct?.checked);
+        if (this.elements.deliveryDelay) {
+          this.elements.deliveryDelay.readOnly = isDigital;
+          if (isDigital) this.elements.deliveryDelay.value = 'Instantanee';
+        }
+        if (this.elements.productWeightValue) {
+          this.elements.productWeightValue.disabled = isDigital;
+          if (isDigital) this.elements.productWeightValue.value = '0';
+        }
+        if (this.elements.productWeightUnit) {
+          this.elements.productWeightUnit.disabled = isDigital;
+          if (isDigital) this.elements.productWeightUnit.value = 'g';
+        }
+        this.renderDigitalFileInfo(this.currentProduct);
+      }
+
+      renderDigitalFileInfo(product = null) {
+        const info = this.elements.digitalFileInfo;
+        if (!info) return;
+        const link = this.elements.digitalDownloadLink?.value?.trim() || product?.digitalDownloadLink || '';
+        const fileName = this.elements.digitalDownloadLink?.dataset?.fileName || product?.digitalDownloadFileName || '';
+        const storagePath = this.elements.digitalDownloadLink?.dataset?.storagePath || product?.digitalDownloadStoragePath || '';
+        if (!link && !fileName && !storagePath) {
+          info.textContent = 'Aucun fichier digital enregistre.';
+          return;
+        }
+        info.innerHTML = `
+          <div class="rounded-lg border border-[rgba(198,167,94,0.2)] bg-white p-3">
+            <div class="font-semibold text-text-primary">${fileName || 'Fichier digital'}</div>
+            <div class="break-all">${storagePath || link}</div>
+          </div>
+        `;
+      }
+
+      async uploadDigitalProductFile() {
+        const file = this.elements.digitalProductFileInput?.files?.[0];
+        if (!file) {
+          this.showToast('Selectionnez un fichier digital a envoyer.', 'error');
+          return;
+        }
+        if (!this.elements.isDigitalProduct?.checked) {
+          this.showToast('Activez Article digital avant d uploader le fichier.', 'error');
+          return;
+        }
+
+        try {
+          this.showToast('Upload du fichier digital en cours...', 'info');
+          const upload = await uploadStorageFile(file, this.getDigitalStorageFolder(), { maxSizeMb: 20 });
+          if (this.elements.digitalDownloadLink) {
+            this.elements.digitalDownloadLink.value = upload.url || '';
+            this.elements.digitalDownloadLink.dataset.storagePath = upload.path || '';
+            this.elements.digitalDownloadLink.dataset.fileName = upload.name || file.name;
+          }
+          if (this.elements.digitalProductFileInput) {
+            this.elements.digitalProductFileInput.value = '';
+          }
+          this.renderDigitalFileInfo();
+          this.showToast('Fichier digital envoye. La livraison sera gratuite et instantanee.');
+        } catch (error) {
+          console.error('Erreur upload fichier digital:', error);
+          this.showToast(error?.message || 'Erreur pendant l upload du fichier digital.', 'error');
+        }
       }
 
       async uploadSelectedImages(type) {
