@@ -594,6 +594,11 @@
             <span class="flex-1">Produits</span>
             <span class="text-xs bg-background px-2 py-1 rounded-full" id="products-count">0</span>
           </button>
+
+          <button id="uploadDigitalProductNav" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" type="button">
+            <i class="fas fa-bolt w-5 text-text-secondary"></i>
+            <span class="flex-1">Upload Produit Digital</span>
+          </button>
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" data-view="categories">
             <i class="fas fa-sitemap w-5 text-text-secondary"></i>
@@ -1172,6 +1177,7 @@
           main: [], // Noms des images principales
           variations: {} // { variationIndex: [nomsImages] }
         };
+        this.editorMode = 'physical';
         
         this.init();
       }
@@ -1194,6 +1200,7 @@
           sidebar: document.getElementById('sidebar'),
           menuToggle: document.getElementById('menuToggle'),
           sidebarNav: document.querySelectorAll('.sidebar-nav'),
+          uploadDigitalProductNav: document.getElementById('uploadDigitalProductNav'),
           views: {
             dashboard: document.getElementById('dashboard-view'),
             products: document.getElementById('products-view'),
@@ -1318,6 +1325,7 @@
         // Navigation produit
         this.elements.addProductBtn.addEventListener('click', () => this.newProduct());
         this.elements.newProductBtn.addEventListener('click', () => this.newProduct());
+        this.elements.uploadDigitalProductNav?.addEventListener('click', () => this.newDigitalProduct());
         this.elements.backToProducts.addEventListener('click', () => this.switchView('products'));
         
         // Sauvegarde
@@ -1407,6 +1415,10 @@
       }
       
       switchEditorTab(tabName) {
+        const targetTab = document.querySelector(`.section-tab[data-tab="${tabName}"]`);
+        if (targetTab?.classList.contains('hidden')) {
+          tabName = 'general';
+        }
         this.elements.sectionTabs.forEach(t => t.classList.remove('active'));
         this.elements.tabContents.forEach(c => c.classList.add('hidden'));
         
@@ -1414,6 +1426,31 @@
         document.getElementById(`tab-${tabName}`).classList.remove('hidden');
         if (tabName === 'digital' && this.elements.isDigitalProduct) {
           this.elements.isDigitalProduct.checked = true;
+          this.updateDigitalProductUi();
+        }
+      }
+
+      setEditorMode(mode = 'physical') {
+        this.editorMode = mode === 'digital' ? 'digital' : 'physical';
+        const hiddenTabs = this.editorMode === 'digital'
+          ? ['delivery', 'category', 'variations']
+          : ['digital'];
+        const visibleTabs = this.editorMode === 'digital'
+          ? ['general', 'digital', 'gallery']
+          : ['general', 'delivery', 'category', 'variations', 'gallery'];
+
+        this.elements.sectionTabs.forEach((tab) => {
+          const tabName = tab.dataset.tab;
+          tab.classList.toggle('hidden', hiddenTabs.includes(tabName));
+          tab.style.display = visibleTabs.includes(tabName) ? '' : 'none';
+        });
+
+        if (this.editorMode === 'digital' && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = true;
+          this.updateDigitalProductUi();
+        }
+        if (this.editorMode === 'physical' && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = false;
           this.updateDigitalProductUi();
         }
       }
@@ -1579,7 +1616,7 @@
                 <p class="text-sm text-text-secondary mb-2">${product.sku || 'SKU non défini'}</p>
                 <div class="flex justify-between items-center text-sm">
                   <span>${product.price ? new Intl.NumberFormat('fr-HT', { style: 'currency', currency: 'HTG', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(product.price)) : 'Prix non défini'}</span>
-                  <span class="text-text-secondary">Stock: ${totalStock}</span>
+                  <span class="text-text-secondary">${product.isDigitalProduct ? 'Produit digital' : `Stock: ${totalStock}`}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm mt-2">
                   <span class="text-text-secondary">
@@ -2134,9 +2171,29 @@
           variations: {}
         };
         this.resetForm();
+        this.setEditorMode('physical');
         this.switchView('editor');
         this.elements.editorTitle.textContent = 'Nouveau produit';
         this.switchEditorTab('general');
+      }
+
+      newDigitalProduct() {
+        this.currentProduct = null;
+        this.currentVariations = [];
+        this.categorySelections = [];
+        this.currentImages = {
+          main: [],
+          variations: {}
+        };
+        this.resetForm();
+        this.setEditorMode('digital');
+        this.switchView('editor');
+        this.elements.sidebarNav.forEach(btn => btn.classList.remove('active', 'bg-background'));
+        this.elements.uploadDigitalProductNav?.classList.add('active', 'bg-background');
+        this.elements.currentViewTitle.textContent = 'Upload Produit Digital';
+        this.elements.editorTitle.textContent = 'Upload Produit Digital';
+        this.switchEditorTab('general');
+        this.showToast('Mode produit digital active: ajoutez description, prix, lien et photos.');
       }
       
       async editProduct(id) {
@@ -2181,6 +2238,7 @@
             this.elements.digitalDownloadLink.value = this.currentProduct.digitalDownloadLink || '';
           }
           if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = this.currentProduct.deliveryDelay || (this.currentProduct.isDigitalProduct ? 'Instantanee' : '');
+          this.setEditorMode(this.currentProduct.isDigitalProduct ? 'digital' : 'physical');
           this.updateDigitalProductUi();
           this.populateDiscountFields(this.currentProduct);
           this.elements.productStatus.checked = this.currentProduct.status !== 'draft';
@@ -2195,7 +2253,7 @@
           this.renderSelectedLines();
           
           this.switchView('editor');
-          this.elements.editorTitle.textContent = `Édition: ${this.currentProduct.name || 'Produit'}`;
+          this.elements.editorTitle.textContent = `${this.currentProduct.isDigitalProduct ? 'Edition produit digital' : 'Edition'}: ${this.currentProduct.name || 'Produit'}`;
           this.switchEditorTab('general');
           
         } catch (error) {
@@ -2587,6 +2645,10 @@
 
       updateDigitalProductUi() {
         const isDigital = Boolean(this.elements.isDigitalProduct?.checked);
+        const stockField = this.elements.totalStock?.closest('div');
+        if (stockField) {
+          stockField.style.display = isDigital ? 'none' : '';
+        }
         if (this.elements.deliveryDelay) {
           this.elements.deliveryDelay.readOnly = isDigital;
           if (isDigital) this.elements.deliveryDelay.value = 'Instantanee';
