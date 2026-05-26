@@ -18,6 +18,7 @@ Contexte:
 - Les admins Smart Cut doivent continuer a voir toutes les commandes.
 - Mais le suivi livraison des produits vendeur ne doit pas etre modifie depuis le dashboard admin.
 - Chaque vendeur doit confirmer ses propres etapes depuis son dashboard vendeur.
+- L'admin doit savoir clairement dans quel store le client a achete chaque produit.
 
 Correction appliquee:
 
@@ -32,14 +33,15 @@ Correction appliquee:
   - le bloc `Mettre a jour le suivi client` est remplace par une note indiquant que le vendeur gere le suivi,
   - `updateFulfillmentStatus()` refuse aussi la mise a jour par securite.
 - Les commandes Smart Cut uniquement gardent les boutons de suivi admin.
+- Les textes visibles ajoutes restent en ASCII pour eviter les problemes d'encodage deja vus dans les interfaces.
 
 Verification:
 
 - `node --check dashboard-orders.js`: OK.
-- La sauvegarde met a jour `vendorApplications` avec `setDoc(..., { merge: true })`.
-- Si la candidature est deja approuvee ou si le store existe deja dans `vendors`, les modifications sont aussi synchronisees vers `vendors` et `clients`.
+- Le tableau `Commandes` garde la visibilite admin globale.
+- Les commandes contenant des produits vendeur ne peuvent plus etre marquees `Livre` par l'admin.
+- Les commandes uniquement Smart Cut peuvent encore etre pilotees par Smart Cut.
 
 Precautions:
-- Ne pas donner l'edition au vendeur apres soumission tant que ce choix produit reste valide.
-- Si une candidature approuvee est modifiee, toujours synchroniser le profil vendeur actif pour eviter que dashboard, store et commandes utilisent des informations differentes.
-- Les nouveaux textes ajoutes dans le code restent sans accents pour eviter les anciens problemes d'encodage.
+- Ne pas remettre de bouton admin global pour livrer une commande vendeur, sinon Smart Cut pourrait marquer comme livre un produit que le vendeur n'a pas encore livre.
+- Si on ajoute plus tard un suivi par store dans le dashboard admin, il doit rester en lecture seule pour les vendeurs et editable seulement dans le dashboard vendeur.

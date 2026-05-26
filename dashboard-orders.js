@@ -14,10 +14,10 @@ import {
 
 const CLIENTS_COLLECTION = 'clients';
 const FULFILLMENT_STEPS = [
-  { key: 'ordered', label: 'Commandé' },
-  { key: 'shipped', label: 'Expédié' },
+  { key: 'ordered', label: 'Commande' },
+  { key: 'shipped', label: 'Expedie' },
   { key: 'in_delivery', label: 'En cours de livraison' },
-  { key: 'delivered', label: 'Livré' }
+  { key: 'delivered', label: 'Livre' }
 ];
 
 const state = {
@@ -603,9 +603,9 @@ function renderOrdersTable() {
         <td>
           ${adminCanManageFulfillment ? `
           <div class="row-actions">
-            <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="shipped" type="button">Expédié</button>
+            <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="shipped" type="button">Expedie</button>
             <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="in_delivery" type="button">En cours de livraison</button>
-            <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="delivered" type="button">Livré</button>
+            <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="delivered" type="button">Livre</button>
           </div>
           ` : `<span class="muted" title="Le vendeur gere son propre suivi livraison.">Suivi vendeur</span>`}
         </td>
@@ -670,7 +670,7 @@ function renderItems(order) {
           <div>
             <div><strong style="color:var(--text);font-size:0.95rem;">${escapeHtml(item?.name || 'Produit')}</strong></div>
             <div style="margin-top:0.25rem;">${renderBadge(getItemStoreName(item), isVendorItem(item) ? '#7c3aed' : '#0f9f6e')}</div>
-            <div class="muted">Qte: ${Number(item?.quantity) || 1} · PU: ${formatPrice(item?.price || 0)}</div>
+            <div class="muted">Qte: ${Number(item?.quantity) || 1} - PU: ${formatPrice(item?.price || 0)}</div>
             <div class="muted">${escapeHtml(item?.sku || item?.productId || '')}</div>
           </div>
         </article>
