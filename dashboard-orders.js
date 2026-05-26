@@ -186,6 +186,75 @@ function renderBadge(label, color) {
   return `<span class="badge" style="background:${color}18;color:${color};border:1px solid ${color}22;">${escapeHtml(label)}</span>`;
 }
 
+function getOrderItems(order = {}) {
+  return Array.isArray(order?.items) ? order.items : [];
+}
+
+function isVendorItem(item = {}) {
+  return Boolean(String(item?.vendorId || '').trim()) ||
+    String(item?.sourceType || '').toLowerCase() === 'vendor' ||
+    String(item?.ownerType || '').toLowerCase() === 'vendor';
+}
+
+function getItemStoreName(item = {}) {
+  if (isVendorItem(item)) {
+    return String(item?.vendorName || item?.shopName || item?.storeName || 'Store vendeur').trim();
+  }
+
+  return 'Smart Cut Services';
+}
+
+function getOrderStoreSummary(order = {}) {
+  const stores = new Map();
+  getOrderItems(order).forEach((item) => {
+    const name = getItemStoreName(item);
+    const current = stores.get(name) || {
+      name,
+      type: isVendorItem(item) ? 'vendor' : 'smartcut',
+      itemCount: 0
+    };
+    current.itemCount += Math.max(1, Number(item?.quantity || 1));
+    if (current.type !== 'vendor' && isVendorItem(item)) current.type = 'vendor';
+    stores.set(name, current);
+  });
+
+  return Array.from(stores.values());
+}
+
+function hasVendorItems(order = {}) {
+  return getOrderItems(order).some(isVendorItem);
+}
+
+function canAdminManageFulfillment(order = {}) {
+  const items = getOrderItems(order);
+  if (!items.length) return true;
+  return !hasVendorItems(order);
+}
+
+function renderStoreBadges(order = {}) {
+  const stores = getOrderStoreSummary(order);
+  if (!stores.length) return '<span class="muted">-</span>';
+
+  return `
+    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+      ${stores.map((store) => renderBadge(
+        `${store.name} (${store.itemCount})`,
+        store.type === 'vendor' ? '#7c3aed' : '#0f9f6e'
+      )).join('')}
+    </div>
+  `;
+}
+
+function renderAdminFulfillmentNotice(order = {}) {
+  if (canAdminManageFulfillment(order)) return '';
+
+  return `
+    <div class="muted" style="margin-top:0.45rem;line-height:1.5;">
+      Cette commande contient des produits vendeur. Le suivi livraison est gere par chaque store dans son dashboard vendeur.
+    </div>
+  `;
+}
+
 function getOrderAmount(order) {
   if (typeof order?.amount === 'number' && Number.isFinite(order.amount)) {
     return order.amount;
@@ -516,6 +585,7 @@ function renderOrdersTable() {
     const paymentColor = getPaymentStatusColor(order.status);
     const fulfillmentKey = getFulfillmentStatus(order);
     const fulfillmentColor = getFulfillmentStatusColor(fulfillmentKey);
+    const adminCanManageFulfillment = canAdminManageFulfillment(order);
 
     return `
       <tr class="${order.id === activeOrderId ? 'active' : ''}" data-order-id="${order.id}">
@@ -524,17 +594,20 @@ function renderOrdersTable() {
           <strong>${escapeHtml(clientName)}</strong>
           <div class="muted">${escapeHtml(order.customerEmail || client?.email || '-')}</div>
         </td>
+        <td>${renderStoreBadges(order)}</td>
         <td>${formatPrice(getOrderAmount(order))}</td>
         <td>${renderPromoBadge(order)}</td>
         <td>${renderBadge(getPaymentStatusText(order.status), paymentColor)}</td>
         <td>${renderBadge(getFulfillmentStatusText(fulfillmentKey), fulfillmentColor)}</td>
         <td><span class="muted">${escapeHtml(order.uniqueCode || '-')}</span></td>
         <td>
+          ${adminCanManageFulfillment ? `
           <div class="row-actions">
             <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="shipped" type="button">Expédié</button>
             <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="in_delivery" type="button">En cours de livraison</button>
             <button class="pill-btn quick-status-btn" data-order-id="${order.id}" data-next-status="delivered" type="button">Livré</button>
           </div>
+          ` : `<span class="muted" title="Le vendeur gere son propre suivi livraison.">Suivi vendeur</span>`}
         </td>
       </tr>
     `;
@@ -596,6 +669,7 @@ function renderItems(order) {
           <img src="${escapeHtml(item?.image || '')}" alt="${escapeHtml(item?.name || 'Produit')}" onerror="this.style.visibility='hidden'">
           <div>
             <div><strong style="color:var(--text);font-size:0.95rem;">${escapeHtml(item?.name || 'Produit')}</strong></div>
+            <div style="margin-top:0.25rem;">${renderBadge(getItemStoreName(item), isVendorItem(item) ? '#7c3aed' : '#0f9f6e')}</div>
             <div class="muted">Qte: ${Number(item?.quantity) || 1} · PU: ${formatPrice(item?.price || 0)}</div>
             <div class="muted">${escapeHtml(item?.sku || item?.productId || '')}</div>
           </div>
@@ -751,6 +825,7 @@ function renderOrderDetail() {
   const paymentColor = getPaymentStatusColor(order.status);
   const fulfillmentKey = getFulfillmentStatus(order);
   const fulfillmentColor = getFulfillmentStatusColor(fulfillmentKey);
+  const adminCanManageFulfillment = canAdminManageFulfillment(order);
 
   elements.orderDetailRoot.innerHTML = `
     <div>
@@ -787,6 +862,14 @@ function renderOrderDetail() {
       </div>
 
       <div class="detail-section">
+        <strong>Store(s) concernes</strong>
+        <div style="margin-top:0.65rem;">
+          ${renderStoreBadges(order)}
+        </div>
+        ${renderAdminFulfillmentNotice(order)}
+      </div>
+
+      <div class="detail-section">
         <strong>Etat commande</strong>
         <div style="display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.55rem;">
           ${renderBadge(getPaymentStatusText(order.status), paymentColor)}
@@ -808,23 +891,32 @@ function renderOrderDetail() {
         </div>
       </div>
 
-      <div class="detail-section">
-        <strong>Mettre a jour le suivi client</strong>
-        <div style="display:grid;grid-template-columns:1fr auto;gap:0.65rem;margin-top:0.75rem;">
-          <select class="select" id="detailFulfillmentSelect">
-            ${FULFILLMENT_STEPS.map((step) => `
-              <option value="${step.key}" ${step.key === fulfillmentKey ? 'selected' : ''}>${step.label}</option>
-            `).join('')}
-          </select>
-          <button class="btn btn-primary" id="detailFulfillmentSave" type="button">
-            <i class="fas fa-truck"></i>
-            Enregistrer
-          </button>
+      ${adminCanManageFulfillment ? `
+        <div class="detail-section">
+          <strong>Mettre a jour le suivi client</strong>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:0.65rem;margin-top:0.75rem;">
+            <select class="select" id="detailFulfillmentSelect">
+              ${FULFILLMENT_STEPS.map((step) => `
+                <option value="${step.key}" ${step.key === fulfillmentKey ? 'selected' : ''}>${step.label}</option>
+              `).join('')}
+            </select>
+            <button class="btn btn-primary" id="detailFulfillmentSave" type="button">
+              <i class="fas fa-truck"></i>
+              Enregistrer
+            </button>
+          </div>
+          <div class="muted" style="margin-top:0.55rem;">
+            Derniere mise a jour: ${order.fulfillmentUpdatedAt ? new Date(order.fulfillmentUpdatedAt).toLocaleString('fr-FR') : 'Non definie'}
+          </div>
         </div>
-        <div class="muted" style="margin-top:0.55rem;">
-          Derniere mise a jour: ${order.fulfillmentUpdatedAt ? new Date(order.fulfillmentUpdatedAt).toLocaleString('fr-FR') : 'Non definie'}
+      ` : `
+        <div class="detail-section">
+          <strong>Suivi client</strong>
+          <div class="muted" style="margin-top:0.55rem;line-height:1.6;">
+            Le suivi livraison de cette commande contient des produits vendeur. Smart Cut garde la visibilite admin, mais chaque vendeur doit confirmer ses etapes depuis son dashboard vendeur.
+          </div>
         </div>
-      </div>
+      `}
 
       <div class="detail-section">
         <strong>Note logistique interne</strong>
@@ -905,6 +997,11 @@ function renderOrderDetail() {
 
 async function updateFulfillmentStatus(order, nextStatus) {
   try {
+    if (!canAdminManageFulfillment(order)) {
+      showToast('Suivi bloque: le vendeur doit mettre a jour la livraison depuis son dashboard.', 'info');
+      return;
+    }
+
     const orderRef = doc(db, CLIENTS_COLLECTION, order.clientId, 'orders', order.id);
     await updateDoc(orderRef, {
       fulfillmentStatus: nextStatus,
