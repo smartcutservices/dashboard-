@@ -25,51 +25,24 @@ const DEFAULT_FORM_SETTINGS = {
     { id: 'applicantName', type: 'text', label: 'Nom complet', required: true, placeholder: 'Votre nom complet' },
     { id: 'email', type: 'email', label: 'Email', required: true, placeholder: 'nom@exemple.com' },
     { id: 'phone', type: 'tel', label: 'Telephone', required: true, placeholder: '+509...' },
-    { id: 'shopName', type: 'text', label: 'Nom de boutique', required: true, placeholder: 'Nom de votre boutique' },
-    { id: 'identityNumber', type: 'text', label: 'Numero identite (NIF, CIN ou passeport)', required: true, placeholder: 'NIF, CIN ou passeport' },
-    { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
     { id: 'address', type: 'textarea', label: 'Adresse', required: true, placeholder: 'Adresse complete' },
-    { id: 'category', type: 'select', label: 'Categorie principale', required: true, options: ['Mode', 'Accessoires', 'Maison & deco', 'Impression', 'Electronique', 'Beaute', 'Autre'] },
-    { id: 'deliveryMode', type: 'radio', label: 'Gestion livraison', required: true, options: ['Le vendeur gere la livraison'] },
-    { id: 'bankAccountHolder', type: 'text', label: 'Titulaire du compte bancaire', required: true, placeholder: 'Nom du titulaire' },
-    { id: 'bankName', type: 'text', label: 'Banque', required: true, placeholder: 'Nom de la banque' },
-    { id: 'bankAccountNumber', type: 'text', label: 'Numero de compte / IBAN', required: true, placeholder: 'Numero de compte' },
-    { id: 'bankSwiftBic', type: 'text', label: 'SWIFT / BIC', required: false, placeholder: 'Optionnel' },
-    { id: 'businessName', type: 'text', label: 'Entreprise - nom legal', required: false, placeholder: 'Si applicable' },
-    { id: 'businessNif', type: 'text', label: 'Entreprise - NIF', required: false, placeholder: 'Si applicable' },
-    { id: 'businessAddress', type: 'textarea', label: 'Entreprise - adresse', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankAccountHolder', type: 'text', label: 'Entreprise - titulaire compte bancaire', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankName', type: 'text', label: 'Entreprise - banque', required: false, placeholder: 'Si applicable' },
-    { id: 'businessBankAccountNumber', type: 'text', label: 'Entreprise - numero de compte', required: false, placeholder: 'Si applicable' },
-    { id: 'socialLink', type: 'url', label: 'Reseau social ou site web', required: false, placeholder: 'https://...' },
-    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' },
-    { id: 'agreementAccepted', type: 'checkbox', label: 'Je confirme que les informations envoyees sont exactes et j accepte la revue manuelle de ma candidature.', required: true }
+    { id: 'city', type: 'text', label: 'Ville', required: true, placeholder: 'Votre ville' },
+    { id: 'identityType', type: 'select', label: 'Identification', required: true, options: ['CIN', 'NIF', 'Licence', 'Passeport'] },
+    { id: 'identityNumber', type: 'text', label: 'Numero', required: true, placeholder: 'Numero de la piece choisie' },
+    { id: 'shopName', type: 'text', label: 'Nom de la boutique', required: true, placeholder: 'Nom de votre boutique' },
+    { id: 'bankName', type: 'select', label: 'Banque', required: true, options: ['UNIBANK', 'SOGEBANK', 'BNC', 'CAPITAL BANK', 'BUH'] },
+    { id: 'bankCurrency', type: 'select', label: 'Devise', required: true, options: ['Gourdes', 'USD'] },
+    { id: 'bankAccountHolder', type: 'text', label: 'Nom du compte', required: true, placeholder: 'Nom exact du compte' },
+    { id: 'bankAccountNumber', type: 'text', label: 'Numero du compte', required: true, placeholder: 'Numero du compte' },
+    { id: 'description', type: 'textarea', label: 'Presentation de votre activite', required: true, placeholder: 'Decrivez votre activite, vos produits et votre positionnement.' }
   ]
 };
 const VENDOR_DELIVERY_MODE = 'Le vendeur gere la livraison';
 function mergeRequiredVendorFields(fields = []) {
-  const next = [];
-  const seenIds = new Set();
-  const sourceFields = Array.isArray(fields) && fields.length ? fields : DEFAULT_FORM_SETTINGS.fields;
-
-  sourceFields.forEach((field) => {
-    const id = String(field?.id || '').trim();
-    if (!id || seenIds.has(id)) return;
-    seenIds.add(id);
-    next.push(field);
-  });
-
-  DEFAULT_FORM_SETTINGS.fields.forEach((field) => {
-    if (seenIds.has(field.id)) return;
-    seenIds.add(field.id);
-    next.push(field);
-  });
-
-  return next.map((field) => (
-    field.id === 'deliveryMode'
-      ? { ...field, required: true, options: [VENDOR_DELIVERY_MODE] }
-      : field
-  ));
+  return DEFAULT_FORM_SETTINGS.fields.map((field) => ({
+    ...field,
+    options: Array.isArray(field.options) ? [...field.options] : field.options
+  }));
 }
 
 const DEFAULT_PLAN_SETTINGS = {
@@ -486,7 +459,7 @@ class VendorsDashboard {
         <div class="application-top">
           <div>
             <h3>${item.shopName || 'Boutique sans nom'}</h3>
-            <p>${item.applicantName || 'Sans nom'} · ${item.category || 'Categorie non definie'}</p>
+            <p>${item.applicantName || 'Sans nom'} - ${item.email || '-'}</p>
           </div>
           <div class="badge" style="color:${meta.color}; background:${meta.bg};">${meta.label}</div>
         </div>
@@ -574,21 +547,6 @@ class VendorsDashboard {
 
   renderApplicationEditor(item) {
     const fields = mergeRequiredVendorFields(this.formSettings.fields);
-    const coverage = item.deliveryCoverage || {};
-    const zones = Array.isArray(coverage.zones)
-      ? coverage.zones
-      : (Array.isArray(item.deliveryZones) ? item.deliveryZones : []);
-    const zonesText = zones.map((zone) => [
-      zone.country || 'Haiti',
-      zone.department || '',
-      zone.commune || '',
-      Number(zone.fee || 0)
-    ].join(' | ')).join('\n');
-    const planId = String(item.planId || (item.planPaymentRequired ? 'pro' : 'basic') || 'basic').toLowerCase();
-    const planLabel = item.planLabel || (planId === 'pro' ? 'PRO' : 'BASIC');
-    const kycDocuments = item.kycDocuments || {};
-    const kycRectoUrl = kycDocuments.recto?.url || kycDocuments.recto?.downloadURL || '';
-    const kycVersoUrl = kycDocuments.verso?.url || kycDocuments.verso?.downloadURL || '';
 
     return `
       <div class="application-copy admin-note" data-application-editor="${this.escape(item.id)}" style="margin-top:1rem;">
@@ -597,71 +555,6 @@ class VendorsDashboard {
 
         <div class="application-grid" style="margin-top:1rem;">
           ${fields.map((field) => this.renderApplicationEditField(item, field)).join('')}
-        </div>
-
-        <div class="application-copy" style="margin-top:1rem;">
-          <strong>Plan vendeur</strong>
-          <div class="application-grid" style="margin-top:.7rem;">
-            <div>
-              <strong>Plan</strong>
-              <select data-application-edit-field="planId" style="${this.adminInputStyle()}">
-                <option value="basic" ${planId === 'basic' ? 'selected' : ''}>BASIC</option>
-                <option value="pro" ${planId === 'pro' ? 'selected' : ''}>PRO</option>
-              </select>
-            </div>
-            <div>
-              <strong>Libelle plan</strong>
-              <input data-application-edit-field="planLabel" value="${this.escape(planLabel)}" style="${this.adminInputStyle()}">
-            </div>
-            <div>
-              <strong>Prix plan</strong>
-              <input type="number" min="0" step="1" data-application-edit-field="planPrice" value="${this.escape(item.planPrice || 0)}" style="${this.adminInputStyle()}">
-            </div>
-            <div>
-              <strong>Devise</strong>
-              <input data-application-edit-field="planCurrency" value="${this.escape(item.planCurrency || this.planSettings.currency || 'HTG')}" style="${this.adminInputStyle()}">
-            </div>
-            <div>
-              <strong>Request payment chaque</strong>
-              <input type="number" min="1" step="1" data-application-edit-field="payoutRequestIntervalDays" value="${this.escape(item.payoutRequestIntervalDays || this.planSettings.payoutDelayDays || 30)}" style="${this.adminInputStyle()}">
-            </div>
-            <div>
-              <strong>Paiement plan</strong>
-              <label class="check" style="margin-top:.55rem;">
-                <input type="checkbox" data-application-edit-field="planPaymentRequired" ${item.planPaymentRequired ? 'checked' : ''}>
-                <span>Plan payant requis</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="application-copy" style="margin-top:1rem;">
-          <strong>Zones livraison vendeur</strong>
-          <label class="check" style="margin:.55rem 0;">
-            <input type="checkbox" data-application-edit-field="deliveryNationwide" ${coverage.nationwide ? 'checked' : ''}>
-            <span>Le vendeur livre sur tout le territoire national</span>
-          </label>
-          <div class="application-grid">
-            <div>
-              <strong>Prix national HTG</strong>
-              <input type="number" min="0" step="1" data-application-edit-field="deliveryNationwideFee" value="${this.escape(coverage.nationwideFee || '')}" style="${this.adminInputStyle()}">
-            </div>
-            <div>
-              <strong>Statut KYC</strong>
-              <input data-application-edit-field="kycStatus" value="${this.escape(item.kycStatus || '')}" style="${this.adminInputStyle()}">
-            </div>
-          </div>
-          <p style="margin:.75rem 0 .35rem;color:rgba(246,241,232,.72);font-size:.9rem;">Une zone par ligne: Haiti | Ouest | Delmas | 500</p>
-          <textarea data-application-edit-field="deliveryZonesText" rows="4" style="${this.adminInputStyle(true)}">${this.escape(zonesText)}</textarea>
-        </div>
-
-        <div class="application-copy" style="margin-top:1rem;">
-          <strong>Documents KYC</strong>
-          <p>
-            Recto: ${kycRectoUrl ? `<a href="${this.escape(kycRectoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
-            &nbsp; | &nbsp;
-            Verso: ${kycVersoUrl ? `<a href="${this.escape(kycVersoUrl)}" target="_blank" rel="noopener">Voir document</a>` : '-'}
-          </p>
         </div>
 
         <div class="application-copy" style="margin-top:1rem;">
@@ -765,7 +658,7 @@ class VendorsDashboard {
 
   getReadableApplicationFields(item) {
     const responses = item.responses || {};
-    const configured = this.formSettings.fields.map((field) => {
+    const configured = mergeRequiredVendorFields(this.formSettings.fields).map((field) => {
       let value = responses[field.id];
       if (value === undefined || value === null || value === '') {
         value = item[field.id] ?? item[this.mapLegacyKey(field.id)] ?? '';
@@ -778,15 +671,6 @@ class VendorsDashboard {
         value: String(value || '-')
       };
     });
-    const coverage = item.deliveryCoverage || {};
-    if (coverage.nationwide) {
-      configured.push({ label: 'Zones livraison vendeur', value: `Tout le territoire national: ${Number(coverage.nationwideFee || 0)} HTG` });
-    } else if (Array.isArray(coverage.zones) && coverage.zones.length) {
-      configured.push({
-        label: 'Zones livraison vendeur',
-        value: coverage.zones.map((zone) => `${zone.country || 'Haiti'} / ${zone.department || '-'} / ${zone.commune || '-'}: ${Number(zone.fee || 0)} HTG`).join(' | ')
-      });
-    }
     return configured;
   }
 
@@ -796,14 +680,15 @@ class VendorsDashboard {
       email: 'email',
       phone: 'phone',
       shopName: 'shopName',
+      identityType: 'identityType',
+      identityNumber: 'identityNumber',
       city: 'city',
       address: 'address',
-      category: 'category',
-      deliveryMode: 'deliveryMode',
-      socialLink: 'socialLink',
+      bankName: 'bankName',
+      bankCurrency: 'bankCurrency',
+      bankAccountHolder: 'bankAccountHolder',
+      bankAccountNumber: 'bankAccountNumber',
       description: 'description',
-      experience: 'experience',
-      agreementAccepted: 'agreementAccepted'
     };
     return map[id] || id;
   }
@@ -1367,39 +1252,10 @@ class VendorsDashboard {
       payload[field.id] = normalizedValue;
     });
 
-    const planId = String(this.getApplicationEditControl('planId')?.value || current.planId || 'basic').trim().toLowerCase() || 'basic';
-    const planLabelInput = String(this.getApplicationEditControl('planLabel')?.value || '').trim();
-    const planPrice = Number(this.getApplicationEditControl('planPrice')?.value || 0);
-    const planCurrency = String(this.getApplicationEditControl('planCurrency')?.value || this.planSettings.currency || 'HTG').trim() || 'HTG';
-    const planPaymentRequired = planId === 'pro' || Boolean(this.getApplicationEditControl('planPaymentRequired')?.checked);
-    const currentPlanPaymentStatus = String(current.planPaymentStatus || '').trim().toLowerCase();
-    const payoutRequestIntervalDays = Number(this.getApplicationEditControl('payoutRequestIntervalDays')?.value || this.planSettings.payoutDelayDays || 30);
-    const deliveryNationwide = Boolean(this.getApplicationEditControl('deliveryNationwide')?.checked);
-    const deliveryNationwideFee = Number(this.getApplicationEditControl('deliveryNationwideFee')?.value || 0);
-    const deliveryZones = this.parseDeliveryZonesText(this.getApplicationEditControl('deliveryZonesText')?.value || '');
-    const kycStatus = String(this.getApplicationEditControl('kycStatus')?.value || current.kycStatus || '').trim();
     const adminNote = String(this.getApplicationEditControl('adminNote')?.value || '').trim();
 
     payload.responses = responses;
     payload.deliveryMode = VENDOR_DELIVERY_MODE;
-    payload.planId = planId;
-    payload.planLabel = planLabelInput || (planId === 'pro' ? 'PRO' : 'BASIC');
-    payload.planPrice = Number.isFinite(planPrice) ? planPrice : 0;
-    payload.planCurrency = planCurrency;
-    payload.planPaymentRequired = planPaymentRequired;
-    payload.planPaymentStatus = planPaymentRequired
-      ? (currentPlanPaymentStatus && currentPlanPaymentStatus !== 'not_required' ? current.planPaymentStatus : 'pending')
-      : 'not_required';
-    payload.payoutRequestIntervalDays = Number.isFinite(payoutRequestIntervalDays) && payoutRequestIntervalDays > 0
-      ? payoutRequestIntervalDays
-      : 30;
-    payload.deliveryCoverage = {
-      nationwide: deliveryNationwide,
-      nationwideFee: deliveryNationwide ? (Number.isFinite(deliveryNationwideFee) ? deliveryNationwideFee : 0) : 0,
-      zones: deliveryNationwide ? [] : deliveryZones
-    };
-    payload.deliveryZones = deliveryNationwide ? [] : deliveryZones;
-    payload.kycStatus = kycStatus;
     payload.adminNote = adminNote;
 
     return payload;

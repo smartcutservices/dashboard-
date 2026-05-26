@@ -45,3 +45,32 @@ Verification:
 Precautions:
 - Ne pas remettre de bouton admin global pour livrer une commande vendeur, sinon Smart Cut pourrait marquer comme livre un produit que le vendeur n'a pas encore livre.
 - Si on ajoute plus tard un suivi par store dans le dashboard admin, il doit rester en lecture seule pour les vendeurs et editable seulement dans le dashboard vendeur.
+
+## 2026-05-26 - Candidatures vendeur: formulaire admin simplifie
+
+Contexte:
+
+- Le module vendeur du dashboard affichait encore des champs retires du formulaire public: zones livraison, KYC, infos entreprise, reseau social, plan vendeur dans l edition candidature.
+- La candidature vendeur doit rester courte et limiter les corrections admin aux informations de base demandees par Smart Cut.
+- Les plans Basic/Pro et les frais mensuels restent geres par leurs modules dedies, pas dans l edition de candidature.
+
+Changements effectues:
+
+- `DEFAULT_FORM_SETTINGS.fields` de `vendors-dashboard.js` a ete aligne sur la liste officielle:
+  `Nom complet`, `Email`, `Telephone`, `Adresse`, `Ville`, `Identification`, `Numero`, `Nom de la boutique`, `Banque`, `Devise`, `Nom du compte`, `Numero du compte`, `Presentation de votre activite`.
+- `mergeRequiredVendorFields()` ignore les anciennes configurations Firestore et force cette liste propre.
+- Le bloc admin `Plan vendeur` a ete retire de l edition candidature.
+- Le bloc admin `Zones livraison vendeur` a ete retire de l edition candidature.
+- Le bloc admin `Documents KYC` a ete retire de l edition candidature.
+- La sauvegarde admin ne modifie plus `planId`, `planPrice`, `deliveryCoverage`, `deliveryZones` ni `kycStatus` depuis l edition de candidature.
+- `dashboard-vendors.html` charge maintenant `vendors-dashboard.js?v=20260526-1`.
+
+Verification:
+
+- `node --check vendors-dashboard.js`: OK.
+
+Precautions:
+
+- Ne pas remettre zones/KYC/plan dans `renderApplicationEditor()`.
+- Les zones de livraison doivent rester dans les fiches produits.
+- Les plans vendeurs doivent rester dans les modules Basic/Pro et frais mensuels, pas dans le formulaire candidature.
