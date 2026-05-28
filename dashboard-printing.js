@@ -1,107 +1,136 @@
 import { db } from './firebase-init.js';
-import { doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 import {
-  deepClone,
-  collectUniqueDimensionsFromPapers,
-  normalizePrintingConfig
-} from './printing-config-utils.js';
-
-const DOCUMENT_DIMENSIONS = [
-  { label: '8.5x11', enabled: true, price: 15 },
-  { label: '8.5x14', enabled: true, price: 17 },
-  { label: '11x17', enabled: true, price: 28 },
-  { label: '13x19', enabled: true, price: 47 }
-];
-
-const PHOTO_DIMENSIONS = [
-  { label: '4x5', enabled: true, price: 15 },
-  { label: '5x7', enabled: true, price: 17 },
-  { label: '8x10', enabled: true, price: 28 },
-  { label: '8.5x11', enabled: true, price: 47 },
-  { label: '11x17', enabled: true, price: 110 },
-  { label: '13x19', enabled: true, price: 89 }
-];
-
-const CAD_DIMENSIONS = [
-  { label: '8.5x11', enabled: true, price: 15 },
-  { label: '8.5x14', enabled: true, price: 17 },
-  { label: '11x17', enabled: true, price: 28 },
-  { label: '13x19', enabled: true, price: 47 },
-  { label: '24x36', enabled: true, price: 110 },
-  { label: '24x24', enabled: true, price: 89 }
-];
-
-function buildPaper(label, dimensions) {
-  return {
-    label,
-    enabled: true,
-    dimensions: deepClone(dimensions)
-  };
-}
+  doc,
+  getDoc,
+  setDoc
+} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const MODULES = [
   {
     id: 'documents',
     title: 'POD Documents',
-    description: 'Chaque type de papier gere ses propres dimensions et ses propres prix par page PDF.',
-    metric: 'PDF / pages',
+    description: 'Configuration des formats PDF, types de papier, quantite et regles de prix pour les documents standards.',
+    metric: 'pages / copies',
     defaults: {
       enabled: true,
-      papers: [
-        buildPaper('Bond', DOCUMENT_DIMENSIONS),
-        buildPaper('Glossy', DOCUMENT_DIMENSIONS),
-        buildPaper('Bristol Glossy', DOCUMENT_DIMENSIONS),
-        buildPaper('Autocollant', DOCUMENT_DIMENSIONS)
+      dimensions: [
+        { label: '8.5x11', enabled: true, price: 0 },
+        { label: '8.5x14', enabled: true, price: 0 },
+        { label: '11x17', enabled: true, price: 0 },
+        { label: '12x18', enabled: true, price: 0 }
       ],
+      papers: [
+        { label: 'Bond', enabled: true, price: 0 },
+        { label: 'Glossy', enabled: true, price: 0 },
+        { label: 'Bristol Glossy', enabled: true, price: 0 },
+        { label: 'Autocollant', enabled: true, price: 0 }
+      ],
+      pricing: { basePrice: 0, perPagePrice: 0, perCopyPrice: 0 },
       notes: ''
     }
   },
   {
     id: 'photo',
     title: 'Impression Photo',
-    description: 'Configuration papier -> dimension -> prix pour les commandes photo en PDF.',
-    metric: 'PDF / tirages',
+    description: 'Formats photo, papiers premium et logique de calcul unitaire pour les demandes photo.',
+    metric: 'tirages',
     defaults: {
       enabled: true,
-      papers: [
-        buildPaper('Glossy', PHOTO_DIMENSIONS),
-        buildPaper('Matte', PHOTO_DIMENSIONS),
-        buildPaper('Premium Glossy', PHOTO_DIMENSIONS)
+      dimensions: [
+        { label: '4x6', enabled: true, price: 0 },
+        { label: '5x7', enabled: true, price: 0 },
+        { label: '8.5x11', enabled: true, price: 0 },
+        { label: '11x17', enabled: true, price: 0 },
+        { label: '13x19', enabled: true, price: 0 }
       ],
+      papers: [
+        { label: 'Matte', enabled: true, price: 0 },
+        { label: 'Ultra Glossy', enabled: true, price: 0 },
+        { label: 'Premium Glossy', enabled: true, price: 0 },
+        { label: 'Premium Semiglossy', enabled: true, price: 0 }
+      ],
+      pricing: { basePrice: 0, perUnitPrice: 0, rushPrice: 0 },
       notes: ''
     }
   },
   {
     id: 'cad',
     title: 'Plans CAD',
-    description: 'Formats techniques et prix par page PDF, directement rattaches a chaque papier.',
-    metric: 'plans PDF',
+    description: 'Formats techniques pour architecture, plans grands formats et regles specifiques de calcul.',
+    metric: 'plans',
     defaults: {
       enabled: true,
-      papers: [
-        buildPaper('Bond', CAD_DIMENSIONS)
+      dimensions: [
+        { label: '17x24', enabled: true, price: 0 },
+        { label: '24x36', enabled: true, price: 0 },
+        { label: '24x24', enabled: true, price: 0 },
+        { label: '24x48', enabled: true, price: 0 },
+        { label: '36x48', enabled: true, price: 0 },
+        { label: '8.5x11', enabled: true, price: 0 },
+        { label: '8.5x14', enabled: true, price: 0 },
+        { label: '11x17', enabled: true, price: 0 }
       ],
+      papers: [
+        { label: 'Papier plan standard', enabled: true, price: 0 }
+      ],
+      pricing: { basePrice: 0, perSheetPrice: 0, oversizedPrice: 0 },
       notes: ''
     }
   },
   {
     id: 'grand-format',
     title: 'Stickers & Grand Format',
-    description: 'Flux devis WhatsApp pour stickers, banners et travaux grand format.',
+    description: 'Pilotage du flux WhatsApp, prise de brief et estimation manuelle par equipe specialisee.',
     metric: 'devis',
     defaults: {
       enabled: true,
       whatsappNumber: '',
       whatsappMessage: 'Bonjour, je souhaite demander un devis Smart Cut Services pour un sticker ou un format grand format.',
-      notes: 'Calcul manuel via WhatsApp.'
+      notes: 'Calcul manuel par pied carre via equipe specialisee.'
     }
   }
 ];
+
+const DEFAULT_DELIVERY_SETTINGS = {
+  pickupPoints: [
+    { id: 'smart-cut-main', name: 'Smart Cut Services', address: 'Adresse Smart Cut Services', phone: '', isActive: true }
+  ],
+  homeZones: []
+};
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function normalizeDeliverySettings(data = {}) {
+  const source = data && typeof data === 'object' ? data : {};
+  return {
+    pickupPoints: (Array.isArray(source.pickupPoints) && source.pickupPoints.length ? source.pickupPoints : DEFAULT_DELIVERY_SETTINGS.pickupPoints)
+      .map((point, index) => ({
+        id: String(point.id || `pickup_${index}`).trim(),
+        name: String(point.name || '').trim(),
+        address: String(point.address || '').trim(),
+        phone: String(point.phone || '').trim(),
+        isActive: point.isActive !== false
+      })),
+    homeZones: (Array.isArray(source.homeZones) ? source.homeZones : [])
+      .map((zone, index) => ({
+        id: String(zone.id || `home_${index}`).trim(),
+        country: String(zone.country || 'Haiti').trim() || 'Haiti',
+        department: String(zone.department || '').trim(),
+        commune: String(zone.commune || '').trim(),
+        fee: Number(zone.fee || 0),
+        delay: String(zone.delay || zone.deliveryDelay || '').trim(),
+        isActive: zone.isActive !== false
+      }))
+  };
+}
 
 class PrintingDashboard {
   constructor(rootId = 'printing-dashboard-root') {
     this.root = document.getElementById(rootId);
     this.state = {};
+    this.deliverySettings = normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
     if (!this.root) return;
     this.init();
   }
@@ -113,33 +142,37 @@ class PrintingDashboard {
   }
 
   async loadSettings() {
-    const entries = await Promise.all(MODULES.map(async (module) => {
-      const snapshot = await getDoc(doc(db, 'printingSettings', module.id));
-      const merged = snapshot.exists()
-        ? this.mergeModuleState(module.defaults, snapshot.data())
-        : deepClone(module.defaults);
-      return [module.id, merged];
-    }));
+    const [entries, deliverySnapshot] = await Promise.all([
+      Promise.all(MODULES.map(async (module) => {
+        const snapshot = await getDoc(doc(db, 'printingSettings', module.id));
+        const merged = snapshot.exists()
+          ? this.mergeModuleState(module.defaults, snapshot.data())
+          : clone(module.defaults);
+        return [module.id, merged];
+      })),
+      getDoc(doc(db, 'printingDeliverySettings', 'main'))
+    ]);
     this.state = Object.fromEntries(entries);
+    this.deliverySettings = normalizeDeliverySettings(deliverySnapshot.exists() ? deliverySnapshot.data() : DEFAULT_DELIVERY_SETTINGS);
   }
 
   mergeModuleState(defaults, data) {
-    if (defaults.papers) {
-      return normalizePrintingConfig(defaults, data);
-    }
+    const base = clone(defaults);
+    if (!data || typeof data !== 'object') return base;
     return {
-      ...deepClone(defaults),
-      ...(data || {})
+      ...base,
+      ...data,
+      dimensions: Array.isArray(data.dimensions) ? data.dimensions : base.dimensions,
+      papers: Array.isArray(data.papers) ? data.papers : base.papers,
+      pricing: { ...(base.pricing || {}), ...(data.pricing || {}) }
     };
   }
 
   getStats() {
     const activeModules = MODULES.filter((module) => this.state[module.id]?.enabled).length;
-    const papers = MODULES.reduce((total, module) => total + (this.state[module.id]?.papers?.length || 0), 0);
-    const totalDimensions = MODULES.reduce((total, module) => {
-      return total + (this.state[module.id]?.papers || []).reduce((sum, paper) => sum + (paper?.dimensions?.length || 0), 0);
-    }, 0);
-    return { activeModules, papers, totalDimensions };
+    const totalDimensions = MODULES.reduce((total, module) => total + (this.state[module.id]?.dimensions?.length || 0), 0);
+    const totalPapers = MODULES.reduce((total, module) => total + (this.state[module.id]?.papers?.length || 0), 0);
+    return { activeModules, totalDimensions, totalPapers };
   }
 
   render() {
@@ -148,24 +181,92 @@ class PrintingDashboard {
       <section class="hero">
         <small>Pole impression</small>
         <h1>Configuration impression & production</h1>
-        <p>Chaque papier porte maintenant sa propre liste de dimensions et de prix. Le site calcule ensuite automatiquement le total d apres le nombre de pages PDF.</p>
+        <p>Cette couche admin prepare les sous-modules impression proprement avant le parcours client. On y gere les activations, les dimensions, les types de papier, les prix de base et le flux WhatsApp specialise.</p>
       </section>
 
       <section class="stats">
         <article class="stat-card"><strong>${MODULES.length}</strong><span>Sous-modules relies</span></article>
         <article class="stat-card"><strong>${stats.activeModules}</strong><span>Modules actifs</span></article>
-        <article class="stat-card"><strong>${stats.papers}</strong><span>Types de papier</span></article>
-        <article class="stat-card"><strong>${stats.totalDimensions}</strong><span>Dimensions configurees</span></article>
+        <article class="stat-card"><strong>${stats.totalDimensions}</strong><span>Formats configures</span></article>
+        <article class="stat-card"><strong>${stats.totalPapers}</strong><span>Papiers configures</span></article>
       </section>
 
       <section class="config-grid">
+        ${this.renderDeliverySettings()}
         ${MODULES.map((module) => this.renderModule(module)).join('')}
       </section>
     `;
   }
 
+  renderDeliverySettings() {
+    const settings = this.deliverySettings || normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
+    return `
+      <article class="panel" data-printing-delivery-panel style="grid-column:1/-1;">
+        <div class="panel-head">
+          <div>
+            <small>Reception impression</small>
+            <h2>Livraison & points de retrait</h2>
+          </div>
+          <div class="status-chip">
+            <i class="fas fa-location-dot"></i>
+            <span>${settings.pickupPoints.length} point(s) / ${settings.homeZones.length} zone(s)</span>
+          </div>
+        </div>
+        <p>Ces reglages sont utilises uniquement par les modules impression. Les points de retrait restent gratuits; les zones domicile ajoutent un frais au total impression avant le paiement.</p>
+
+        <div class="option-list">
+          <div class="option-title">Points de retrait gratuits</div>
+          ${settings.pickupPoints.map((point, index) => this.renderPickupPointRow(point, index)).join('')}
+          <button class="btn-secondary" type="button" data-add-printing-pickup>Ajouter un point de retrait</button>
+        </div>
+
+        <div class="option-list">
+          <div class="option-title">Zones livraison a domicile</div>
+          ${settings.homeZones.map((zone, index) => this.renderHomeZoneRow(zone, index)).join('')}
+          <button class="btn-secondary" type="button" data-add-printing-home-zone>Ajouter une zone domicile</button>
+        </div>
+
+        <div class="actions">
+          <button class="btn-primary" type="button" data-save-printing-delivery>Enregistrer livraison impression</button>
+        </div>
+      </article>
+    `;
+  }
+
+  renderPickupPointRow(point, index) {
+    return `
+      <div class="option-row" data-printing-pickup-row="${index}" style="grid-template-columns:1fr 1.5fr 1fr auto auto;">
+        <input class="mini-input" data-pickup-field="name" value="${point.name || ''}" placeholder="Nom du point">
+        <input class="mini-input" data-pickup-field="address" value="${point.address || ''}" placeholder="Adresse">
+        <input class="mini-input" data-pickup-field="phone" value="${point.phone || ''}" placeholder="Telephone">
+        <label class="check">
+          <input type="checkbox" data-pickup-field="isActive" ${point.isActive ? 'checked' : ''}>
+          <span>Actif</span>
+        </label>
+        <button class="btn-danger" type="button" data-remove-printing-pickup="${index}">Retirer</button>
+      </div>
+    `;
+  }
+
+  renderHomeZoneRow(zone, index) {
+    return `
+      <div class="option-row" data-printing-home-zone-row="${index}" style="grid-template-columns:.8fr 1fr 1fr .8fr 1fr auto auto;">
+        <input class="mini-input" data-home-zone-field="country" value="${zone.country || 'Haiti'}" placeholder="Pays">
+        <input class="mini-input" data-home-zone-field="department" value="${zone.department || ''}" placeholder="Departement">
+        <input class="mini-input" data-home-zone-field="commune" value="${zone.commune || ''}" placeholder="Commune">
+        <input class="mini-input" type="number" min="0" step="1" data-home-zone-field="fee" value="${zone.fee ?? 0}" placeholder="Prix">
+        <input class="mini-input" data-home-zone-field="delay" value="${zone.delay || ''}" placeholder="Delai">
+        <label class="check">
+          <input type="checkbox" data-home-zone-field="isActive" ${zone.isActive ? 'checked' : ''}>
+          <span>Actif</span>
+        </label>
+        <button class="btn-danger" type="button" data-remove-printing-home-zone="${index}">Retirer</button>
+      </div>
+    `;
+  }
+
   renderModule(module) {
-    const state = this.state[module.id] || deepClone(module.defaults);
+    const state = this.state[module.id] || clone(module.defaults);
     const isManualQuote = module.id === 'grand-format';
     return `
       <article class="panel" data-module="${module.id}">
@@ -187,11 +288,14 @@ class PrintingDashboard {
             <span>Module actif</span>
           </label>
 
-          ${isManualQuote ? this.renderGrandFormatFields(state) : this.renderStructuredFields(module.id, state)}
+          ${isManualQuote ? this.renderGrandFormatFields(module.id, state) : this.renderStructuredFields(module.id, state)}
 
           <div class="actions">
             <button class="btn-primary" type="button" data-save-module="${module.id}">Enregistrer</button>
-            ${!isManualQuote ? `<button class="btn-secondary" type="button" data-add-paper="${module.id}">Ajouter un papier</button>` : ''}
+            ${!isManualQuote ? `
+              <button class="btn-secondary" type="button" data-add-dimension="${module.id}">Ajouter une dimension</button>
+              <button class="btn-secondary" type="button" data-add-paper="${module.id}">Ajouter un papier</button>
+            ` : ''}
             <button class="btn-secondary" type="button" data-reset-module="${module.id}">Reinitialiser</button>
           </div>
         </div>
@@ -200,57 +304,35 @@ class PrintingDashboard {
   }
 
   renderStructuredFields(moduleId, state) {
+    const pricingEntries = Object.entries(state.pricing || {});
     return `
-      <div class="option-list">
-        <div class="option-title">Types de papier et dimensions</div>
-        ${(state.papers || []).map((paper, index) => this.renderPaperCard(moduleId, paper, index)).join('')}
+      <div class="field-grid">
+        ${pricingEntries.map(([key, value]) => `
+          <label class="field">
+            <span>${this.getPricingLabel(key)}</span>
+            <input class="input" type="number" step="0.01" min="0" data-pricing-module="${moduleId}" data-pricing-key="${key}" value="${value ?? 0}">
+          </label>
+        `).join('')}
       </div>
+
+      <div class="option-list">
+        <div class="option-title">Dimensions</div>
+        ${(state.dimensions || []).map((item, index) => this.renderOptionRow(moduleId, 'dimensions', item, index)).join('')}
+      </div>
+
+      <div class="option-list">
+        <div class="option-title">Types de papier</div>
+        ${(state.papers || []).map((item, index) => this.renderOptionRow(moduleId, 'papers', item, index)).join('')}
+      </div>
+
       <label class="field">
         <span>Note admin</span>
         <textarea class="textarea" data-field="notes">${state.notes || ''}</textarea>
       </label>
-      <p class="hint">Le site utilisera le prix de la dimension choisie dans le papier choisi, puis le multipliera automatiquement par le nombre de pages du PDF.</p>
     `;
   }
 
-  renderPaperCard(moduleId, paper, paperIndex) {
-    return `
-      <div class="paper-card">
-        <div class="paper-card-head">
-          <div class="paper-card-fields">
-            <input class="mini-input" data-paper-module="${moduleId}" data-paper-index="${paperIndex}" data-paper-field="label" value="${paper.label || ''}" placeholder="Type de papier">
-            <label class="check">
-              <input type="checkbox" data-paper-module="${moduleId}" data-paper-index="${paperIndex}" data-paper-field="enabled" ${paper.enabled ? 'checked' : ''}>
-              <span>Disponible</span>
-            </label>
-          </div>
-          <div class="paper-card-actions">
-            <button class="btn-secondary btn-small" type="button" data-add-dimension="${moduleId}" data-paper-index="${paperIndex}">Ajouter une dimension</button>
-            <button class="btn-danger btn-small" type="button" data-remove-paper="${moduleId}" data-paper-index="${paperIndex}">Retirer</button>
-          </div>
-        </div>
-        <div class="dimension-list">
-          ${(paper.dimensions || []).map((dimension, dimensionIndex) => this.renderDimensionRow(moduleId, paperIndex, dimension, dimensionIndex)).join('')}
-        </div>
-      </div>
-    `;
-  }
-
-  renderDimensionRow(moduleId, paperIndex, dimension, dimensionIndex) {
-    return `
-      <div class="option-row">
-        <input class="mini-input" data-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-dimension-field="label" value="${dimension.label || ''}" placeholder="Dimension">
-        <input class="mini-input" type="number" step="0.01" min="0" data-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-dimension-field="price" value="${dimension.price ?? 0}" placeholder="Prix">
-        <label class="check">
-          <input type="checkbox" data-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-dimension-field="enabled" ${dimension.enabled ? 'checked' : ''}>
-          <span>Disponible</span>
-        </label>
-        <button class="btn-danger" type="button" data-remove-dimension="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}">Retirer</button>
-      </div>
-    `;
-  }
-
-  renderGrandFormatFields(state) {
+  renderGrandFormatFields(moduleId, state) {
     return `
       <div class="field-grid">
         <label class="field">
@@ -270,8 +352,35 @@ class PrintingDashboard {
         <span>Note admin</span>
         <textarea class="textarea" data-field="notes">${state.notes || ''}</textarea>
       </label>
-      <p class="hint">Le client choisit le type de projet, la largeur et la hauteur, puis il est dirige vers WhatsApp pour demander un devis.</p>
+      <p class="hint">Le calcul public n'est pas active ici. Ce module reste sur un workflow de brief et devis manuel, comme prevu dans le plan.</p>
     `;
+  }
+
+  renderOptionRow(moduleId, listKey, item, index) {
+    return `
+      <div class="option-row" data-option-row="${moduleId}-${listKey}-${index}">
+        <input class="mini-input" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="label" value="${item.label || ''}" placeholder="Label">
+        <input class="mini-input" type="number" step="0.01" min="0" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="price" value="${item.price ?? 0}" placeholder="Prix">
+        <label class="check">
+          <input type="checkbox" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="enabled" ${item.enabled ? 'checked' : ''}>
+          <span>Actif</span>
+        </label>
+        <button class="btn-danger" type="button" data-remove-option="${moduleId}" data-remove-list="${listKey}" data-remove-index="${index}">Retirer</button>
+      </div>
+    `;
+  }
+
+  getPricingLabel(key) {
+    const labels = {
+      basePrice: 'Prix de base',
+      perPagePrice: 'Prix / page',
+      perCopyPrice: 'Prix / copie',
+      perUnitPrice: 'Prix / tirage',
+      rushPrice: 'Supplement urgence',
+      perSheetPrice: 'Prix / plan',
+      oversizedPrice: 'Supplement grand format'
+    };
+    return labels[key] || key;
   }
 
   attachEvents() {
@@ -285,77 +394,111 @@ class PrintingDashboard {
       button.addEventListener('click', () => {
         const module = MODULES.find((entry) => entry.id === button.dataset.resetModule);
         if (!module) return;
-        this.state[module.id] = deepClone(module.defaults);
+        this.state[module.id] = clone(module.defaults);
         this.render();
         this.attachEvents();
       });
     });
 
-    this.root.querySelectorAll('[data-add-paper]').forEach((button) => {
-      button.addEventListener('click', () => {
-        this.addPaper(button.dataset.addPaper);
-      });
-    });
-
-    this.root.querySelectorAll('[data-remove-paper]').forEach((button) => {
-      button.addEventListener('click', () => {
-        this.removePaper(button.dataset.removePaper, Number.parseInt(button.dataset.paperIndex || '0', 10));
-      });
-    });
-
     this.root.querySelectorAll('[data-add-dimension]').forEach((button) => {
       button.addEventListener('click', () => {
-        this.addDimension(button.dataset.addDimension, Number.parseInt(button.dataset.paperIndex || '0', 10));
+        this.addOption(button.dataset.addDimension, 'dimensions');
       });
     });
 
-    this.root.querySelectorAll('[data-remove-dimension]').forEach((button) => {
+    this.root.querySelectorAll('[data-add-paper]').forEach((button) => {
       button.addEventListener('click', () => {
-        this.removeDimension(
-          button.dataset.removeDimension,
-          Number.parseInt(button.dataset.paperIndex || '0', 10),
-          Number.parseInt(button.dataset.dimensionIndex || '0', 10)
-        );
+        this.addOption(button.dataset.addPaper, 'papers');
       });
     });
-  }
 
-  addPaper(moduleId) {
-    const state = this.state[moduleId];
-    if (!state?.papers) return;
-    const fallbackDimensions = collectUniqueDimensionsFromPapers(state.papers, []);
-    state.papers.push({
-      label: '',
-      enabled: true,
-      dimensions: deepClone(fallbackDimensions.length ? fallbackDimensions : [{ label: '', enabled: true, price: 0 }])
+    this.root.querySelectorAll('[data-remove-option]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.removeOption(button.dataset.removeOption, button.dataset.removeList, Number.parseInt(button.dataset.removeIndex || '0', 10));
+      });
     });
+
+    this.root.querySelector('[data-add-printing-pickup]')?.addEventListener('click', () => {
+      this.deliverySettings.pickupPoints.push({ id: `pickup_${Date.now()}`, name: '', address: '', phone: '', isActive: true });
+      this.render();
+      this.attachEvents();
+    });
+
+    this.root.querySelector('[data-add-printing-home-zone]')?.addEventListener('click', () => {
+      this.deliverySettings.homeZones.push({ id: `home_${Date.now()}`, country: 'Haiti', department: '', commune: '', fee: 0, delay: '', isActive: true });
+      this.render();
+      this.attachEvents();
+    });
+
+    this.root.querySelectorAll('[data-remove-printing-pickup]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.deliverySettings.pickupPoints.splice(Number.parseInt(button.dataset.removePrintingPickup || '0', 10), 1);
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelectorAll('[data-remove-printing-home-zone]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.deliverySettings.homeZones.splice(Number.parseInt(button.dataset.removePrintingHomeZone || '0', 10), 1);
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelector('[data-save-printing-delivery]')?.addEventListener('click', async () => {
+      await this.saveDeliverySettings();
+    });
+  }
+
+  collectDeliverySettings() {
+    const pickupPoints = Array.from(this.root.querySelectorAll('[data-printing-pickup-row]')).map((row, index) => ({
+      id: this.deliverySettings.pickupPoints[index]?.id || `pickup_${index}`,
+      name: row.querySelector('[data-pickup-field="name"]')?.value || '',
+      address: row.querySelector('[data-pickup-field="address"]')?.value || '',
+      phone: row.querySelector('[data-pickup-field="phone"]')?.value || '',
+      isActive: Boolean(row.querySelector('[data-pickup-field="isActive"]')?.checked)
+    })).filter((point) => point.name || point.address || point.phone);
+
+    const homeZones = Array.from(this.root.querySelectorAll('[data-printing-home-zone-row]')).map((row, index) => ({
+      id: this.deliverySettings.homeZones[index]?.id || `home_${index}`,
+      country: row.querySelector('[data-home-zone-field="country"]')?.value || 'Haiti',
+      department: row.querySelector('[data-home-zone-field="department"]')?.value || '',
+      commune: row.querySelector('[data-home-zone-field="commune"]')?.value || '',
+      fee: Number.parseFloat(row.querySelector('[data-home-zone-field="fee"]')?.value || '0') || 0,
+      delay: row.querySelector('[data-home-zone-field="delay"]')?.value || '',
+      isActive: Boolean(row.querySelector('[data-home-zone-field="isActive"]')?.checked)
+    })).filter((zone) => zone.department || zone.commune || Number(zone.fee || 0) > 0);
+
+    return normalizeDeliverySettings({ pickupPoints, homeZones });
+  }
+
+  async saveDeliverySettings() {
+    const payload = {
+      ...this.collectDeliverySettings(),
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard_admin'
+    };
+    await setDoc(doc(db, 'printingDeliverySettings', 'main'), payload, { merge: true });
+    this.deliverySettings = normalizeDeliverySettings(payload);
+    this.render();
+    this.attachEvents();
+    this.showToast('Livraison impression enregistree dans Firebase.');
+  }
+
+  addOption(moduleId, listKey) {
+    const state = this.state[moduleId];
+    if (!state) return;
+    state[listKey] = Array.isArray(state[listKey]) ? state[listKey] : [];
+    state[listKey].push({ label: '', enabled: true, price: 0 });
     this.render();
     this.attachEvents();
   }
 
-  removePaper(moduleId, paperIndex) {
+  removeOption(moduleId, listKey, index) {
     const state = this.state[moduleId];
-    if (!state?.papers) return;
-    state.papers.splice(paperIndex, 1);
-    this.render();
-    this.attachEvents();
-  }
-
-  addDimension(moduleId, paperIndex) {
-    const state = this.state[moduleId];
-    const paper = state?.papers?.[paperIndex];
-    if (!paper) return;
-    paper.dimensions = Array.isArray(paper.dimensions) ? paper.dimensions : [];
-    paper.dimensions.push({ label: '', enabled: true, price: 0 });
-    this.render();
-    this.attachEvents();
-  }
-
-  removeDimension(moduleId, paperIndex, dimensionIndex) {
-    const state = this.state[moduleId];
-    const paper = state?.papers?.[paperIndex];
-    if (!paper?.dimensions) return;
-    paper.dimensions.splice(dimensionIndex, 1);
+    if (!state || !Array.isArray(state[listKey])) return;
+    state[listKey].splice(index, 1);
     this.render();
     this.attachEvents();
   }
@@ -366,7 +509,7 @@ class PrintingDashboard {
     if (!panel || !current) return current;
 
     const nextState = {
-      ...deepClone(current),
+      ...clone(current),
       enabled: !!panel.querySelector('[data-field="enabled"]')?.checked
     };
 
@@ -376,45 +519,31 @@ class PrintingDashboard {
       nextState[key] = field.value;
     });
 
+    panel.querySelectorAll('[data-pricing-module]').forEach((field) => {
+      const pricingKey = field.dataset.pricingKey;
+      nextState.pricing = nextState.pricing || {};
+      nextState.pricing[pricingKey] = Number.parseFloat(field.value || '0') || 0;
+    });
+
+    const listMap = { dimensions: [], papers: [] };
+    panel.querySelectorAll('[data-list-module]').forEach((field) => {
+      const listKey = field.dataset.listKey;
+      const index = Number.parseInt(field.dataset.listIndex || '0', 10);
+      const itemField = field.dataset.listField;
+      if (!listMap[listKey]) return;
+      listMap[listKey][index] = listMap[listKey][index] || {};
+      listMap[listKey][index][itemField] = itemField === 'enabled'
+        ? !!field.checked
+        : itemField === 'price'
+          ? Number.parseFloat(field.value || '0') || 0
+          : field.value;
+    });
+
+    if (Array.isArray(current.dimensions)) {
+      nextState.dimensions = listMap.dimensions.filter(Boolean);
+    }
     if (Array.isArray(current.papers)) {
-      const papers = [];
-      panel.querySelectorAll('[data-paper-module]').forEach((field) => {
-        const paperIndex = Number.parseInt(field.dataset.paperIndex || '0', 10);
-        const paperField = field.dataset.paperField;
-        papers[paperIndex] = papers[paperIndex] || { dimensions: [] };
-        papers[paperIndex][paperField] = paperField === 'enabled' ? !!field.checked : field.value;
-      });
-
-      panel.querySelectorAll('[data-dimension-module]').forEach((field) => {
-        const paperIndex = Number.parseInt(field.dataset.paperIndex || '0', 10);
-        const dimensionIndex = Number.parseInt(field.dataset.dimensionIndex || '0', 10);
-        const dimensionField = field.dataset.dimensionField;
-        papers[paperIndex] = papers[paperIndex] || { dimensions: [] };
-        papers[paperIndex].dimensions = papers[paperIndex].dimensions || [];
-        papers[paperIndex].dimensions[dimensionIndex] = papers[paperIndex].dimensions[dimensionIndex] || {};
-        papers[paperIndex].dimensions[dimensionIndex][dimensionField] = dimensionField === 'enabled'
-          ? !!field.checked
-          : dimensionField === 'price'
-            ? Number.parseFloat(field.value || '0') || 0
-            : field.value;
-      });
-
-      nextState.papers = papers
-        .filter(Boolean)
-        .map((paper) => ({
-          label: String(paper.label || '').trim(),
-          enabled: paper.enabled !== false,
-          dimensions: (paper.dimensions || [])
-            .filter(Boolean)
-            .map((dimension) => ({
-              label: String(dimension.label || '').trim(),
-              enabled: dimension.enabled !== false,
-              price: Number(dimension.price) || 0
-            }))
-            .filter((dimension) => dimension.label)
-        }))
-        .filter((paper) => paper.label);
-      nextState.dimensions = collectUniqueDimensionsFromPapers(nextState.papers, []);
+      nextState.papers = listMap.papers.filter(Boolean);
     }
 
     return nextState;

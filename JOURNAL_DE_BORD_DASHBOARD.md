@@ -74,3 +74,44 @@ Precautions:
 - Ne pas remettre zones/KYC/plan dans `renderApplicationEditor()`.
 - Les zones de livraison doivent rester dans les fiches produits.
 - Les plans vendeurs doivent rester dans les modules Basic/Pro et frais mensuels, pas dans le formulaire candidature.
+
+## 2026-05-28 - Dashboard Impression: points de retrait et zones livraison
+
+Contexte:
+
+- Le module Impression avait besoin de sa propre logique de reception, separee de la livraison marketplace.
+- Un client peut vouloir recuperer gratuitement une impression dans un point de retrait.
+- Un client peut aussi demander une livraison a domicile, mais uniquement dans les zones configurees par admin.
+
+Changements effectues:
+
+- Ajout d'un bloc `Livraison & points de retrait` dans `dashboard-printing.js`.
+- Les admins peuvent gerer:
+  - Points de retrait gratuits: nom, adresse, telephone, actif/inactif.
+  - Zones de livraison domicile: pays, departement, commune, prix, delai, actif/inactif.
+- Les donnees sont sauvegardees dans:
+
+```text
+printingDeliverySettings/main
+```
+
+Impact cote site:
+
+- Les pages impression documents/photo/CAD lisent ces reglages.
+- Le client choisit point de retrait gratuit ou livraison domicile avant ajout au panier.
+- Les frais domicile sont ajoutes au total impression.
+
+Fichiers modifies:
+
+- `dashboard-printing.js`
+- `dashboard-printing.html`
+- `JOURNAL_DE_BORD_DASHBOARD.md`
+
+Verification:
+
+- `node --check dashboard-printing.js`: OK.
+
+Precautions:
+
+- Ne pas supprimer le point de retrait par defaut sans ajouter au moins un autre point actif.
+- Les zones de livraison impression ne sont pas les memes que les zones produits marketplace.
