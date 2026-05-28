@@ -1,7 +1,11 @@
 import { db } from './firebase-init.js';
+import { deleteStorageFile } from './firebase-storage.js';
 import {
+  collection,
+  collectionGroup,
   doc,
   getDoc,
+  getDocs,
   setDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
@@ -102,6 +106,73 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+function escapeHtml(value = '') {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function normalizeOptionLabel(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function getSelectedOptionValue(item, labels = []) {
+  const normalizedLabels = labels.map((label) => normalizeOptionLabel(label));
+  const options = Array.isArray(item?.selectedOptions) ? item.selectedOptions : [];
+  const match = options.find((option) => normalizedLabels.includes(normalizeOptionLabel(option?.label)));
+  return match?.value || '';
+}
+
+function isPrintingItem(item = {}) {
+  const sourceType = String(item.sourceType || item.type || '').toLowerCase();
+  const productId = String(item.productId || item.id || '').toLowerCase();
+  return sourceType === 'printing'
+    || productId.startsWith('printing-')
+    || !!item.printingDelivery
+    || !!getSelectedOptionValue(item, ['URL fichier', 'Url fichier', 'Lien fichier']);
+}
+
+function makeFileRecordId(value = '') {
+  const source = String(value || `file_${Date.now()}`);
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = ((hash << 5) - hash) + source.charCodeAt(index);
+    hash |= 0;
+  }
+  const safe = source
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 90);
+  return `${safe || 'printing_file'}_${Math.abs(hash)}`;
+}
+
+function inferFileKind(fileName = '', url = '') {
+  const target = `${fileName} ${url}`.toLowerCase();
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\?|$)/.test(target)) return 'Image';
+  if (/\.pdf(\?|$)/.test(target)) return 'PDF';
+  return 'Fichier';
+}
+
+function getOrderDate(order = {}) {
+  const value = order.createdAt || order.date || order.paidAt || order.updatedAt;
+  if (!value) return '-';
+  if (typeof value?.toDate === 'function') return value.toDate().toLocaleString('fr-FR');
+  if (typeof value === 'string') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('fr-FR');
+  }
+  return String(value);
+}
+
 function normalizeDeliverySettings(data = {}) {
   const source = data && typeof data === 'object' ? data : {};
   return {
@@ -131,6 +202,8 @@ class PrintingDashboard {
     this.root = document.getElementById(rootId);
     this.state = {};
     this.deliverySettings = normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
+    this.printingFiles = [];
+    this.deletedPrintingFileIds = new Set();
     if (!this.root) return;
     this.init();
   }
@@ -154,6 +227,90 @@ class PrintingDashboard {
     ]);
     this.state = Object.fromEntries(entries);
     this.deliverySettings = normalizeDeliverySettings(deliverySnapshot.exists() ? deliverySnapshot.data() : DEFAULT_DELIVERY_SETTINGS);
+    await this.loadPrintingFiles();
+  }
+
+  async loadPrintingFiles() {
+    try {
+      const deletedSnapshot = await getDocs(collection(db, 'printingDeletedFiles'));
+      this.deletedPrintingFileIds = new Set(deletedSnapshot.docs.map((entry) => entry.id));
+    } catch (error) {
+      console.warn('Impossible de charger les fichiers impression deja supprimes.', error);
+      this.deletedPrintingFileIds = new Set();
+    }
+
+    const orders = await this.loadPrintingOrders();
+    const filesById = new Map();
+
+    orders.forEach((order) => {
+      const items = Array.isArray(order.items) ? order.items : [];
+      items.forEach((item, itemIndex) => {
+        if (!isPrintingItem(item)) return;
+
+        const fileUrl = getSelectedOptionValue(item, ['URL fichier', 'Url fichier', 'Lien fichier'])
+          || item.fileUrl
+          || item.fileURL
+          || item.downloadUrl
+          || item.downloadURL
+          || '';
+        if (!fileUrl) return;
+
+        const storagePath = getSelectedOptionValue(item, ['Chemin storage', 'Storage path'])
+          || item.storagePath
+          || item.filePath
+          || item.path
+          || '';
+        const fileName = getSelectedOptionValue(item, ['Fichier', 'Nom du fichier'])
+          || item.fileName
+          || item.name
+          || `fichier-impression-${itemIndex + 1}`;
+        const id = makeFileRecordId(storagePath || fileUrl);
+
+        if (this.deletedPrintingFileIds.has(id) || filesById.has(id)) return;
+
+        filesById.set(id, {
+          id,
+          orderId: order.id || '',
+          orderPath: order.path || '',
+          orderCode: order.code || order.codeUnique || order.uniqueCode || order.id || '',
+          orderDate: getOrderDate(order),
+          clientName: order.customerName || order.clientName || order.name || order.customer?.name || '-',
+          itemName: item.name || item.title || `Impression ${itemIndex + 1}`,
+          fileName,
+          fileUrl,
+          storagePath,
+          kind: inferFileKind(fileName, fileUrl)
+        });
+      });
+    });
+
+    this.printingFiles = Array.from(filesById.values())
+      .sort((left, right) => String(right.orderDate || '').localeCompare(String(left.orderDate || '')));
+  }
+
+  async loadPrintingOrders() {
+    const docsByPath = new Map();
+    const sources = [
+      { label: 'orders', ref: collection(db, 'orders') },
+      { label: 'client-orders', ref: collectionGroup(db, 'orders') }
+    ];
+
+    for (const source of sources) {
+      try {
+        const snapshot = await getDocs(source.ref);
+        snapshot.docs.forEach((entry) => {
+          docsByPath.set(entry.ref.path, {
+            id: entry.id,
+            path: entry.ref.path,
+            ...entry.data()
+          });
+        });
+      } catch (error) {
+        console.warn(`Impossible de charger les commandes impression depuis ${source.label}.`, error);
+      }
+    }
+
+    return Array.from(docsByPath.values());
   }
 
   mergeModuleState(defaults, data) {
@@ -193,8 +350,76 @@ class PrintingDashboard {
 
       <section class="config-grid">
         ${this.renderDeliverySettings()}
+        ${this.renderPrintingFilesPanel()}
         ${MODULES.map((module) => this.renderModule(module)).join('')}
       </section>
+    `;
+  }
+
+  renderPrintingFilesPanel() {
+    const files = Array.isArray(this.printingFiles) ? this.printingFiles : [];
+    return `
+      <article class="panel" data-printing-files-panel style="grid-column:1/-1;">
+        <div class="panel-head">
+          <div>
+            <small>Nettoyage Firebase</small>
+            <h2>Fichiers envoyes pour impression</h2>
+          </div>
+          <div class="status-chip">
+            <i class="fas fa-file-arrow-down"></i>
+            <span>${files.length} fichier(s) stocke(s)</span>
+          </div>
+        </div>
+        <p>Telechargez les fichiers dont vous avez besoin, puis supprimez-les ici pour eviter qu'ils restent stockes inutilement dans Firebase Storage. Chaque fichier possede son propre bouton de suppression.</p>
+
+        <div class="actions" style="justify-content:flex-start;margin:0.8rem 0 1rem;">
+          <button class="btn-secondary" type="button" data-refresh-printing-files>
+            <i class="fas fa-rotate"></i>
+            Actualiser les fichiers
+          </button>
+        </div>
+
+        ${files.length ? `
+          <div class="option-list" style="gap:0.85rem;">
+            ${files.map((file) => this.renderPrintingFileRow(file)).join('')}
+          </div>
+        ` : `
+          <div class="hint" style="padding:1rem;border:1px dashed rgba(15,23,42,0.16);border-radius:18px;">
+            Aucun fichier impression actif trouve dans les commandes pour le moment.
+          </div>
+        `}
+      </article>
+    `;
+  }
+
+  renderPrintingFileRow(file) {
+    return `
+      <article class="option-row" style="grid-template-columns:1fr auto;align-items:center;">
+        <div style="min-width:0;">
+          <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
+            <strong>${escapeHtml(file.fileName || 'Fichier impression')}</strong>
+            <span class="status-chip" style="padding:0.3rem 0.55rem;font-size:0.72rem;">${escapeHtml(file.kind || 'Fichier')}</span>
+          </div>
+          <div class="hint" style="margin-top:0.35rem;">
+            ${escapeHtml(file.itemName || 'Impression')} · Commande ${escapeHtml(file.orderCode || file.orderId || '-')} · ${escapeHtml(file.clientName || '-')} · ${escapeHtml(file.orderDate || '-')}
+          </div>
+          ${file.storagePath ? `<div class="hint" style="margin-top:0.25rem;word-break:break-word;">${escapeHtml(file.storagePath)}</div>` : '<div class="hint" style="margin-top:0.25rem;">Chemin Storage manquant: suppression directe indisponible.</div>'}
+        </div>
+        <div style="display:flex;gap:0.55rem;flex-wrap:wrap;justify-content:flex-end;">
+          <a class="btn-secondary" href="${escapeHtml(file.fileUrl)}" download="${escapeHtml(file.fileName || 'fichier-impression')}" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-download"></i>
+            Telecharger
+          </a>
+          <a class="btn-secondary" href="${escapeHtml(file.fileUrl)}" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-up-right-from-square"></i>
+            Ouvrir
+          </a>
+          <button class="btn-danger" type="button" data-delete-printing-file="${escapeHtml(file.id)}" ${file.storagePath ? '' : 'disabled'}>
+            <i class="fas fa-trash"></i>
+            Supprimer
+          </button>
+        </div>
+      </article>
     `;
   }
 
@@ -449,6 +674,19 @@ class PrintingDashboard {
     this.root.querySelector('[data-save-printing-delivery]')?.addEventListener('click', async () => {
       await this.saveDeliverySettings();
     });
+
+    this.root.querySelector('[data-refresh-printing-files]')?.addEventListener('click', async () => {
+      await this.loadPrintingFiles();
+      this.render();
+      this.attachEvents();
+      this.showToast('Liste des fichiers impression actualisee.');
+    });
+
+    this.root.querySelectorAll('[data-delete-printing-file]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.deletePrintingFile(button.dataset.deletePrintingFile);
+      });
+    });
   }
 
   collectDeliverySettings() {
@@ -484,6 +722,36 @@ class PrintingDashboard {
     this.render();
     this.attachEvents();
     this.showToast('Livraison impression enregistree dans Firebase.');
+  }
+
+  async deletePrintingFile(fileId) {
+    const file = this.printingFiles.find((entry) => entry.id === fileId);
+    if (!file || !file.storagePath) return;
+
+    const confirmed = window.confirm(`Supprimer definitivement ce fichier de Firebase Storage ?\n\n${file.fileName}`);
+    if (!confirmed) return;
+
+    try {
+      await deleteStorageFile(file.storagePath);
+    } catch (error) {
+      if (error?.code !== 'storage/object-not-found') {
+        console.error('Suppression fichier impression impossible:', error);
+        this.showToast('Suppression impossible. Verifiez les permissions Firebase Storage.');
+        return;
+      }
+    }
+
+    await setDoc(doc(db, 'printingDeletedFiles', file.id), {
+      ...file,
+      deletedAt: new Date().toISOString(),
+      deletedBy: 'dashboard_admin'
+    }, { merge: true });
+
+    this.deletedPrintingFileIds.add(file.id);
+    this.printingFiles = this.printingFiles.filter((entry) => entry.id !== file.id);
+    this.render();
+    this.attachEvents();
+    this.showToast('Fichier impression supprime de Firebase Storage.');
   }
 
   addOption(moduleId, listKey) {

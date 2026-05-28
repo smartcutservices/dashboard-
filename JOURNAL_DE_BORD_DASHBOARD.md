@@ -115,3 +115,50 @@ Precautions:
 
 - Ne pas supprimer le point de retrait par defaut sans ajouter au moins un autre point actif.
 - Les zones de livraison impression ne sont pas les memes que les zones produits marketplace.
+
+## 2026-05-28 - Dashboard Impression: suppression des fichiers clients
+
+Contexte:
+
+- Les clients qui commandent une impression envoient des fichiers stockes dans Firebase Storage.
+- Apres telechargement par Smart Cut, ces fichiers ne doivent pas rester stockes inutilement.
+- Chaque fichier doit pouvoir etre supprime individuellement depuis le module Impression du dashboard admin.
+
+Changements effectues:
+
+- Ajout d'un panneau `Fichiers envoyes pour impression` dans `dashboard-printing.js`.
+- Le panneau lit les commandes racine `orders` et les sous-collections `clients/{clientId}/orders`.
+- Les fichiers sont detectes depuis les options de commande:
+  - `URL fichier`
+  - `Chemin storage`
+  - `Fichier`
+- Chaque fichier affiche:
+  - Nom du fichier.
+  - Type detecte: PDF, Image ou Fichier.
+  - Produit/mission impression associe.
+  - Code commande, client et date commande.
+  - Chemin Firebase Storage quand il est disponible.
+- Chaque fichier possede ses propres actions:
+  - `Telecharger`
+  - `Ouvrir`
+  - `Supprimer`
+- Le bouton `Supprimer` appelle `deleteStorageFile(storagePath)` pour effacer le fichier dans Firebase Storage.
+- Apres suppression, une trace est enregistree dans:
+
+```text
+printingDeletedFiles/{fileId}
+```
+
+- Cette trace evite de remontrer un fichier deja supprime si l'ancienne commande contient encore son URL.
+- Ajout d'un bouton `Actualiser les fichiers` pour recharger la liste sans quitter la page.
+- `dashboard-printing.html` charge maintenant `dashboard-printing.js?v=20260528-2`.
+
+Verification:
+
+- `node --check dashboard-printing.js`: OK.
+
+Precautions:
+
+- Ne pas supprimer la valeur `Chemin storage` dans les commandes impression: c'est elle qui permet la suppression precise dans Firebase Storage.
+- Si Firebase Storage refuse la suppression, verifier les rules Storage pour autoriser les admins a supprimer les fichiers impression.
+- La suppression du fichier ne supprime pas la commande; elle nettoie uniquement le fichier stocke.
