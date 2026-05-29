@@ -99,8 +99,28 @@ const DEFAULT_DELIVERY_SETTINGS = {
   pickupPoints: [
     { id: 'smart-cut-main', name: 'Smart Cut Services', address: 'Adresse Smart Cut Services', phone: '', isActive: true }
   ],
-  homeZones: []
+  homeZones: [],
+  moduleRules: {
+    documents: [],
+    cad: [],
+    photo: []
+  }
 };
+
+const PRINTING_INTERVAL_RANGES = [
+  { id: '1-10', label: '1-10', min: 1, max: 10 },
+  { id: '11-20', label: '11-20', min: 11, max: 20 },
+  { id: '21-50', label: '21-50', min: 21, max: 50 },
+  { id: '51-100', label: '51-100', min: 51, max: 100 },
+  { id: '101-250', label: '101-250', min: 101, max: 250 },
+  { id: '251-500', label: '251-500', min: 251, max: 500 }
+];
+
+const DELIVERY_RULE_MODULES = [
+  { id: 'documents', title: 'POD Documents', metric: 'pages imprimees' },
+  { id: 'cad', title: 'Plan CAD', metric: 'pages imprimees' },
+  { id: 'photo', title: 'Impression Photos', metric: 'tirages photo' }
+];
 
 const HAITI_DEPARTMENTS = {
   'Artibonite': ['Dessalines', 'Desdunes', 'Ennery', 'Gonaives', 'Gros-Morne', 'L Estere', 'Marmelade', 'Saint-Marc', 'Verrettes'],
@@ -249,6 +269,30 @@ function buildPrintingFilesFromItem(item = {}, order = {}, itemIndex = 0) {
 
 function normalizeDeliverySettings(data = {}) {
   const source = data && typeof data === 'object' ? data : {};
+  const sourceRules = source.moduleRules && typeof source.moduleRules === 'object' ? source.moduleRules : {};
+  const moduleRules = DELIVERY_RULE_MODULES.reduce((acc, module) => {
+    acc[module.id] = (Array.isArray(sourceRules[module.id]) ? sourceRules[module.id] : [])
+      .map((rule, index) => {
+        const range = PRINTING_INTERVAL_RANGES.find((entry) => entry.id === rule.rangeId)
+          || PRINTING_INTERVAL_RANGES.find((entry) => Number(entry.min) === Number(rule.min) && Number(entry.max) === Number(rule.max))
+          || PRINTING_INTERVAL_RANGES[0];
+        return {
+          id: String(rule.id || `${module.id}_rule_${index}`).trim(),
+          country: String(rule.country || 'Haiti').trim() || 'Haiti',
+          department: String(rule.department || '').trim(),
+          commune: String(rule.commune || '').trim(),
+          rangeId: String(rule.rangeId || range.id).trim(),
+          label: String(rule.label || range.label).trim(),
+          min: Number(rule.min ?? range.min) || range.min,
+          max: Number(rule.max ?? range.max) || range.max,
+          fee: Number(rule.fee || 0),
+          delay: String(rule.delay || rule.deliveryDelay || '').trim(),
+          isActive: rule.isActive !== false
+        };
+      })
+      .filter((rule) => rule.department || rule.commune || Number(rule.fee || 0) > 0);
+    return acc;
+  }, {});
   return {
     pickupPoints: (Array.isArray(source.pickupPoints) && source.pickupPoints.length ? source.pickupPoints : DEFAULT_DELIVERY_SETTINGS.pickupPoints)
       .map((point, index) => ({
@@ -267,7 +311,8 @@ function normalizeDeliverySettings(data = {}) {
         fee: Number(zone.fee || 0),
         delay: String(zone.delay || zone.deliveryDelay || '').trim(),
         isActive: zone.isActive !== false
-      }))
+      })),
+    moduleRules
   };
 }
 
@@ -469,6 +514,7 @@ class PrintingDashboard {
 
   renderDeliverySettings() {
     const settings = this.deliverySettings || normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
+    const moduleRuleCount = DELIVERY_RULE_MODULES.reduce((total, module) => total + (settings.moduleRules?.[module.id]?.length || 0), 0);
     return `
       <article class="panel" data-printing-delivery-panel style="grid-column:1/-1;">
         <div class="panel-head">
@@ -478,10 +524,10 @@ class PrintingDashboard {
           </div>
           <div class="status-chip">
             <i class="fas fa-location-dot"></i>
-            <span>${settings.pickupPoints.length} point(s) / ${settings.homeZones.length} zone(s)</span>
+            <span>${settings.pickupPoints.length} point(s) / ${settings.homeZones.length} zone(s) / ${moduleRuleCount} regle(s)</span>
           </div>
         </div>
-        <p>Ces reglages sont utilises uniquement par les modules impression. Les points de retrait restent gratuits; les zones domicile ajoutent un frais au total impression avant le paiement.</p>
+        <p>Ces reglages sont utilises uniquement par les modules impression. Les points de retrait restent gratuits. Les zones domicile ouvrent la zone, puis les regles par module fixent le prix selon l'intervalle de pages ou de photos.</p>
 
         <div class="option-list">
           <div class="option-title">Points de retrait gratuits</div>
@@ -494,6 +540,8 @@ class PrintingDashboard {
           ${settings.homeZones.map((zone, index) => this.renderHomeZoneRow(zone, index)).join('')}
           <button class="btn-secondary" type="button" data-add-printing-home-zone>Ajouter une zone domicile</button>
         </div>
+
+        ${DELIVERY_RULE_MODULES.map((module) => this.renderModuleDeliveryRules(module, settings.moduleRules?.[module.id] || [])).join('')}
 
         <div class="actions">
           <button class="btn-primary" type="button" data-save-printing-delivery>Enregistrer livraison impression</button>
@@ -536,6 +584,43 @@ class PrintingDashboard {
           <span>Actif</span>
         </label>
         <button class="btn-danger" type="button" data-remove-printing-home-zone="${index}">Retirer</button>
+      </div>
+    `;
+  }
+
+  renderModuleDeliveryRules(module, rules = []) {
+    return `
+      <div class="option-list" data-module-delivery-rules="${module.id}">
+        <div class="option-title">${escapeHtml(module.title)} - prix par zone et intervalle (${escapeHtml(module.metric)})</div>
+        <p class="hint" style="margin:0;">Exemple: Haiti -> Ouest -> Delmas -> 1-10 -> 500 G. Si aucune regle ne correspond a l'adresse et a l'intervalle du client, la livraison domicile sera bloquee pour ce module.</p>
+        ${rules.map((rule, index) => this.renderModuleDeliveryRuleRow(module.id, rule, index)).join('')}
+        <button class="btn-secondary" type="button" data-add-module-delivery-rule="${module.id}">Ajouter une regle ${escapeHtml(module.title)}</button>
+      </div>
+    `;
+  }
+
+  renderModuleDeliveryRuleRow(moduleId, rule, index) {
+    return `
+      <div class="option-row" data-module-delivery-rule-row="${moduleId}-${index}" style="grid-template-columns:.75fr 1fr 1fr .8fr .75fr 1fr auto auto;">
+        <select class="mini-input" data-module-rule-field="country">
+          <option value="Haiti" ${(rule.country || 'Haiti') === 'Haiti' ? 'selected' : ''}>Haiti</option>
+        </select>
+        <select class="mini-input" data-module-rule-field="department" data-module-rule-department="${moduleId}-${index}">
+          ${this.renderDepartmentOptions(rule.department || '')}
+        </select>
+        <select class="mini-input" data-module-rule-field="commune" data-module-rule-commune="${moduleId}-${index}" ${rule.department ? '' : 'disabled'}>
+          ${this.renderCommuneOptions(rule.department || '', rule.commune || '')}
+        </select>
+        <select class="mini-input" data-module-rule-field="rangeId">
+          ${PRINTING_INTERVAL_RANGES.map((range) => `<option value="${escapeHtml(range.id)}" ${range.id === rule.rangeId ? 'selected' : ''}>${escapeHtml(range.label)}</option>`).join('')}
+        </select>
+        <input class="mini-input" type="number" min="0" step="1" data-module-rule-field="fee" value="${rule.fee ?? 0}" placeholder="Prix">
+        <input class="mini-input" data-module-rule-field="delay" value="${escapeHtml(rule.delay || '')}" placeholder="Delai">
+        <label class="check">
+          <input type="checkbox" data-module-rule-field="isActive" ${rule.isActive ? 'checked' : ''}>
+          <span>Actif</span>
+        </label>
+        <button class="btn-danger" type="button" data-remove-module-delivery-rule="${moduleId}" data-remove-module-delivery-rule-index="${index}">Retirer</button>
       </div>
     `;
   }
@@ -718,6 +803,12 @@ class PrintingDashboard {
       this.attachEvents();
     });
 
+    this.root.querySelectorAll('[data-add-module-delivery-rule]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.addModuleDeliveryRule(button.dataset.addModuleDeliveryRule);
+      });
+    });
+
     this.root.querySelectorAll('[data-remove-printing-pickup]').forEach((button) => {
       button.addEventListener('click', () => {
         this.deliverySettings.pickupPoints.splice(Number.parseInt(button.dataset.removePrintingPickup || '0', 10), 1);
@@ -734,10 +825,29 @@ class PrintingDashboard {
       });
     });
 
+    this.root.querySelectorAll('[data-remove-module-delivery-rule]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const moduleId = button.dataset.removeModuleDeliveryRule;
+        const index = Number.parseInt(button.dataset.removeModuleDeliveryRuleIndex || '0', 10);
+        this.removeModuleDeliveryRule(moduleId, index);
+      });
+    });
+
     this.root.querySelectorAll('[data-home-zone-department]').forEach((select) => {
       select.addEventListener('change', () => {
         const index = select.dataset.homeZoneDepartment;
         const communeSelect = this.root.querySelector(`[data-home-zone-commune="${index}"]`);
+        if (!communeSelect) return;
+        communeSelect.innerHTML = this.renderCommuneOptions(select.value, '');
+        communeSelect.value = '';
+        communeSelect.disabled = !select.value;
+      });
+    });
+
+    this.root.querySelectorAll('[data-module-rule-department]').forEach((select) => {
+      select.addEventListener('change', () => {
+        const rowId = select.dataset.moduleRuleDepartment;
+        const communeSelect = this.root.querySelector(`[data-module-rule-commune="${rowId}"]`);
         if (!communeSelect) return;
         communeSelect.innerHTML = this.renderCommuneOptions(select.value, '');
         communeSelect.value = '';
@@ -787,7 +897,61 @@ class PrintingDashboard {
       isActive: Boolean(row.querySelector('[data-home-zone-field="isActive"]')?.checked)
     })).filter((zone) => zone.department || zone.commune || Number(zone.fee || 0) > 0);
 
-    return normalizeDeliverySettings({ pickupPoints, homeZones });
+    const moduleRules = DELIVERY_RULE_MODULES.reduce((acc, module) => {
+      acc[module.id] = Array.from(this.root.querySelectorAll(`[data-module-delivery-rule-row^="${module.id}-"]`)).map((row, index) => {
+        const rangeId = row.querySelector('[data-module-rule-field="rangeId"]')?.value || PRINTING_INTERVAL_RANGES[0].id;
+        const range = PRINTING_INTERVAL_RANGES.find((entry) => entry.id === rangeId) || PRINTING_INTERVAL_RANGES[0];
+        return {
+          id: this.deliverySettings.moduleRules?.[module.id]?.[index]?.id || `${module.id}_rule_${Date.now()}_${index}`,
+          country: row.querySelector('[data-module-rule-field="country"]')?.value || 'Haiti',
+          department: row.querySelector('[data-module-rule-field="department"]')?.value || '',
+          commune: row.querySelector('[data-module-rule-field="commune"]')?.value || '',
+          rangeId: range.id,
+          label: range.label,
+          min: range.min,
+          max: range.max,
+          fee: Number.parseFloat(row.querySelector('[data-module-rule-field="fee"]')?.value || '0') || 0,
+          delay: row.querySelector('[data-module-rule-field="delay"]')?.value || '',
+          isActive: Boolean(row.querySelector('[data-module-rule-field="isActive"]')?.checked)
+        };
+      }).filter((rule) => rule.department || rule.commune || Number(rule.fee || 0) > 0);
+      return acc;
+    }, {});
+
+    return normalizeDeliverySettings({ pickupPoints, homeZones, moduleRules });
+  }
+
+  addModuleDeliveryRule(moduleId) {
+    const module = DELIVERY_RULE_MODULES.find((entry) => entry.id === moduleId);
+    if (!module) return;
+    this.deliverySettings.moduleRules = this.deliverySettings.moduleRules || {};
+    this.deliverySettings.moduleRules[moduleId] = Array.isArray(this.deliverySettings.moduleRules[moduleId])
+      ? this.deliverySettings.moduleRules[moduleId]
+      : [];
+    const range = PRINTING_INTERVAL_RANGES[0];
+    this.deliverySettings.moduleRules[moduleId].push({
+      id: `${moduleId}_rule_${Date.now()}`,
+      country: 'Haiti',
+      department: '',
+      commune: '',
+      rangeId: range.id,
+      label: range.label,
+      min: range.min,
+      max: range.max,
+      fee: 0,
+      delay: '',
+      isActive: true
+    });
+    this.render();
+    this.attachEvents();
+  }
+
+  removeModuleDeliveryRule(moduleId, index) {
+    const rules = this.deliverySettings.moduleRules?.[moduleId];
+    if (!Array.isArray(rules)) return;
+    rules.splice(index, 1);
+    this.render();
+    this.attachEvents();
   }
 
   async saveDeliverySettings() {

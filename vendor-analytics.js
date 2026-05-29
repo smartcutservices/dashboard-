@@ -79,6 +79,7 @@ export async function loadAllOrdersWithClients() {
         allOrders.push({
           id: entry.id,
           clientId: client.id,
+          refPath: entry.ref.path,
           clientName: client.name || '',
           clientEmail: client.email || '',
           ...entry.data()
@@ -223,7 +224,8 @@ export function buildVendorSalesSummary({
   vendorId,
   vendorName = '',
   orders = [],
-  vendorProductIds = new Set()
+  vendorProductIds = new Set(),
+  payouts = []
 }) {
   const orderMap = new Map();
   let grossAmount = 0;
@@ -232,6 +234,19 @@ export function buildVendorSalesSummary({
   let itemCount = 0;
   const confirmedVendorOrders = [];
   const productMap = new Map();
+  const settledOrderRefs = new Set();
+  let settledNetAmount = 0;
+
+  payouts.forEach((payout) => {
+    settledNetAmount += Number(payout?.netAmount) || 0;
+    const refs = Array.isArray(payout?.coveredOrderRefs) ? payout.coveredOrderRefs : [];
+    refs.forEach((refPath) => {
+      const normalized = String(refPath || '').trim();
+      if (normalized) settledOrderRefs.add(normalized);
+    });
+  });
+
+  let pendingPayoutAmount = 0;
 
   orders.forEach((order) => {
     if (!isConfirmedOrder(order)) return;
@@ -292,6 +307,11 @@ export function buildVendorSalesSummary({
       ...order,
       amount: normalizedLines.reduce((sum, item) => sum + item.grossAmount, 0)
     });
+
+    const refPath = String(order?.refPath || '').trim();
+    if (!refPath || !settledOrderRefs.has(refPath)) {
+      pendingPayoutAmount += normalizedLines.reduce((sum, item) => sum + item.vendorNetAmount, 0);
+    }
   });
 
   const recentOrders = Array.from(orderMap.values())
@@ -306,6 +326,8 @@ export function buildVendorSalesSummary({
     grossAmount,
     commissionAmount,
     vendorNetAmount,
+    settledNetAmount,
+    pendingPayoutAmount,
     averageTicket: orderMap.size ? grossAmount / orderMap.size : 0,
     itemCount,
     recentOrders,

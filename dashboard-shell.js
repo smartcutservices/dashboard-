@@ -70,6 +70,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-credit-card'
   },
   {
+    id: 'currency',
+    label: 'Devise',
+    description: 'Taux HTG/USD et affichage public des prix.',
+    href: './dashboard-currency.html',
+    icon: 'fa-dollar-sign'
+  },
+  {
     id: 'clients',
     label: 'Clients',
     description: 'Base clients, modification des profils et suppression securisee.',
