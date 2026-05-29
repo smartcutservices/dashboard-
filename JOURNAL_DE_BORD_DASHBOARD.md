@@ -162,3 +162,31 @@ Precautions:
 - Ne pas supprimer la valeur `Chemin storage` dans les commandes impression: c'est elle qui permet la suppression precise dans Firebase Storage.
 - Si Firebase Storage refuse la suppression, verifier les rules Storage pour autoriser les admins a supprimer les fichiers impression.
 - La suppression du fichier ne supprime pas la commande; elle nettoie uniquement le fichier stocke.
+
+## 2026-05-28 - Dashboard Impression: support des commandes photo multi-fichiers
+
+Contexte:
+
+- Le module Impression Photo peut maintenant envoyer plusieurs photos dans une seule commande.
+- Chaque photo possede son propre fichier Firebase Storage.
+- Le panneau de nettoyage admin doit donc afficher chaque photo separement.
+
+Changements effectues:
+
+- `dashboard-printing.js` lit maintenant `item.printingFiles[]` quand cette liste existe.
+- Chaque entree de `printingFiles[]` devient une ligne independante dans `Fichiers envoyes pour impression`.
+- Le fallback historique reste actif:
+  - `URL fichier`
+  - `Chemin storage`
+  - `Fichier`
+- Les anciennes commandes impression restent donc compatibles.
+- `dashboard-printing.html` charge maintenant `dashboard-printing.js?v=20260528-3`.
+
+Verification:
+
+- `node --check dashboard-printing.js`: OK.
+
+Precautions:
+
+- Pour les futures commandes photo multi-images, ne pas retirer `printingFiles[]` du panier/order.
+- Sans `printingFiles[]`, le dashboard ne verra que le premier fichier via l'ancien fallback.

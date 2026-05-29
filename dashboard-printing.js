@@ -173,6 +173,67 @@ function getOrderDate(order = {}) {
   return String(value);
 }
 
+function buildPrintingFilesFromItem(item = {}, order = {}, itemIndex = 0) {
+  const explicitFiles = Array.isArray(item.printingFiles) ? item.printingFiles : [];
+  if (explicitFiles.length) {
+    return explicitFiles
+      .map((file, fileIndex) => {
+        const fileUrl = file.fileUrl || file.url || file.downloadUrl || '';
+        if (!fileUrl) return null;
+        const storagePath = file.storagePath || file.path || '';
+        const fileName = file.fileName || file.name || `fichier-impression-${itemIndex + 1}-${fileIndex + 1}`;
+        const id = makeFileRecordId(storagePath || fileUrl);
+        return {
+          id,
+          orderId: order.id || '',
+          orderPath: order.path || '',
+          orderCode: order.code || order.codeUnique || order.uniqueCode || order.id || '',
+          orderDate: getOrderDate(order),
+          clientName: order.customerName || order.clientName || order.name || order.customer?.name || '-',
+          itemName: item.name || item.title || `Impression ${itemIndex + 1}`,
+          fileName,
+          fileUrl,
+          storagePath,
+          kind: inferFileKind(fileName, fileUrl)
+        };
+      })
+      .filter(Boolean);
+  }
+
+  const fileUrl = getSelectedOptionValue(item, ['URL fichier', 'Url fichier', 'Lien fichier'])
+    || item.fileUrl
+    || item.fileURL
+    || item.downloadUrl
+    || item.downloadURL
+    || '';
+  if (!fileUrl) return [];
+
+  const storagePath = getSelectedOptionValue(item, ['Chemin storage', 'Storage path'])
+    || item.storagePath
+    || item.filePath
+    || item.path
+    || '';
+  const fileName = getSelectedOptionValue(item, ['Fichier', 'Nom du fichier'])
+    || item.fileName
+    || item.name
+    || `fichier-impression-${itemIndex + 1}`;
+  const id = makeFileRecordId(storagePath || fileUrl);
+
+  return [{
+    id,
+    orderId: order.id || '',
+    orderPath: order.path || '',
+    orderCode: order.code || order.codeUnique || order.uniqueCode || order.id || '',
+    orderDate: getOrderDate(order),
+    clientName: order.customerName || order.clientName || order.name || order.customer?.name || '-',
+    itemName: item.name || item.title || `Impression ${itemIndex + 1}`,
+    fileName,
+    fileUrl,
+    storagePath,
+    kind: inferFileKind(fileName, fileUrl)
+  }];
+}
+
 function normalizeDeliverySettings(data = {}) {
   const source = data && typeof data === 'object' ? data : {};
   return {
@@ -247,39 +308,9 @@ class PrintingDashboard {
       items.forEach((item, itemIndex) => {
         if (!isPrintingItem(item)) return;
 
-        const fileUrl = getSelectedOptionValue(item, ['URL fichier', 'Url fichier', 'Lien fichier'])
-          || item.fileUrl
-          || item.fileURL
-          || item.downloadUrl
-          || item.downloadURL
-          || '';
-        if (!fileUrl) return;
-
-        const storagePath = getSelectedOptionValue(item, ['Chemin storage', 'Storage path'])
-          || item.storagePath
-          || item.filePath
-          || item.path
-          || '';
-        const fileName = getSelectedOptionValue(item, ['Fichier', 'Nom du fichier'])
-          || item.fileName
-          || item.name
-          || `fichier-impression-${itemIndex + 1}`;
-        const id = makeFileRecordId(storagePath || fileUrl);
-
-        if (this.deletedPrintingFileIds.has(id) || filesById.has(id)) return;
-
-        filesById.set(id, {
-          id,
-          orderId: order.id || '',
-          orderPath: order.path || '',
-          orderCode: order.code || order.codeUnique || order.uniqueCode || order.id || '',
-          orderDate: getOrderDate(order),
-          clientName: order.customerName || order.clientName || order.name || order.customer?.name || '-',
-          itemName: item.name || item.title || `Impression ${itemIndex + 1}`,
-          fileName,
-          fileUrl,
-          storagePath,
-          kind: inferFileKind(fileName, fileUrl)
+        buildPrintingFilesFromItem(item, order, itemIndex).forEach((file) => {
+          if (this.deletedPrintingFileIds.has(file.id) || filesById.has(file.id)) return;
+          filesById.set(file.id, file);
         });
       });
     });
