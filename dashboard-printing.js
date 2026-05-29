@@ -102,6 +102,19 @@ const DEFAULT_DELIVERY_SETTINGS = {
   homeZones: []
 };
 
+const HAITI_DEPARTMENTS = {
+  'Artibonite': ['Dessalines', 'Desdunes', 'Ennery', 'Gonaives', 'Gros-Morne', 'L Estere', 'Marmelade', 'Saint-Marc', 'Verrettes'],
+  'Centre': ['Belladere', 'Cerca-Carvajal', 'Cerca-la-Source', 'Hinche', 'Lascahobas', 'Mirebalais', 'Saut-d Eau'],
+  'Grand Anse': ['Anse-d Hainault', 'Beaumont', 'Chambellan', 'Dame-Marie', 'Jeremie', 'Moron'],
+  'Nippes': ['Anse-a-Veau', 'Baraderes', 'Fond-des-Negres', 'Miragoane', 'Petite-Riviere-de-Nippes'],
+  'Nord': ['Acul-du-Nord', 'Bahon', 'Borgne', 'Cap-Haitien', 'Grande-Riviere-du-Nord', 'Limonade', 'Milot', 'Pignon', 'Plaine-du-Nord', 'Port-Margot', 'Quartier-Morin', 'Ranquitte', 'Saint-Raphael'],
+  'Nord-Est': ['Caracol', 'Ferrier', 'Fort-Liberte', 'Mombin-Crochu', 'Mont-Organise', 'Ouanaminthe', 'Perches', 'Sainte-Suzanne', 'Trou-du-Nord', 'Vallieres'],
+  'Nord-Ouest': ['Anse-a-Foleur', 'Baie-de-Henne', 'Bombardopolis', 'Jean-Rabel', 'La Tortue', 'Mole-Saint-Nicolas', 'Port-de-Paix', 'Saint-Louis-du-Nord'],
+  'Ouest': ['Arcahaie', 'Cabaret', 'Carrefour', 'Cite Soleil', 'Cornillon', 'Croix-des-Bouquets', 'Delmas', 'Fond-Verrettes', 'Ganthier', 'Gressier', 'Kenscoff', 'Leogane', 'Petion-Ville', 'Petit-Goave', 'Port-au-Prince', 'Tabarre'],
+  'Sud': ['Aquin', 'Camp-Perrin', 'Cavaillon', 'Chantal', 'Chardonniere', 'Coteaux', 'Ile-a-Vache', 'Les Anglais', 'Les Cayes', 'Maniche', 'Port-a-Piment', 'Roche-a-Bateau', 'Saint-Jean-du-Sud', 'Tiburon', 'Torbeck'],
+  'Sud-Est': ['Anse-a-Pitres', 'Bainet', 'Belle-Anse', 'Cayes-Jacmel', 'Cote-de-Fer', 'Grand-Gosier', 'Jacmel', 'La Vallee-de-Jacmel', 'Marigot', 'Thiotte']
+};
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -492,9 +505,9 @@ class PrintingDashboard {
   renderPickupPointRow(point, index) {
     return `
       <div class="option-row" data-printing-pickup-row="${index}" style="grid-template-columns:1fr 1.5fr 1fr auto auto;">
-        <input class="mini-input" data-pickup-field="name" value="${point.name || ''}" placeholder="Nom du point">
-        <input class="mini-input" data-pickup-field="address" value="${point.address || ''}" placeholder="Adresse">
-        <input class="mini-input" data-pickup-field="phone" value="${point.phone || ''}" placeholder="Telephone">
+        <input class="mini-input" data-pickup-field="name" value="${escapeHtml(point.name || '')}" placeholder="Nom du point">
+        <input class="mini-input" data-pickup-field="address" value="${escapeHtml(point.address || '')}" placeholder="Adresse">
+        <input class="mini-input" data-pickup-field="phone" value="${escapeHtml(point.phone || '')}" placeholder="Telephone">
         <label class="check">
           <input type="checkbox" data-pickup-field="isActive" ${point.isActive ? 'checked' : ''}>
           <span>Actif</span>
@@ -507,11 +520,17 @@ class PrintingDashboard {
   renderHomeZoneRow(zone, index) {
     return `
       <div class="option-row" data-printing-home-zone-row="${index}" style="grid-template-columns:.8fr 1fr 1fr .8fr 1fr auto auto;">
-        <input class="mini-input" data-home-zone-field="country" value="${zone.country || 'Haiti'}" placeholder="Pays">
-        <input class="mini-input" data-home-zone-field="department" value="${zone.department || ''}" placeholder="Departement">
-        <input class="mini-input" data-home-zone-field="commune" value="${zone.commune || ''}" placeholder="Commune">
+        <select class="mini-input" data-home-zone-field="country">
+          <option value="Haiti" ${(zone.country || 'Haiti') === 'Haiti' ? 'selected' : ''}>Haiti</option>
+        </select>
+        <select class="mini-input" data-home-zone-field="department" data-home-zone-department="${index}">
+          ${this.renderDepartmentOptions(zone.department || '')}
+        </select>
+        <select class="mini-input" data-home-zone-field="commune" data-home-zone-commune="${index}" ${zone.department ? '' : 'disabled'}>
+          ${this.renderCommuneOptions(zone.department || '', zone.commune || '')}
+        </select>
         <input class="mini-input" type="number" min="0" step="1" data-home-zone-field="fee" value="${zone.fee ?? 0}" placeholder="Prix">
-        <input class="mini-input" data-home-zone-field="delay" value="${zone.delay || ''}" placeholder="Delai">
+        <input class="mini-input" data-home-zone-field="delay" value="${escapeHtml(zone.delay || '')}" placeholder="Delai">
         <label class="check">
           <input type="checkbox" data-home-zone-field="isActive" ${zone.isActive ? 'checked' : ''}>
           <span>Actif</span>
@@ -519,6 +538,19 @@ class PrintingDashboard {
         <button class="btn-danger" type="button" data-remove-printing-home-zone="${index}">Retirer</button>
       </div>
     `;
+  }
+
+  renderDepartmentOptions(selected = '') {
+    return '<option value="">Choisir un departement...</option>' + Object.keys(HAITI_DEPARTMENTS)
+      .map((department) => `<option value="${escapeHtml(department)}" ${department === selected ? 'selected' : ''}>${escapeHtml(department)}</option>`)
+      .join('');
+  }
+
+  renderCommuneOptions(department = '', selected = '') {
+    const communes = HAITI_DEPARTMENTS[department] || [];
+    return '<option value="">Choisir une commune...</option>' + communes
+      .map((commune) => `<option value="${escapeHtml(commune)}" ${commune === selected ? 'selected' : ''}>${escapeHtml(commune)}</option>`)
+      .join('');
   }
 
   renderModule(module) {
@@ -702,8 +734,24 @@ class PrintingDashboard {
       });
     });
 
+    this.root.querySelectorAll('[data-home-zone-department]').forEach((select) => {
+      select.addEventListener('change', () => {
+        const index = select.dataset.homeZoneDepartment;
+        const communeSelect = this.root.querySelector(`[data-home-zone-commune="${index}"]`);
+        if (!communeSelect) return;
+        communeSelect.innerHTML = this.renderCommuneOptions(select.value, '');
+        communeSelect.value = '';
+        communeSelect.disabled = !select.value;
+      });
+    });
+
     this.root.querySelector('[data-save-printing-delivery]')?.addEventListener('click', async () => {
-      await this.saveDeliverySettings();
+      try {
+        await this.saveDeliverySettings();
+      } catch (error) {
+        console.error('Erreur sauvegarde livraison impression:', error);
+        this.showToast(error?.message || 'Impossible d enregistrer la livraison impression.');
+      }
     });
 
     this.root.querySelector('[data-refresh-printing-files]')?.addEventListener('click', async () => {
@@ -743,8 +791,13 @@ class PrintingDashboard {
   }
 
   async saveDeliverySettings() {
+    const nextSettings = this.collectDeliverySettings();
+    if (!nextSettings.pickupPoints.length && !nextSettings.homeZones.length) {
+      throw new Error('Ajoutez au moins un point de retrait ou une zone de livraison avant d enregistrer.');
+    }
+
     const payload = {
-      ...this.collectDeliverySettings(),
+      ...nextSettings,
       updatedAt: new Date().toISOString(),
       updatedBy: 'dashboard_admin'
     };

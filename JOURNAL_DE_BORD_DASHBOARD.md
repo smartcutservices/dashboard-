@@ -190,3 +190,31 @@ Precautions:
 
 - Pour les futures commandes photo multi-images, ne pas retirer `printingFiles[]` du panier/order.
 - Sans `printingFiles[]`, le dashboard ne verra que le premier fichier via l'ancien fallback.
+
+## 2026-05-28 - Dashboard Impression: sauvegarde livraison et listes Haiti
+
+Contexte:
+
+- Dans `Livraison & points de retrait`, le bouton `Enregistrer livraison impression` ne donnait pas assez de retour si Firebase refusait ou si la configuration etait vide.
+- Les zones de livraison a domicile etaient saisies manuellement.
+- Pour eviter les fautes de commune/departement, il faut utiliser la meme logique que les produits: departement selectionne, puis communes liees automatiquement.
+
+Changements effectues:
+
+- Ajout de la liste officielle `HAITI_DEPARTMENTS` dans `dashboard-printing.js`.
+- Les champs `Departement` et `Commune` des zones domicile sont maintenant des listes deroulantes.
+- Quand l'admin choisit un departement, la liste des communes se recharge automatiquement.
+- Le pays reste limite a `Haiti` pour le moment.
+- Le bouton `Enregistrer livraison impression` est maintenant protege par `try/catch`.
+- Si Firebase refuse l'ecriture ou si la configuration est vide, le dashboard affiche un message au lieu de rester silencieux.
+- Les valeurs des points de retrait et delais sont echappees avant affichage pour eviter les problemes HTML.
+- `dashboard-printing.html` charge maintenant `dashboard-printing.js?v=20260528-4`.
+
+Verification:
+
+- `node --check dashboard-printing.js`: OK.
+
+Precautions:
+
+- Ne pas revenir a des inputs libres pour departement/commune dans ce module.
+- Si l'enregistrement echoue encore sur prod, verifier que les rules Firestore deployees contiennent bien `printingDeliverySettings`.
