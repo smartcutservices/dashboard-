@@ -218,3 +218,27 @@ Precautions:
 
 - Ne pas revenir a des inputs libres pour departement/commune dans ce module.
 - Si l'enregistrement echoue encore sur prod, verifier que les rules Firestore deployees contiennent bien `printingDeliverySettings`.
+
+## 2026-05-28 - Produits vendeurs deja approuves: pas de revalidation admin
+
+Contexte:
+
+- Les nouveaux produits vendeurs doivent rester soumis a validation admin.
+- En revanche, une fois qu'un produit a deja ete approuve, un changement de prix, stock, description, images ou livraison ne doit pas le remettre automatiquement en revue.
+- Cela evite de bloquer l'admin quand il y aura beaucoup de vendeurs.
+
+Changements effectues:
+
+- `DvendorProducts.html` detecte les produits existants avec `status` `active`, `approved` ou `published`.
+- Quand un vendeur modifie un produit deja approuve et le garde actif:
+  - `status` reste `active`.
+  - `reviewedAt`, `reviewedBy` et `publishedAt` sont conserves.
+  - `lastVendorEditAt` est mis a jour.
+  - Le toast indique que le produit reste approuve.
+- Les nouveaux produits actifs continuent de partir en `pending_review`.
+- Le message d'information du dashboard vendeur precise maintenant que seuls les nouveaux produits partent en revue admin.
+
+Precautions:
+
+- Ne pas forcer `pending_review` sur les edits de produits actifs.
+- Si un produit actif doit etre recontrole, l'admin doit utiliser une action explicite cote back-office.
