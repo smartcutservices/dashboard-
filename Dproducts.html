@@ -594,10 +594,15 @@
             <span class="flex-1">Produits</span>
             <span class="text-xs bg-background px-2 py-1 rounded-full" id="products-count">0</span>
           </button>
+
+          <button id="uploadDigitalProductNav" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" type="button">
+            <i class="fas fa-bolt w-5 text-text-secondary"></i>
+            <span class="flex-1">Upload Produit Digital</span>
+          </button>
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" data-view="categories">
             <i class="fas fa-sitemap w-5 text-text-secondary"></i>
-            <span class="flex-1">Catégories</span>
+            <span class="flex-1">Cat&eacute;gories</span>
           </button>
         </nav>
       </div>
@@ -707,8 +712,10 @@
 
           <!-- Tabs de navigation -->
           <div class="section-tabs">
-            <button class="section-tab active" data-tab="general">Général</button>
-            <button class="section-tab" data-tab="category">Catégorie & attributs</button>
+            <button class="section-tab active" data-tab="general">G&eacute;n&eacute;ral</button>
+            <button class="section-tab" data-tab="delivery">Livraison</button>
+            <button class="section-tab" data-tab="digital">Digital</button>
+            <button class="section-tab" data-tab="category">Cat&eacute;gorie & attributs</button>
             <button class="section-tab" data-tab="variations">Variations</button>
             <button class="section-tab" data-tab="gallery">Galerie</button>
           </div>
@@ -721,7 +728,7 @@
             <div id="tab-general" class="tab-content active">
               <div class="content-card">
                 <div class="card-header">
-                <span>Informations générales</span>
+                <span>Informations g&eacute;n&eacute;rales</span>
                   <div class="flex items-center gap-3">
                     <span class="text-sm text-text-secondary">Statut</span>
                     <label class="relative inline-flex items-center cursor-pointer">
@@ -738,7 +745,7 @@
                     </div>
                     <div>
                       <label class="block text-sm text-text-secondary mb-1">SKU principal</label>
-                      <input type="text" id="mainSku" class="form-input" placeholder="Généré automatiquement">
+                      <input type="text" id="mainSku" class="form-input" placeholder="G&eacute;n&eacute;r&eacute; automatiquement">
                     </div>
                   </div>
                   
@@ -758,51 +765,12 @@
                       <input type="number" id="basePrice" step="0.01" class="form-input">
                     </div>
                     <div>
-                      <label class="block text-sm text-text-secondary mb-1">Prix barré</label>
+                      <label class="block text-sm text-text-secondary mb-1">Prix barr&eacute;</label>
                       <input type="number" id="comparePrice" step="0.01" class="form-input">
                     </div>
                     <div>
                       <label class="block text-sm text-text-secondary mb-1">Stock total</label>
                       <input type="number" id="totalStock" class="form-input" readonly>
-                    </div>
-                  </div>
-
-                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
-                    <div class="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <h4 class="font-semibold text-text-primary">Livraison par produit</h4>
-                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit et les zones ou ce produit peut etre livre. Le client ne pourra commander que si son adresse correspond a une zone disponible.</p>
-                      </div>
-                      <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
-                        Haiti uniquement
-                      </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
-                        <div class="flex gap-2">
-                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
-                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
-                            <option value="g">g</option>
-                            <option value="kg">kg</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
-                        <div>
-                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
-                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs communes avec le prix facture au client pour ce produit.</p>
-                        </div>
-                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
-                          <i class="fas fa-plus"></i>
-                          Ajouter une zone
-                        </button>
-                      </div>
-                      <div id="productDeliveryZonesList" class="space-y-3"></div>
                     </div>
                   </div>
 
@@ -839,16 +807,101 @@
             </div>
 
             <!-- ===== TAB 2: CATÉGORIE & ATTRIBUTS ===== -->
+            <div id="tab-delivery" class="tab-content hidden">
+              <div class="content-card">
+                <div class="card-header">
+                  <span>Livraison par produit</span>
+                </div>
+                <div class="card-body space-y-4">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(31,30,28,0.03)] p-4 space-y-4">
+                    <div class="flex items-start justify-between gap-3 flex-wrap">
+                      <div>
+                        <h4 class="font-semibold text-text-primary">Zones et poids du produit</h4>
+                        <p class="text-sm text-text-secondary mt-1">Definissez le poids du produit et les zones ou ce produit peut etre livre, avec prix et delai pour chaque zone. Le client ne pourra commander que si son adresse correspond a une zone disponible.</p>
+                      </div>
+                      <span class="inline-flex items-center rounded-full bg-white border border-[rgba(198,167,94,0.2)] px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase text-[#8a6e2f]">
+                        Haiti uniquement
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Poids produit</label>
+                        <div class="flex gap-2">
+                          <input type="number" id="productWeightValue" class="form-input" min="0" step="0.001" value="0" placeholder="Ex: 15 ou 1.5">
+                          <select id="productWeightUnit" class="form-input" style="max-width:90px;">
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                          </select>
+                        </div>
+                        <p class="text-xs text-text-secondary mt-1">Pour un produit digital, le poids est force a 0 et la livraison est gratuite.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                        <div>
+                          <h5 class="font-semibold text-text-primary">Zones et prix de livraison</h5>
+                          <p class="text-sm text-text-secondary mt-1">Ajoutez une ou plusieurs communes avec le prix facture au client pour ce produit.</p>
+                        </div>
+                        <button type="button" id="addProductDeliveryZoneBtn" class="btn btn-secondary btn-sm">
+                          <i class="fas fa-plus"></i>
+                          Ajouter une zone
+                        </button>
+                      </div>
+                      <div id="productDeliveryZonesList" class="space-y-3"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="tab-digital" class="tab-content hidden">
+              <div class="content-card">
+                <div class="card-header">
+                  <span>Produit digital</span>
+                </div>
+                <div class="card-body space-y-4">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(198,167,94,0.06)] p-4 space-y-4">
+                    <label class="flex items-start gap-3 cursor-pointer">
+                      <input type="checkbox" id="isDigitalProduct" class="mt-1">
+                      <span>
+                        <span class="block font-semibold text-text-primary">Article digital</span>
+                        <span class="block text-sm text-text-secondary">Livraison gratuite et instantanee, disponible partout. Aucun stock n est gere pour un produit digital.</span>
+                      </span>
+                    </label>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-1">Lien de telechargement</label>
+                        <input type="url" id="digitalDownloadLink" class="form-input" placeholder="https://...">
+                        <p class="text-xs text-text-secondary mt-1">Collez uniquement un lien externe. Aucun fichier digital n est stocke sur Smart Cut.</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-sm text-text-secondary mb-1">Delai de livraison</label>
+                      <input type="text" id="deliveryDelay" class="form-input" value="Instantanee" placeholder="Instantanee">
+                    </div>
+                    <div class="rounded-xl bg-white border border-[rgba(198,167,94,0.16)] p-4 text-sm text-text-secondary">
+                      <p class="font-semibold text-text-primary mb-1">Photos du produit digital</p>
+                      <p>Ajoutez les photos dans l'onglet Galerie. Maximum 3 photos, 1 Mo par photo.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div id="tab-category" class="tab-content hidden">
               <div class="content-card">
                 <div class="card-header">
-                  <span>Sélection des catégories et lignes</span>
+                  <span>S&eacute;lection des cat&eacute;gories et lignes</span>
                 </div>
                 <div class="card-body">
                   <div class="mb-4">
-                    <label class="block text-sm text-text-secondary mb-2">Catégorie</label>
+                    <label class="block text-sm text-text-secondary mb-2">Cat&eacute;gorie</label>
                     <select id="categorySelect" class="form-select">
-                      <option value="">Choisir une catégorie</option>
+                      <option value="">Choisir une cat&eacute;gorie</option>
                     </select>
                   </div>
                   
@@ -1061,7 +1114,7 @@
     // ========== CONFIGURATION FIREBASE ==========
     import { uploadImageFile } from './firebase-storage.js';
     import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-    import { sendBroadcastNotification, NotificationComponent } from './notification.js';
+    import { sendBroadcastNotification, NotificationComponent } from './notification.js?v=20260525-6';
     import { 
       getFirestore, 
       collection, 
@@ -1124,6 +1177,7 @@
           main: [], // Noms des images principales
           variations: {} // { variationIndex: [nomsImages] }
         };
+        this.editorMode = 'physical';
         
         this.init();
       }
@@ -1146,6 +1200,7 @@
           sidebar: document.getElementById('sidebar'),
           menuToggle: document.getElementById('menuToggle'),
           sidebarNav: document.querySelectorAll('.sidebar-nav'),
+          uploadDigitalProductNav: document.getElementById('uploadDigitalProductNav'),
           views: {
             dashboard: document.getElementById('dashboard-view'),
             products: document.getElementById('products-view'),
@@ -1187,6 +1242,9 @@
           productWeightUnit: document.getElementById('productWeightUnit'),
           productDeliveryZonesList: document.getElementById('productDeliveryZonesList'),
           addProductDeliveryZoneBtn: document.getElementById('addProductDeliveryZoneBtn'),
+          isDigitalProduct: document.getElementById('isDigitalProduct'),
+          digitalDownloadLink: document.getElementById('digitalDownloadLink'),
+          deliveryDelay: document.getElementById('deliveryDelay'),
           discountType: document.getElementById('discountType'),
           discountValue: document.getElementById('discountValue'),
           discountStartAt: document.getElementById('discountStartAt'),
@@ -1267,6 +1325,7 @@
         // Navigation produit
         this.elements.addProductBtn.addEventListener('click', () => this.newProduct());
         this.elements.newProductBtn.addEventListener('click', () => this.newProduct());
+        this.elements.uploadDigitalProductNav?.addEventListener('click', () => this.newDigitalProduct());
         this.elements.backToProducts.addEventListener('click', () => this.switchView('products'));
         
         // Sauvegarde
@@ -1294,6 +1353,7 @@
         this.elements.uploadMainImageBtn?.addEventListener('click', () => this.uploadSelectedImages('main'));
         this.elements.uploadVarImageBtn?.addEventListener('click', () => this.uploadSelectedImages('variation'));
         this.elements.addProductDeliveryZoneBtn?.addEventListener('click', () => this.addProductDeliveryZoneRow());
+        this.elements.isDigitalProduct?.addEventListener('change', () => this.updateDigitalProductUi());
         
         // Search
         this.elements.searchProducts.addEventListener('input', () => this.renderProductsList());
@@ -1355,11 +1415,44 @@
       }
       
       switchEditorTab(tabName) {
+        const targetTab = document.querySelector(`.section-tab[data-tab="${tabName}"]`);
+        if (targetTab?.classList.contains('hidden')) {
+          tabName = 'general';
+        }
         this.elements.sectionTabs.forEach(t => t.classList.remove('active'));
         this.elements.tabContents.forEach(c => c.classList.add('hidden'));
         
         document.querySelector(`.section-tab[data-tab="${tabName}"]`).classList.add('active');
         document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        if (tabName === 'digital' && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = true;
+          this.updateDigitalProductUi();
+        }
+      }
+
+      setEditorMode(mode = 'physical') {
+        this.editorMode = mode === 'digital' ? 'digital' : 'physical';
+        const hiddenTabs = this.editorMode === 'digital'
+          ? ['delivery', 'variations']
+          : ['digital'];
+        const visibleTabs = this.editorMode === 'digital'
+          ? ['general', 'digital', 'category', 'gallery']
+          : ['general', 'delivery', 'category', 'variations', 'gallery'];
+
+        this.elements.sectionTabs.forEach((tab) => {
+          const tabName = tab.dataset.tab;
+          tab.classList.toggle('hidden', hiddenTabs.includes(tabName));
+          tab.style.display = visibleTabs.includes(tabName) ? '' : 'none';
+        });
+
+        if (this.editorMode === 'digital' && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = true;
+          this.updateDigitalProductUi();
+        }
+        if (this.editorMode === 'physical' && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = false;
+          this.updateDigitalProductUi();
+        }
       }
       
       // ========== CHARGEMENT DES DONNÉES ==========
@@ -1523,7 +1616,7 @@
                 <p class="text-sm text-text-secondary mb-2">${product.sku || 'SKU non défini'}</p>
                 <div class="flex justify-between items-center text-sm">
                   <span>${product.price ? new Intl.NumberFormat('fr-HT', { style: 'currency', currency: 'HTG', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(product.price)) : 'Prix non défini'}</span>
-                  <span class="text-text-secondary">Stock: ${totalStock}</span>
+                  <span class="text-text-secondary">${product.isDigitalProduct ? 'Produit digital' : `Stock: ${totalStock}`}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm mt-2">
                   <span class="text-text-secondary">
@@ -1920,9 +2013,18 @@
           .join('');
       }
 
+      escape(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
       renderProductDeliveryZoneRow(zone = {}, index = 0) {
         return `
-          <div data-product-delivery-zone="${index}" class="grid grid-cols-1 md:grid-cols-[130px_1fr_1fr_120px_auto] gap-3 items-end rounded-xl border border-[rgba(198,167,94,0.18)] bg-white p-3">
+          <div data-product-delivery-zone="${index}" class="grid grid-cols-1 md:grid-cols-[110px_1fr_1fr_110px_150px_auto] gap-3 items-end rounded-xl border border-[rgba(198,167,94,0.18)] bg-white p-3">
             <div>
               <label class="block text-sm text-text-secondary mb-1">Pays</label>
               <select data-product-zone-field="country" class="form-input">
@@ -1945,6 +2047,10 @@
               <label class="block text-sm text-text-secondary mb-1">Prix HTG</label>
               <input data-product-zone-field="fee" type="number" min="0" step="1" value="${Number(zone.fee || 0) || ''}" class="form-input" placeholder="500">
             </div>
+            <div>
+              <label class="block text-sm text-text-secondary mb-1">Delai</label>
+              <input data-product-zone-field="deliveryDelay" type="text" value="${this.escape(zone.deliveryDelay || zone.delay || '')}" class="form-input" placeholder="24-48h">
+            </div>
             <button type="button" data-remove-product-delivery-zone class="btn btn-secondary btn-sm text-danger">
               Retirer
             </button>
@@ -1957,7 +2063,7 @@
         if (!list) return;
         const normalizedZones = Array.isArray(zones) && zones.length
           ? zones
-          : [{ country: 'Haiti', department: '', commune: '', fee: '' }];
+          : [{ country: 'Haiti', department: '', commune: '', fee: '', deliveryDelay: '' }];
         list.innerHTML = normalizedZones.map((zone, index) => this.renderProductDeliveryZoneRow(zone, index)).join('');
         this.bindProductDeliveryZoneEvents();
       }
@@ -1994,7 +2100,8 @@
             country: row.querySelector('[data-product-zone-field="country"]')?.value || 'Haiti',
             department: row.querySelector('[data-product-zone-field="department"]')?.value || '',
             commune: row.querySelector('[data-product-zone-field="commune"]')?.value || '',
-            fee: Number(row.querySelector('[data-product-zone-field="fee"]')?.value || 0)
+            fee: Number(row.querySelector('[data-product-zone-field="fee"]')?.value || 0),
+            deliveryDelay: row.querySelector('[data-product-zone-field="deliveryDelay"]')?.value?.trim() || ''
           }))
           .filter((zone) => zone.department && zone.commune && Number.isFinite(zone.fee) && zone.fee >= 0);
         return {
@@ -2064,9 +2171,29 @@
           variations: {}
         };
         this.resetForm();
+        this.setEditorMode('physical');
         this.switchView('editor');
         this.elements.editorTitle.textContent = 'Nouveau produit';
         this.switchEditorTab('general');
+      }
+
+      newDigitalProduct() {
+        this.currentProduct = null;
+        this.currentVariations = [];
+        this.categorySelections = [];
+        this.currentImages = {
+          main: [],
+          variations: {}
+        };
+        this.resetForm();
+        this.setEditorMode('digital');
+        this.switchView('editor');
+        this.elements.sidebarNav.forEach(btn => btn.classList.remove('active', 'bg-background'));
+        this.elements.uploadDigitalProductNav?.classList.add('active', 'bg-background');
+        this.elements.currentViewTitle.textContent = 'Upload Produit Digital';
+        this.elements.editorTitle.textContent = 'Upload Produit Digital';
+        this.switchEditorTab('general');
+        this.showToast('Mode produit digital active: ajoutez description, prix, lien et photos.');
       }
       
       async editProduct(id) {
@@ -2106,6 +2233,13 @@
           this.elements.comparePrice.value = this.currentProduct.comparePrice || '';
           this.setProductWeightInputs(this.currentProduct.weightGrams || this.currentProduct.weight || 0);
           this.renderProductDeliveryZones(this.currentProduct.deliveryZones || this.currentProduct.productDeliveryZones || this.currentProduct.deliveryCoverage?.zones || []);
+          if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = Boolean(this.currentProduct.isDigitalProduct);
+          if (this.elements.digitalDownloadLink) {
+            this.elements.digitalDownloadLink.value = this.currentProduct.digitalDownloadLink || '';
+          }
+          if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = this.currentProduct.deliveryDelay || (this.currentProduct.isDigitalProduct ? 'Instantanee' : '');
+          this.setEditorMode(this.currentProduct.isDigitalProduct ? 'digital' : 'physical');
+          this.updateDigitalProductUi();
           this.populateDiscountFields(this.currentProduct);
           this.elements.productStatus.checked = this.currentProduct.status !== 'draft';
           
@@ -2119,7 +2253,7 @@
           this.renderSelectedLines();
           
           this.switchView('editor');
-          this.elements.editorTitle.textContent = `Édition: ${this.currentProduct.name || 'Produit'}`;
+          this.elements.editorTitle.textContent = `${this.currentProduct.isDigitalProduct ? 'Edition produit digital' : 'Edition'}: ${this.currentProduct.name || 'Produit'}`;
           this.switchEditorTab('general');
           
         } catch (error) {
@@ -2138,6 +2272,12 @@
         this.elements.comparePrice.value = '';
         this.setProductWeightInputs(0);
         this.renderProductDeliveryZones([]);
+        if (this.elements.isDigitalProduct) this.elements.isDigitalProduct.checked = false;
+        if (this.elements.digitalDownloadLink) {
+          this.elements.digitalDownloadLink.value = '';
+        }
+        if (this.elements.deliveryDelay) this.elements.deliveryDelay.value = 'Instantanee';
+        this.updateDigitalProductUi();
         this.populateDiscountFields(null);
         this.elements.totalStock.value = '0';
         this.elements.productStatus.checked = true;
@@ -2159,7 +2299,20 @@
           this.showToast(discount.__error, 'error');
           return;
         }
-        const deliveryCoverage = this.collectProductDeliveryCoverage();
+        const digitalDownloadLink = this.elements.digitalDownloadLink?.value?.trim() || '';
+        const isDigitalProduct = Boolean(this.elements.isDigitalProduct?.checked) || Boolean(digitalDownloadLink);
+        if (isDigitalProduct && this.elements.isDigitalProduct) {
+          this.elements.isDigitalProduct.checked = true;
+          this.updateDigitalProductUi();
+        }
+        if (isDigitalProduct && !this.elements.categorySelect.value) {
+          this.showToast('Selectionnez une categorie pour classer ce produit digital.', 'error');
+          this.switchEditorTab('category');
+          return;
+        }
+        const deliveryCoverage = isDigitalProduct
+          ? { country: 'Haiti', mode: 'digital', nationwide: false, nationwideFee: 0, zones: [] }
+          : this.collectProductDeliveryCoverage();
         const productData = {
           name: this.elements.productName.value.trim(),
           sku: this.elements.mainSku.value.trim() || this.generateMainSku(),
@@ -2167,10 +2320,17 @@
           longDescription: this.elements.longDescription.value.trim(),
           price: parseFloat(this.elements.basePrice.value) || 0,
           comparePrice: parseFloat(this.elements.comparePrice.value) || null,
-          weightGrams: this.collectProductWeightGrams(),
+          isDigitalProduct,
+          digitalDownloadLink,
+          digitalDownloadStoragePath: '',
+          digitalDownloadFileName: '',
+          deliveryDelay: isDigitalProduct ? 'Instantanee' : (this.elements.deliveryDelay?.value?.trim() || ''),
+          deliveryMode: isDigitalProduct ? 'Digital - livraison instantanee' : '',
+          weightGrams: isDigitalProduct ? 0 : this.collectProductWeightGrams(),
+          stock: isDigitalProduct ? null : Number(this.elements.totalStock?.value || 0),
           deliveryCoverage,
-          deliveryZones: deliveryCoverage.zones,
-          productDeliveryZones: deliveryCoverage.zones,
+          deliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
+          productDeliveryZones: isDigitalProduct ? [] : deliveryCoverage.zones,
           discount,
           discountEnabled: Boolean(discount?.enabled),
           discountType: discount?.type || '',
@@ -2180,16 +2340,34 @@
           status: this.elements.productStatus.checked ? 'active' : 'draft',
           categoryId: this.elements.categorySelect.value || null,
           categorySelections: this.categorySelections,
-          variations: this.currentVariations.map((v, index) => ({
+          variations: isDigitalProduct ? [] : this.currentVariations.map((v, index) => ({
             ...v,
             images: this.currentImages.variations[index] || []
           })),
-          images: this.currentImages.main,
+          images: isDigitalProduct ? this.currentImages.main.slice(0, 3) : this.currentImages.main,
           updatedAt: new Date().toISOString()
         };
 
         if (!productData.name) {
           this.showToast('Le nom du produit est requis', 'error');
+          return;
+        }
+
+        if (productData.isDigitalProduct && !productData.digitalDownloadLink) {
+          this.showToast('Ajoutez le lien de telechargement pour cet article digital.', 'error');
+          this.switchEditorTab('digital');
+          return;
+        }
+
+        if (productData.isDigitalProduct && this.currentImages.main.length > 3) {
+          this.showToast('Produit digital: maximum 3 photos.', 'error');
+          this.switchEditorTab('gallery');
+          return;
+        }
+
+        if (!productData.isDigitalProduct && !deliveryCoverage.zones.length) {
+          this.showToast('Ajoutez au moins une zone de livraison pour ce produit.', 'error');
+          this.switchEditorTab('delivery');
           return;
         }
 
@@ -2419,6 +2597,7 @@
         if (type === 'main') {
           const filename = this.elements.mainImageNameInput.value.trim();
           if (filename) {
+            if (!this.validateDigitalMainImages([])) return;
             this.currentImages.main.push(filename);
             this.renderMainImages();
             this.elements.mainImageNameInput.value = '';
@@ -2469,12 +2648,59 @@
           : `products/${productId}/variations`;
       }
 
+      updateDigitalProductUi() {
+        const isDigital = Boolean(this.elements.isDigitalProduct?.checked);
+        const stockField = this.elements.totalStock?.closest('div');
+        if (stockField) {
+          stockField.style.display = isDigital ? 'none' : '';
+        }
+        if (this.elements.deliveryDelay) {
+          this.elements.deliveryDelay.readOnly = isDigital;
+          if (isDigital) this.elements.deliveryDelay.value = 'Instantanee';
+        }
+        if (isDigital && this.elements.totalStock) {
+          this.elements.totalStock.value = '0';
+        }
+        if (this.elements.productWeightValue) {
+          this.elements.productWeightValue.disabled = isDigital;
+          if (isDigital) this.elements.productWeightValue.value = '0';
+        }
+        if (this.elements.productWeightUnit) {
+          this.elements.productWeightUnit.disabled = isDigital;
+          if (isDigital) this.elements.productWeightUnit.value = 'g';
+        }
+      }
+
+      isDigitalModeActive() {
+        return Boolean(this.elements.isDigitalProduct?.checked)
+          || Boolean(this.elements.digitalDownloadLink?.value?.trim());
+      }
+
+      validateDigitalMainImages(incomingFiles = []) {
+        if (!this.isDigitalModeActive()) return true;
+        const currentCount = Array.isArray(this.currentImages.main) ? this.currentImages.main.length : 0;
+        if (currentCount + incomingFiles.length > 3) {
+          this.showToast('Produit digital: maximum 3 photos.', 'error');
+          return false;
+        }
+        const tooLarge = incomingFiles.find((file) => Number(file?.size || 0) > 1024 * 1024);
+        if (tooLarge) {
+          this.showToast(`Produit digital: "${tooLarge.name}" depasse 1 Mo.`, 'error');
+          return false;
+        }
+        return true;
+      }
+
       async uploadSelectedImages(type) {
         const fileInput = type === 'main' ? this.elements.mainImageFileInput : this.elements.varImageFileInput;
         const files = Array.from(fileInput?.files || []);
 
         if (files.length === 0) {
           this.showToast('Selectionnez au moins une image a envoyer.', 'error');
+          return;
+        }
+
+        if (type === 'main' && !this.validateDigitalMainImages(files)) {
           return;
         }
 

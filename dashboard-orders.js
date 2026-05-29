@@ -13,7 +13,6 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const CLIENTS_COLLECTION = 'clients';
-const ROOT_ORDERS_COLLECTION = 'orders';
 const FULFILLMENT_STEPS = [
   { key: 'ordered', label: 'Commande' },
   { key: 'shipped', label: 'Expedie' },
@@ -140,12 +139,6 @@ function formatPrice(price) {
   }).format(Number(price) || 0);
 }
 
-function formatDate(value, options = {}) {
-  const date = value?.toDate ? value.toDate() : new Date(value || 0);
-  if (Number.isNaN(date.getTime())) return '-';
-  return options.withTime ? date.toLocaleString('fr-FR') : date.toLocaleDateString('fr-FR');
-}
-
 function getPaymentStatusText(status) {
   const texts = {
     pending: 'En attente',
@@ -194,11 +187,7 @@ function renderBadge(label, color) {
 }
 
 function getOrderItems(order = {}) {
-  if (Array.isArray(order?.items)) return order.items;
-  if (Array.isArray(order?.cartItems)) return order.cartItems;
-  if (Array.isArray(order?.products)) return order.products;
-  if (Array.isArray(order?.orderItems)) return order.orderItems;
-  return [];
+  return Array.isArray(order?.items) ? order.items : [];
 }
 
 function isVendorItem(item = {}) {
@@ -359,58 +348,17 @@ async function loadClients() {
   populateClientFilter();
 }
 
-function normalizeOrderDoc(entry, source = 'unknown', fallbackClientId = '') {
-  const data = entry.data() || {};
-  const parentClientId = entry.ref?.parent?.parent?.id || '';
-  return {
-    id: entry.id,
-    clientId: data.clientId || parentClientId || fallbackClientId || '',
-    refPath: entry.ref?.path || '',
-    source,
-    ...data
-  };
-}
-
-function mergeOrders(...groups) {
-  const byKey = new Map();
-  groups.flat().forEach((order) => {
-    if (!order?.id) return;
-    const key = order.refPath || `${order.clientId || 'unknown'}:${order.id}`;
-    byKey.set(key, order);
-  });
-  return Array.from(byKey.values())
-    .sort((a, b) => getOrderCreatedTime(b) - getOrderCreatedTime(a));
-}
-
 async function loadOrders() {
-  const groups = [];
-  let groupError = null;
-  let rootError = null;
-
   try {
     const snapshot = await getDocs(query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')));
-    groups.push(snapshot.docs.map((entry) => normalizeOrderDoc(entry, 'client-subcollection')));
+    state.orders = snapshot.docs.map((entry) => ({
+      id: entry.id,
+      clientId: entry.ref.parent.parent?.id || entry.data()?.clientId || '',
+      ...entry.data()
+    }));
   } catch (error) {
-    groupError = error;
-    console.warn('CollectionGroup commandes indisponible, fallback clients utilise:', error);
-  }
-
-  try {
-    const snapshot = await getDocs(query(collection(db, ROOT_ORDERS_COLLECTION), orderBy('createdAt', 'desc')));
-    groups.push(snapshot.docs.map((entry) => normalizeOrderDoc(entry, 'root')));
-  } catch (error) {
-    rootError = error;
-    console.warn('Collection racine orders indisponible ou non autorisee:', error);
-  }
-
-  if (!groups.length && groupError) {
+    console.error('Erreur chargement commandes globales:', error);
     await loadOrdersFromClients();
-    return;
-  }
-
-  state.orders = mergeOrders(...groups);
-  if (!state.orders.length && groupError && rootError) {
-    throw groupError;
   }
 }
 
@@ -419,16 +367,6 @@ function getOrderCreatedTime(order = {}) {
   if (value?.toDate) return value.toDate().getTime();
   const parsed = Date.parse(String(value || ''));
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function getOrderDocumentRef(order = {}) {
-  if (order.refPath) {
-    return doc(db, order.refPath);
-  }
-  if (order.source === 'root') {
-    return doc(db, ROOT_ORDERS_COLLECTION, order.id);
-  }
-  return doc(db, CLIENTS_COLLECTION, order.clientId, 'orders', order.id);
 }
 
 async function loadOrdersFromClients() {
@@ -443,14 +381,20 @@ async function loadOrdersFromClients() {
           collection(db, CLIENTS_COLLECTION, client.id, 'orders'),
           orderBy('createdAt', 'desc')
         ));
-        return snapshot.docs.map((entry) => normalizeOrderDoc(entry, 'client-fallback', client.id));
+        return snapshot.docs.map((entry) => ({
+          id: entry.id,
+          clientId: client.id,
+          ...entry.data()
+        }));
       } catch (error) {
         console.warn('Commande client ignoree pendant fallback:', client.id, error);
         return [];
       }
     }));
 
-    state.orders = mergeOrders(...batches);
+    state.orders = batches
+      .flat()
+      .sort((a, b) => getOrderCreatedTime(b) - getOrderCreatedTime(a));
   } catch (fallbackError) {
     console.error('Erreur fallback chargement commandes par client:', fallbackError);
     state.orders = [];
@@ -479,25 +423,16 @@ function scheduleReload() {
 function setupRealtimeListeners() {
   clearRealtimeListeners();
 
-  [
+  const unsubscribe = onSnapshot(
     query(collectionGroup(db, 'orders'), orderBy('createdAt', 'desc')),
-    query(collection(db, ROOT_ORDERS_COLLECTION), orderBy('createdAt', 'desc'))
-  ].forEach((ordersQuery) => {
-    try {
-      const unsubscribe = onSnapshot(
-        ordersQuery,
-        () => {
-          scheduleReload();
-        },
-        (error) => {
-          console.warn('Realtime commandes indisponible pour une source, rechargement manuel conserve:', error);
-        }
-      );
-      state.unsubscribers.push(unsubscribe);
-    } catch (error) {
-      console.warn('Impossible d attacher un listener commandes:', error);
+    () => {
+      scheduleReload();
+    },
+    (error) => {
+      console.warn('Realtime commandes indisponible, rechargement manuel utilise:', error);
     }
-  });
+  );
+  state.unsubscribers.push(unsubscribe);
 }
 
 function getFilteredOrders() {
@@ -654,7 +589,7 @@ function renderOrdersTable() {
 
     return `
       <tr class="${order.id === activeOrderId ? 'active' : ''}" data-order-id="${order.id}">
-        <td>${formatDate(order.createdAt)}</td>
+        <td>${new Date(order.createdAt).toLocaleDateString('fr-FR')}</td>
         <td>
           <strong>${escapeHtml(clientName)}</strong>
           <div class="muted">${escapeHtml(order.customerEmail || client?.email || '-')}</div>
@@ -971,7 +906,7 @@ function renderOrderDetail() {
             </button>
           </div>
           <div class="muted" style="margin-top:0.55rem;">
-            Derniere mise a jour: ${order.fulfillmentUpdatedAt ? formatDate(order.fulfillmentUpdatedAt, { withTime: true }) : 'Non definie'}
+            Derniere mise a jour: ${order.fulfillmentUpdatedAt ? new Date(order.fulfillmentUpdatedAt).toLocaleString('fr-FR') : 'Non definie'}
           </div>
         </div>
       ` : `
@@ -1019,7 +954,7 @@ function renderOrderDetail() {
           </div>
           <div>
             <strong>Soumise le</strong>
-            <div>${formatDate(order.createdAt, { withTime: true })}</div>
+            <div>${order.createdAt ? new Date(order.createdAt).toLocaleString('fr-FR') : '-'}</div>
           </div>
           <div>
             <strong>Ville</strong>
@@ -1067,7 +1002,7 @@ async function updateFulfillmentStatus(order, nextStatus) {
       return;
     }
 
-    const orderRef = getOrderDocumentRef(order);
+    const orderRef = doc(db, CLIENTS_COLLECTION, order.clientId, 'orders', order.id);
     await updateDoc(orderRef, {
       fulfillmentStatus: nextStatus,
       fulfillmentUpdatedAt: new Date().toISOString()
@@ -1096,7 +1031,7 @@ async function updateFulfillmentStatus(order, nextStatus) {
 
 async function saveLogisticsNote(order, logisticsNote) {
   try {
-    const orderRef = getOrderDocumentRef(order);
+    const orderRef = doc(db, CLIENTS_COLLECTION, order.clientId, 'orders', order.id);
     await updateDoc(orderRef, {
       logisticsNote,
       logisticsUpdatedAt: new Date().toISOString()

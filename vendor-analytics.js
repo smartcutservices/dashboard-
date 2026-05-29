@@ -7,7 +7,6 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const CONFIRMED_ORDER_STATUSES = new Set(['approved', 'paid']);
-const PRO_VENDOR_COMMISSION_RATE = 10;
 const ORDER_STATUS_BUCKETS = [
   { key: 'confirmed', label: 'Confirmees', color: '#0f9f6e' },
   { key: 'pending', label: 'En attente', color: '#d97706' },
@@ -18,7 +17,7 @@ const ORDER_STATUS_BUCKETS = [
 
 function normalizeRate(rule) {
   const direct = Number(rule?.categoryRate ?? rule?.rate);
-  return Number.isFinite(direct) ? Math.max(0, direct) : null;
+  return Number.isFinite(direct) ? direct : 0;
 }
 
 function getOrderMs(value) {
@@ -28,113 +27,6 @@ function getOrderMs(value) {
 
 function getPaymentState(order = {}) {
   return String(order?.paymentStatus || order?.status || '').trim().toLowerCase();
-}
-
-function normalizeText(value = '') {
-  return String(value || '').trim().toLowerCase();
-}
-
-function normalizeCategoryKey(value = '') {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-');
-}
-
-function resolveCommissionRate(item = {}, commissionRules = [], productRules = new Map()) {
-  const snapshot = item?.commissionSnapshot || {};
-  const snapshotRate = Number(snapshot?.rate);
-  const snapshotSource = normalizeText(snapshot?.source).toLowerCase();
-  if (Number.isFinite(snapshotRate) && (
-    snapshotRate > 0 ||
-    ['vendor_pro_plan', 'product_override'].includes(snapshotSource)
-  )) return Math.max(0, snapshotRate);
-
-  const storedRate = Number(item?.commissionRate);
-  if (Number.isFinite(storedRate) && storedRate > 0) return Math.max(0, storedRate);
-
-  const directRate = normalizeRate(item?.commissionRule);
-  if (directRate !== null) return directRate;
-
-  const productData = productRules.get(String(item?.productId || '').trim()) || {};
-  const productRate = normalizeRate(productData?.commissionRule);
-  if (productRate !== null) return productRate;
-
-  const values = [
-    item?.category,
-    item?.categoryName,
-    item?.categoryId,
-    productData?.category,
-    productData?.categoryName,
-    productData?.categoryId
-  ];
-  const matchedRule = commissionRules.find((rule) => values.some((value) => (
-    normalizeCategoryKey(value) && normalizeCategoryKey(value) === normalizeCategoryKey(rule?.category || rule?.categoryId)
-  )));
-  return normalizeRate(matchedRule) ?? 0;
-}
-
-function getOrderDeliveryDetails(order = {}) {
-  const delivery = order?.delivery || {};
-  const productDetails = Array.isArray(delivery.productDeliveryDetails)
-    ? delivery.productDeliveryDetails
-    : [];
-  const vendorDetails = Array.isArray(delivery.vendorDeliveryDetails)
-    ? delivery.vendorDeliveryDetails
-    : [];
-  const details = productDetails.length ? productDetails : vendorDetails;
-  return details.map((entry) => ({
-    ownerType: normalizeText(entry?.ownerType),
-    vendorId: String(entry?.vendorId || '').trim(),
-    productId: String(entry?.productId || '').trim(),
-    productName: String(entry?.productName || '').trim(),
-    quantity: Number(entry?.quantity) || 1,
-    fee: Number(entry?.fee) || 0,
-    unitFee: Number(entry?.unitFee) || 0
-  }));
-}
-
-function getOrderVendorDeliveryFee(order = {}, details = getOrderDeliveryDetails(order)) {
-  const delivery = order?.delivery || {};
-  const detailedFee = details
-    .filter((entry) => !entry.ownerType || entry.ownerType === 'vendor')
-    .reduce((sum, entry) => {
-      const fee = Number(entry.fee) || 0;
-      return sum + (fee > 0 ? fee : (Number(entry.unitFee) || 0) * (Number(entry.quantity) || 1));
-    }, 0);
-  if (detailedFee > 0) return detailedFee;
-
-  const storedFee = Number(delivery.vendorDeliveryFee ?? delivery.vendorDeliveryAmount);
-  return Number.isFinite(storedFee) && storedFee > 0 ? storedFee : 0;
-}
-
-function getLineDeliveryFee(item = {}, order = {}) {
-  const quantity = Math.max(1, Number(item?.quantity) || 1);
-  const explicitFee = Number(
-    item?.deliveryFee ??
-    item?.deliveryAmount ??
-    item?.shippingFee ??
-    item?.delivery?.fee
-  );
-  if (Number.isFinite(explicitFee) && explicitFee > 0) return explicitFee;
-
-  const details = getOrderDeliveryDetails(order);
-  if (!details.length) return 0;
-
-  const productId = String(item?.productId || '').trim();
-  const vendorId = String(item?.vendorId || '').trim();
-  const itemName = normalizeText(item?.name);
-  const matched = details.find((entry) => {
-    if (entry.ownerType && entry.ownerType !== 'vendor') return false;
-    if (productId && entry.productId && entry.productId === productId) return true;
-    return Boolean(vendorId && entry.vendorId && entry.vendorId === vendorId && itemName && normalizeText(entry.productName) === itemName);
-  });
-  if (!matched) return 0;
-
-  const totalFee = Number(matched.fee) || 0;
-  return totalFee > 0 ? totalFee : (Number(matched.unitFee) || 0) * quantity;
 }
 
 export function isConfirmedOrder(order = {}) {
@@ -168,18 +60,7 @@ function normalizeItems(order) {
     vendorId: item?.vendorId || '',
     vendorName: item?.vendorName || '',
     commissionRule: item?.commissionRule || null,
-    commissionRate: Number.isFinite(Number(item?.commissionRate)) ? Number(item.commissionRate) : null,
-    commissionSnapshot: item?.commissionSnapshot && typeof item.commissionSnapshot === 'object'
-      ? {
-          rate: Number.isFinite(Number(item.commissionSnapshot.rate)) ? Number(item.commissionSnapshot.rate) : null,
-          source: String(item.commissionSnapshot.source || '').trim(),
-          appliedAt: String(item.commissionSnapshot.appliedAt || '').trim()
-        }
-      : null,
     category: item?.category || '',
-    categoryName: item?.categoryName || '',
-    categoryId: item?.categoryId || '',
-    deliveryFee: Number(item?.deliveryFee ?? item?.deliveryAmount ?? item?.shippingFee ?? item?.delivery?.fee) || 0,
     deliveryMode: item?.deliveryMode || '',
     selectedOptions: Array.isArray(item?.selectedOptions) ? item.selectedOptions : []
   }));
@@ -344,14 +225,10 @@ export function buildVendorSalesSummary({
   vendorName = '',
   orders = [],
   vendorProductIds = new Set(),
-  payouts = [],
-  vendorPlanActive = false,
-  commissionRules = [],
-  vendorProducts = []
+  payouts = []
 }) {
   const orderMap = new Map();
   let grossAmount = 0;
-  let deliveryAmount = 0;
   let commissionAmount = 0;
   let vendorNetAmount = 0;
   let itemCount = 0;
@@ -370,11 +247,6 @@ export function buildVendorSalesSummary({
   });
 
   let pendingPayoutAmount = 0;
-  const productRules = new Map(
-    (Array.isArray(vendorProducts) ? vendorProducts : [])
-      .map((product) => [String(product?.id || '').trim(), product || {}])
-      .filter(([id]) => id)
-  );
 
   orders.forEach((order) => {
     if (!isConfirmedOrder(order)) return;
@@ -385,50 +257,23 @@ export function buildVendorSalesSummary({
 
     if (matchingLines.length === 0) return;
 
-    const deliveryDetails = getOrderDeliveryDetails(order);
-    const storedVendorDeliveryFee = getOrderVendorDeliveryFee(order, deliveryDetails);
     const normalizedLines = matchingLines.map((item) => {
       const gross = (Number(item.price) || 0) * (Number(item.quantity) || 1);
-      const deliveryFee = getLineDeliveryFee(item, order);
-      // A sale keeps the rate that was active when it was paid. Never
-      // recalculate historical orders from the vendor's current plan.
-      const snapshotRate = Number(item?.commissionSnapshot?.rate ?? item?.commissionRate);
-      const rate = resolveCommissionRate(item, commissionRules, productRules);
+      const rate = normalizeRate(item.commissionRule);
       const commission = gross * (rate / 100);
-      const net = (gross - commission) + deliveryFee;
+      const net = gross - commission;
       grossAmount += gross;
-      deliveryAmount += deliveryFee;
       commissionAmount += commission;
       vendorNetAmount += net;
       itemCount += Number(item.quantity) || 1;
       return {
         ...item,
         grossAmount: gross,
-        deliveryFee,
         commissionAmount: commission,
         vendorNetAmount: net,
         commissionRate: rate
       };
     });
-
-    // Older orders can store one vendor-level delivery amount instead of one
-    // fee per product. Allocate the remaining amount without changing base commission.
-    const knownDeliveryFee = normalizedLines.reduce((sum, item) => sum + Math.max(0, item.deliveryFee), 0);
-    const unresolvedLines = normalizedLines.filter((item) => item.deliveryFee <= 0);
-    const remainingDeliveryFee = Math.max(0, storedVendorDeliveryFee - knownDeliveryFee);
-    const unresolvedGross = unresolvedLines.reduce((sum, item) => sum + Math.max(0, item.grossAmount), 0);
-    if (remainingDeliveryFee > 0 && unresolvedLines.length) {
-      normalizedLines.forEach((item) => {
-        if (item.deliveryFee > 0) return;
-        const share = unresolvedGross > 0
-          ? remainingDeliveryFee * (Math.max(0, item.grossAmount) / unresolvedGross)
-          : remainingDeliveryFee / unresolvedLines.length;
-        item.deliveryFee = share;
-        item.vendorNetAmount += share;
-      });
-      deliveryAmount += remainingDeliveryFee;
-      vendorNetAmount += remainingDeliveryFee;
-    }
 
     normalizedLines.forEach((item) => {
       const key = item.productId || item.name || `product-${productMap.size + 1}`;
@@ -453,7 +298,6 @@ export function buildVendorSalesSummary({
       status: order.status || 'pending',
       fulfillmentStatus: order.fulfillmentStatus || 'ordered',
       grossAmount: normalizedLines.reduce((sum, item) => sum + item.grossAmount, 0),
-      deliveryAmount: normalizedLines.reduce((sum, item) => sum + item.deliveryFee, 0),
       commissionAmount: normalizedLines.reduce((sum, item) => sum + item.commissionAmount, 0),
       vendorNetAmount: normalizedLines.reduce((sum, item) => sum + item.vendorNetAmount, 0),
       items: normalizedLines
@@ -480,7 +324,6 @@ export function buildVendorSalesSummary({
     totalOrders: orderMap.size,
     paidOrders: orderMap.size,
     grossAmount,
-    deliveryAmount,
     commissionAmount,
     vendorNetAmount,
     settledNetAmount,
