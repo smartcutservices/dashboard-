@@ -242,3 +242,29 @@ Precautions:
 
 - Ne pas forcer `pending_review` sur les edits de produits actifs.
 - Si un produit actif doit etre recontrole, l'admin doit utiliser une action explicite cote back-office.
+
+## 2026-05-31 - Module Impression: livraison par module
+
+Contexte:
+
+- Le PDF "Modification de la Mise a Jour du MODULE IMPRESSION" demande de retirer la zone de livraison globale du module Impression.
+- Le prix et le delai de livraison doivent etre configures directement dans chaque section du module.
+
+Changements effectues:
+
+- `dashboard-printing.js` retire la section globale `Zones livraison a domicile`.
+- Les points de retrait restent gratuits et se configurent separement.
+- Les regles de livraison sont maintenant dans chaque module:
+  - POD Documents: Pays, Departement, Commune, intervalle de pages, prix, delai.
+  - Plan CAD: Pays, Departement, Commune, prix, delai.
+  - Impression Photos: Pays, Departement, Commune, prix, delai.
+- Les intervalles POD Documents sont limites a `1-100`, `101-250`, `251-500`.
+- Plan CAD et Impression Photos n'affichent plus et n'exigent plus d'intervalle.
+- Le petit libelle technique en tete de chaque section module a ete retire pour mieux gerer l'espace.
+- Cote site, `printing-delivery-utils.js` suit la meme logique: CAD/Photo cherchent seulement la zone, POD Documents verifie aussi l'intervalle de pages.
+
+Precautions:
+
+- Ne pas reintroduire une section globale de zones domicile dans le dashboard Impression.
+- Ne pas remettre d'intervalle sur Plan CAD ou Impression Photos.
+- Si une livraison domicile est refusee cote client, verifier d'abord `printingDeliverySettings/main.moduleRules`.
