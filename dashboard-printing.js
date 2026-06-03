@@ -119,6 +119,8 @@ const DELIVERY_RULE_MODULES = [
   { id: 'photo', title: 'Impression Photos', metric: 'zone livraison', usesRange: false }
 ];
 
+const DELIVERY_RULES_PAGE_SIZE = 4;
+
 const HAITI_DEPARTMENTS = {
   'Artibonite': ['Dessalines', 'Desdunes', 'Ennery', 'Gonaives', 'Gros-Morne', 'L Estere', 'Marmelade', 'Saint-Marc', 'Verrettes'],
   'Centre': ['Belladere', 'Cerca-Carvajal', 'Cerca-la-Source', 'Hinche', 'Lascahobas', 'Mirebalais', 'Saut-d Eau'],
@@ -319,6 +321,16 @@ class PrintingDashboard {
     this.root = document.getElementById(rootId);
     this.state = {};
     this.deliverySettings = normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
+    this.deliveryUi = {
+      openModules: new Set(['documents']),
+      pages: DELIVERY_RULE_MODULES.reduce((acc, module) => {
+        acc[module.id] = 1;
+        return acc;
+      }, {})
+    };
+    this.moduleUi = {
+      openModules: new Set()
+    };
     this.printingFiles = [];
     this.deletedPrintingFileIds = new Set();
     if (!this.root) return;
@@ -581,6 +593,13 @@ class PrintingDashboard {
   }
 
   renderModuleDeliveryRules(module, rules = []) {
+    const currentPage = Math.max(1, Number(this.deliveryUi?.pages?.[module.id] || 1));
+    const totalPages = Math.max(1, Math.ceil(rules.length / DELIVERY_RULES_PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+    if (this.deliveryUi?.pages) this.deliveryUi.pages[module.id] = safePage;
+    const start = (safePage - 1) * DELIVERY_RULES_PAGE_SIZE;
+    const visibleRules = rules.slice(start, start + DELIVERY_RULES_PAGE_SIZE);
+    const isOpen = this.deliveryUi?.openModules?.has(module.id);
     const title = module.usesRange
       ? `${module.title} - zones, intervalle pages, prix et delai`
       : `${module.title} - zones, prix et delai`;
@@ -588,11 +607,48 @@ class PrintingDashboard {
       ? 'Exemple: Haiti -> Ouest -> Delmas -> 1-100 -> 500 G -> 24h. Si aucune regle ne correspond a l adresse et a l intervalle du client, la livraison domicile sera bloquee pour ce module.'
       : 'Exemple: Haiti -> Ouest -> Delmas -> 500 G -> 24h. Aucun intervalle n est demande pour ce module.';
     return `
-      <div class="option-list" data-module-delivery-rules="${module.id}">
-        <div class="option-title">${escapeHtml(title)}</div>
-        <p class="hint" style="margin:0;">${escapeHtml(hint)}</p>
-        ${rules.map((rule, index) => this.renderModuleDeliveryRuleRow(module, rule, index)).join('')}
-        <button class="btn-secondary" type="button" data-add-module-delivery-rule="${module.id}">Ajouter une regle ${escapeHtml(module.title)}</button>
+      <div class="delivery-accordion ${isOpen ? 'is-open' : ''}" data-module-delivery-rules="${module.id}">
+        <button class="delivery-accordion__head" type="button" data-toggle-module-delivery="${module.id}" aria-expanded="${isOpen ? 'true' : 'false'}">
+          <span>
+            <strong>${escapeHtml(module.title)}</strong>
+            <small>${rules.length} regle(s) · ${module.usesRange ? 'avec intervalle pages' : 'sans intervalle'}</small>
+          </span>
+          <i class="fas fa-chevron-${isOpen ? 'up' : 'down'}"></i>
+        </button>
+        ${isOpen ? `
+          <div class="delivery-accordion__body">
+            <div class="delivery-module-meta">
+              <p class="hint">${escapeHtml(hint)}</p>
+              <button class="btn-secondary" type="button" data-add-module-delivery-rule="${module.id}">
+                <i class="fas fa-plus"></i>
+                Ajouter une regle
+              </button>
+            </div>
+            <div class="delivery-rule-list">
+              ${visibleRules.length
+                ? visibleRules.map((rule, offset) => this.renderModuleDeliveryRuleRow(module, rule, start + offset)).join('')
+                : '<p class="hint" style="margin:0;">Aucune regle pour ce module. Ajoutez une zone pour activer la livraison a domicile.</p>'}
+            </div>
+            ${this.renderModuleDeliveryPagination(module.id, safePage, totalPages, rules.length)}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  renderModuleDeliveryPagination(moduleId, currentPage, totalPages, totalRules) {
+    if (totalRules <= DELIVERY_RULES_PAGE_SIZE) return '';
+    return `
+      <div class="delivery-pagination">
+        <button class="btn-secondary" type="button" data-module-rule-page="${moduleId}" data-module-rule-page-direction="-1" ${currentPage <= 1 ? 'disabled' : ''}>
+          <i class="fas fa-chevron-left"></i>
+          Precedent
+        </button>
+        <span>Page ${currentPage} / ${totalPages}</span>
+        <button class="btn-secondary" type="button" data-module-rule-page="${moduleId}" data-module-rule-page-direction="1" ${currentPage >= totalPages ? 'disabled' : ''}>
+          Suivant
+          <i class="fas fa-chevron-right"></i>
+        </button>
       </div>
     `;
   }
@@ -608,7 +664,7 @@ class PrintingDashboard {
       ? '.75fr 1fr 1fr .8fr .75fr 1fr auto auto'
       : '.75fr 1fr 1fr .75fr 1fr auto auto';
     return `
-      <div class="option-row" data-module-delivery-rule-row="${moduleId}-${index}" style="grid-template-columns:${grid};">
+      <div class="option-row delivery-rule-row" data-module-delivery-rule-row="${moduleId}-${index}" data-module-delivery-rule-index="${index}" style="grid-template-columns:${grid};">
         <select class="mini-input" data-module-rule-field="country">
           <option value="Haiti" ${(rule.country || 'Haiti') === 'Haiti' ? 'selected' : ''}>Haiti</option>
         </select>
@@ -646,36 +702,51 @@ class PrintingDashboard {
   renderModule(module) {
     const state = this.state[module.id] || clone(module.defaults);
     const isManualQuote = module.id === 'grand-format';
+    const isOpen = this.moduleUi?.openModules?.has(module.id);
+    const dimensionCount = Array.isArray(state.dimensions) ? state.dimensions.length : 0;
+    const paperCount = Array.isArray(state.papers) ? state.papers.length : 0;
+    const summary = isManualQuote
+      ? 'Devis manuel / WhatsApp'
+      : `${dimensionCount} format(s) · ${paperCount} papier(s)`;
     return `
-      <article class="panel" data-module="${module.id}">
-        <div class="panel-head">
+      <article class="panel module-config ${isOpen ? 'is-open' : ''}" data-module="${module.id}">
+        <button class="module-config__head" type="button" data-toggle-module-config="${module.id}" aria-expanded="${isOpen ? 'true' : 'false'}">
           <div>
+            <small>${escapeHtml(module.metric || 'module')}</small>
             <h2>${module.title}</h2>
+            <p>${escapeHtml(summary)}</p>
           </div>
-          <div class="status-chip ${state.enabled ? '' : 'off'}">
-            <i class="fas ${state.enabled ? 'fa-circle-check' : 'fa-circle-pause'}"></i>
-            <span>${state.enabled ? 'Actif' : 'Inactif'}</span>
+          <div class="module-config__status">
+            <span class="status-chip ${state.enabled ? '' : 'off'}">
+              <i class="fas ${state.enabled ? 'fa-circle-check' : 'fa-circle-pause'}"></i>
+              <span>${state.enabled ? 'Actif' : 'Inactif'}</span>
+            </span>
+            <i class="fas fa-chevron-${isOpen ? 'up' : 'down'}"></i>
           </div>
-        </div>
-        <p>${module.description}</p>
+        </button>
 
-        <div class="stack" style="margin-top:1rem;">
-          <label class="toggle">
-            <input type="checkbox" data-field="enabled" ${state.enabled ? 'checked' : ''}>
-            <span>Module actif</span>
-          </label>
+        ${isOpen ? `
+          <div class="module-config__body">
+            <p>${module.description}</p>
+            <div class="stack" style="margin-top:1rem;">
+              <label class="toggle">
+                <input type="checkbox" data-field="enabled" ${state.enabled ? 'checked' : ''}>
+                <span>Module actif</span>
+              </label>
 
-          ${isManualQuote ? this.renderGrandFormatFields(module.id, state) : this.renderStructuredFields(module.id, state)}
+              ${isManualQuote ? this.renderGrandFormatFields(module.id, state) : this.renderStructuredFields(module.id, state)}
 
-          <div class="actions">
-            <button class="btn-primary" type="button" data-save-module="${module.id}">Enregistrer</button>
-            ${!isManualQuote ? `
-              <button class="btn-secondary" type="button" data-add-dimension="${module.id}">Ajouter une dimension</button>
-              <button class="btn-secondary" type="button" data-add-paper="${module.id}">Ajouter un papier</button>
-            ` : ''}
-            <button class="btn-secondary" type="button" data-reset-module="${module.id}">Reinitialiser</button>
+              <div class="actions">
+                <button class="btn-primary" type="button" data-save-module="${module.id}">Enregistrer</button>
+                ${!isManualQuote ? `
+                  <button class="btn-secondary" type="button" data-add-dimension="${module.id}">Ajouter une dimension</button>
+                  <button class="btn-secondary" type="button" data-add-paper="${module.id}">Ajouter un papier</button>
+                ` : ''}
+                <button class="btn-secondary" type="button" data-reset-module="${module.id}">Reinitialiser</button>
+              </div>
+            </div>
           </div>
-        </div>
+        ` : ''}
       </article>
     `;
   }
@@ -761,6 +832,21 @@ class PrintingDashboard {
   }
 
   attachEvents() {
+    this.root.querySelectorAll('[data-toggle-module-config]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        const moduleId = button.dataset.toggleModuleConfig;
+        if (!moduleId) return;
+        if (this.moduleUi.openModules.has(moduleId)) {
+          this.moduleUi.openModules.delete(moduleId);
+        } else {
+          this.moduleUi.openModules.add(moduleId);
+        }
+        this.render();
+        this.attachEvents();
+      });
+    });
+
     this.root.querySelectorAll('[data-save-module]').forEach((button) => {
       button.addEventListener('click', async () => {
         await this.saveModule(button.dataset.saveModule);
@@ -779,36 +865,77 @@ class PrintingDashboard {
 
     this.root.querySelectorAll('[data-add-dimension]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
         this.addOption(button.dataset.addDimension, 'dimensions');
       });
     });
 
     this.root.querySelectorAll('[data-add-paper]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
         this.addOption(button.dataset.addPaper, 'papers');
       });
     });
 
     this.root.querySelectorAll('[data-remove-option]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
         this.removeOption(button.dataset.removeOption, button.dataset.removeList, Number.parseInt(button.dataset.removeIndex || '0', 10));
       });
     });
 
     this.root.querySelector('[data-add-printing-pickup]')?.addEventListener('click', () => {
+      this.syncOpenModuleDrafts();
+      this.syncDeliveryDraftFromDom();
       this.deliverySettings.pickupPoints.push({ id: `pickup_${Date.now()}`, name: '', address: '', phone: '', isActive: true });
       this.render();
       this.attachEvents();
     });
 
+    this.root.querySelectorAll('[data-toggle-module-delivery]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.syncDeliveryDraftFromDom();
+        const moduleId = button.dataset.toggleModuleDelivery;
+        if (!moduleId) return;
+        if (this.deliveryUi.openModules.has(moduleId)) {
+          this.deliveryUi.openModules.delete(moduleId);
+        } else {
+          this.deliveryUi.openModules.add(moduleId);
+        }
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelectorAll('[data-module-rule-page]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.syncDeliveryDraftFromDom();
+        const moduleId = button.dataset.moduleRulePage;
+        const direction = Number.parseInt(button.dataset.moduleRulePageDirection || '0', 10);
+        if (!moduleId || !direction) return;
+        const rules = this.deliverySettings.moduleRules?.[moduleId] || [];
+        const totalPages = Math.max(1, Math.ceil(rules.length / DELIVERY_RULES_PAGE_SIZE));
+        const current = Math.max(1, Number(this.deliveryUi.pages[moduleId] || 1));
+        this.deliveryUi.pages[moduleId] = Math.min(totalPages, Math.max(1, current + direction));
+        this.render();
+        this.attachEvents();
+      });
+    });
+
     this.root.querySelectorAll('[data-add-module-delivery-rule]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.syncDeliveryDraftFromDom();
         this.addModuleDeliveryRule(button.dataset.addModuleDeliveryRule);
       });
     });
 
     this.root.querySelectorAll('[data-remove-printing-pickup]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.syncDeliveryDraftFromDom();
         this.deliverySettings.pickupPoints.splice(Number.parseInt(button.dataset.removePrintingPickup || '0', 10), 1);
         this.render();
         this.attachEvents();
@@ -817,6 +944,8 @@ class PrintingDashboard {
 
     this.root.querySelectorAll('[data-remove-module-delivery-rule]').forEach((button) => {
       button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.syncDeliveryDraftFromDom();
         const moduleId = button.dataset.removeModuleDeliveryRule;
         const index = Number.parseInt(button.dataset.removeModuleDeliveryRuleIndex || '0', 10);
         this.removeModuleDeliveryRule(moduleId, index);
@@ -858,8 +987,9 @@ class PrintingDashboard {
   }
 
   collectDeliverySettings() {
+    const existingSettings = this.deliverySettings || normalizeDeliverySettings(DEFAULT_DELIVERY_SETTINGS);
     const pickupPoints = Array.from(this.root.querySelectorAll('[data-printing-pickup-row]')).map((row, index) => ({
-      id: this.deliverySettings.pickupPoints[index]?.id || `pickup_${index}`,
+      id: existingSettings.pickupPoints[index]?.id || `pickup_${index}`,
       name: row.querySelector('[data-pickup-field="name"]')?.value || '',
       address: row.querySelector('[data-pickup-field="address"]')?.value || '',
       phone: row.querySelector('[data-pickup-field="phone"]')?.value || '',
@@ -867,15 +997,19 @@ class PrintingDashboard {
     })).filter((point) => point.name || point.address || point.phone);
 
     const moduleRules = DELIVERY_RULE_MODULES.reduce((acc, module) => {
-      acc[module.id] = Array.from(this.root.querySelectorAll(`[data-module-delivery-rule-row^="${module.id}-"]`)).map((row, index) => {
+      const mergedRules = Array.isArray(existingSettings.moduleRules?.[module.id])
+        ? clone(existingSettings.moduleRules[module.id])
+        : [];
+      Array.from(this.root.querySelectorAll(`[data-module-delivery-rule-row^="${module.id}-"]`)).forEach((row) => {
+        const index = Number.parseInt(row.dataset.moduleDeliveryRuleIndex || '0', 10);
         const rangeId = module.usesRange
           ? (row.querySelector('[data-module-rule-field="rangeId"]')?.value || PRINTING_INTERVAL_RANGES[0].id)
           : '';
         const range = module.usesRange
           ? (PRINTING_INTERVAL_RANGES.find((entry) => entry.id === rangeId) || PRINTING_INTERVAL_RANGES[0])
           : { id: '', label: '', min: 1, max: 999999 };
-        return {
-          id: this.deliverySettings.moduleRules?.[module.id]?.[index]?.id || `${module.id}_rule_${Date.now()}_${index}`,
+        mergedRules[index] = {
+          id: existingSettings.moduleRules?.[module.id]?.[index]?.id || `${module.id}_rule_${Date.now()}_${index}`,
           country: row.querySelector('[data-module-rule-field="country"]')?.value || 'Haiti',
           department: row.querySelector('[data-module-rule-field="department"]')?.value || '',
           commune: row.querySelector('[data-module-rule-field="commune"]')?.value || '',
@@ -887,11 +1021,17 @@ class PrintingDashboard {
           delay: row.querySelector('[data-module-rule-field="delay"]')?.value || '',
           isActive: Boolean(row.querySelector('[data-module-rule-field="isActive"]')?.checked)
         };
-      }).filter((rule) => rule.department || rule.commune || Number(rule.fee || 0) > 0);
+      });
+      acc[module.id] = mergedRules.filter((rule) => rule && (rule.department || rule.commune || Number(rule.fee || 0) > 0));
       return acc;
     }, {});
 
     return normalizeDeliverySettings({ pickupPoints, homeZones: [], moduleRules });
+  }
+
+  syncDeliveryDraftFromDom() {
+    if (!this.root?.querySelector('[data-printing-delivery-panel]')) return;
+    this.deliverySettings = this.collectDeliverySettings();
   }
 
   addModuleDeliveryRule(moduleId) {
@@ -915,6 +1055,8 @@ class PrintingDashboard {
       delay: '',
       isActive: true
     });
+    this.deliveryUi.openModules.add(moduleId);
+    this.deliveryUi.pages[moduleId] = Math.max(1, Math.ceil(this.deliverySettings.moduleRules[moduleId].length / DELIVERY_RULES_PAGE_SIZE));
     this.render();
     this.attachEvents();
   }
@@ -923,11 +1065,14 @@ class PrintingDashboard {
     const rules = this.deliverySettings.moduleRules?.[moduleId];
     if (!Array.isArray(rules)) return;
     rules.splice(index, 1);
+    const totalPages = Math.max(1, Math.ceil(rules.length / DELIVERY_RULES_PAGE_SIZE));
+    this.deliveryUi.pages[moduleId] = Math.min(Math.max(1, Number(this.deliveryUi.pages[moduleId] || 1)), totalPages);
     this.render();
     this.attachEvents();
   }
 
   async saveDeliverySettings() {
+    this.syncDeliveryDraftFromDom();
     const nextSettings = this.collectDeliverySettings();
     const ruleCount = DELIVERY_RULE_MODULES.reduce((total, module) => total + (nextSettings.moduleRules?.[module.id]?.length || 0), 0);
     if (!nextSettings.pickupPoints.length && !ruleCount) {
@@ -1037,6 +1182,14 @@ class PrintingDashboard {
     }
 
     return nextState;
+  }
+
+  syncOpenModuleDrafts() {
+    if (!this.root || !this.moduleUi?.openModules) return;
+    this.moduleUi.openModules.forEach((moduleId) => {
+      if (!this.root.querySelector(`[data-module="${moduleId}"]`)) return;
+      this.state[moduleId] = this.collectModuleState(moduleId);
+    });
   }
 
   async saveModule(moduleId) {
