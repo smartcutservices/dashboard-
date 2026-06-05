@@ -95,6 +95,46 @@ const MODULES = [
   }
 ];
 
+function normalizeDimensionOption(option = {}) {
+  return {
+    label: String(option?.label || '').trim(),
+    enabled: option?.enabled !== false,
+    price: Number(option?.price) || 0
+  };
+}
+
+function normalizePaperOption(paper = {}, fallbackDimensions = []) {
+  const dimensions = Array.isArray(paper?.dimensions) && paper.dimensions.length
+    ? paper.dimensions
+    : fallbackDimensions;
+
+  return {
+    label: String(paper?.label || '').trim(),
+    enabled: paper?.enabled !== false,
+    dimensions: (Array.isArray(dimensions) ? dimensions : [])
+      .map((dimension) => normalizeDimensionOption(dimension))
+      .filter((dimension) => dimension.label)
+  };
+}
+
+function collectUniqueDimensionsFromPapers(papers = [], fallbackDimensions = []) {
+  const map = new Map();
+
+  (Array.isArray(papers) ? papers : []).forEach((paper) => {
+    (Array.isArray(paper?.dimensions) ? paper.dimensions : []).forEach((dimension) => {
+      const normalized = normalizeDimensionOption(dimension);
+      if (!normalized.label || map.has(normalized.label)) return;
+      map.set(normalized.label, normalized);
+    });
+  });
+
+  if (map.size) return Array.from(map.values());
+
+  return (Array.isArray(fallbackDimensions) ? fallbackDimensions : [])
+    .map((dimension) => normalizeDimensionOption(dimension))
+    .filter((dimension) => dimension.label);
+}
+
 const DEFAULT_DELIVERY_SETTINGS = {
   pickupPoints: [
     { id: 'smart-cut-main', name: 'Smart Cut Services', address: 'Adresse Smart Cut Services', phone: '', isActive: true }
@@ -349,7 +389,7 @@ class PrintingDashboard {
         const snapshot = await getDoc(doc(db, 'printingSettings', module.id));
         const merged = snapshot.exists()
           ? this.mergeModuleState(module.defaults, snapshot.data())
-          : clone(module.defaults);
+          : this.mergeModuleState(module.defaults, {});
         return [module.id, merged];
       })),
       getDoc(doc(db, 'printingDeliverySettings', 'main'))
@@ -415,11 +455,22 @@ class PrintingDashboard {
   mergeModuleState(defaults, data) {
     const base = clone(defaults);
     if (!data || typeof data !== 'object') return base;
+    const fallbackDimensions = Array.isArray(data.dimensions) && data.dimensions.length
+      ? data.dimensions
+      : (base.dimensions || []);
+    const papersSource = Array.isArray(data.papers) && data.papers.length
+      ? data.papers
+      : (base.papers || []);
+    const papers = papersSource
+      .map((paper) => normalizePaperOption(paper, fallbackDimensions))
+      .filter((paper) => paper.label);
+    const dimensions = collectUniqueDimensionsFromPapers(papers, fallbackDimensions);
+
     return {
       ...base,
       ...data,
-      dimensions: Array.isArray(data.dimensions) ? data.dimensions : base.dimensions,
-      papers: Array.isArray(data.papers) ? data.papers : base.papers,
+      dimensions,
+      papers,
       pricing: { ...(base.pricing || {}), ...(data.pricing || {}) }
     };
   }
@@ -437,7 +488,7 @@ class PrintingDashboard {
       <section class="hero">
         <small>Pole impression</small>
         <h1>Configuration impression & production</h1>
-        <p>Cette couche admin prepare les sous-modules impression proprement avant le parcours client. On y gere les activations, les dimensions, les types de papier, les prix de base et le flux WhatsApp specialise.</p>
+        <p>Cette couche admin prepare les sous-modules impression proprement avant le parcours client. On y gere les formats, les types de papier, les prix par dimension et le flux WhatsApp specialise.</p>
       </section>
 
       <section class="stats">
@@ -700,7 +751,7 @@ class PrintingDashboard {
   }
 
   renderModule(module) {
-    const state = this.state[module.id] || clone(module.defaults);
+    const state = this.state[module.id] || this.mergeModuleState(module.defaults, {});
     const isManualQuote = module.id === 'grand-format';
     const isOpen = this.moduleUi?.openModules?.has(module.id);
     const dimensionCount = Array.isArray(state.dimensions) ? state.dimensions.length : 0;
@@ -729,17 +780,18 @@ class PrintingDashboard {
           <div class="module-config__body">
             <p>${module.description}</p>
             <div class="stack" style="margin-top:1rem;">
-              <label class="toggle">
-                <input type="checkbox" data-field="enabled" ${state.enabled ? 'checked' : ''}>
-                <span>Module actif</span>
-              </label>
+              ${isManualQuote ? `
+                <label class="toggle">
+                  <input type="checkbox" data-field="enabled" ${state.enabled ? 'checked' : ''}>
+                  <span>Module actif</span>
+                </label>
+              ` : ''}
 
               ${isManualQuote ? this.renderGrandFormatFields(module.id, state) : this.renderStructuredFields(module.id, state)}
 
               <div class="actions">
                 <button class="btn-primary" type="button" data-save-module="${module.id}">Enregistrer</button>
                 ${!isManualQuote ? `
-                  <button class="btn-secondary" type="button" data-add-dimension="${module.id}">Ajouter une dimension</button>
                   <button class="btn-secondary" type="button" data-add-paper="${module.id}">Ajouter un papier</button>
                 ` : ''}
                 <button class="btn-secondary" type="button" data-reset-module="${module.id}">Reinitialiser</button>
@@ -752,31 +804,67 @@ class PrintingDashboard {
   }
 
   renderStructuredFields(moduleId, state) {
-    const pricingEntries = Object.entries(state.pricing || {});
+    const papers = Array.isArray(state.papers) ? state.papers : [];
     return `
-      <div class="field-grid">
-        ${pricingEntries.map(([key, value]) => `
-          <label class="field">
-            <span>${this.getPricingLabel(key)}</span>
-            <input class="input" type="number" step="0.01" min="0" data-pricing-module="${moduleId}" data-pricing-key="${key}" value="${value ?? 0}">
-          </label>
-        `).join('')}
-      </div>
-
-      <div class="option-list">
-        <div class="option-title">Dimensions</div>
-        ${(state.dimensions || []).map((item, index) => this.renderOptionRow(moduleId, 'dimensions', item, index)).join('')}
-      </div>
-
-      <div class="option-list">
-        <div class="option-title">Types de papier</div>
-        ${(state.papers || []).map((item, index) => this.renderOptionRow(moduleId, 'papers', item, index)).join('')}
+      <div class="paper-config-list">
+        ${papers.length
+          ? papers.map((paper, paperIndex) => this.renderPaperConfig(moduleId, paper, paperIndex)).join('')
+          : '<p class="hint">Aucun type de papier configure. Ajoutez un papier pour commencer.</p>'}
       </div>
 
       <label class="field">
         <span>Note admin</span>
         <textarea class="textarea" data-field="notes">${state.notes || ''}</textarea>
       </label>
+    `;
+  }
+
+  renderPaperConfig(moduleId, paper, paperIndex) {
+    const dimensions = Array.isArray(paper.dimensions) ? paper.dimensions : [];
+    return `
+      <section class="paper-config-card" data-paper-row="${moduleId}-${paperIndex}">
+        <div class="paper-config-card__head">
+          <label class="field paper-config-card__label">
+            <span>Type de papier</span>
+            <input class="input" data-paper-module="${moduleId}" data-paper-index="${paperIndex}" data-paper-field="label" value="${paper.label || ''}" placeholder="Ex: Bond">
+          </label>
+          <label class="check">
+            <input type="checkbox" data-paper-module="${moduleId}" data-paper-index="${paperIndex}" data-paper-field="enabled" ${paper.enabled ? 'checked' : ''}>
+            <span>Actif</span>
+          </label>
+          <button class="btn-danger" type="button" data-remove-option="${moduleId}" data-remove-list="papers" data-remove-index="${paperIndex}">Retirer ce papier</button>
+        </div>
+
+        <div class="paper-dimension-table">
+          <div class="paper-dimension-table__head">
+            <span>Dimensions</span>
+            <span>Prix</span>
+            <span>Statut</span>
+            <span>Actions</span>
+          </div>
+          ${dimensions.length
+            ? dimensions.map((dimension, dimensionIndex) => this.renderPaperDimensionRow(moduleId, paperIndex, dimension, dimensionIndex)).join('')
+            : '<p class="hint">Aucune dimension pour ce papier.</p>'}
+        </div>
+
+        <button class="btn-secondary" type="button" data-add-paper-dimension="${moduleId}" data-paper-index="${paperIndex}">
+          Ajouter une dimension pour ce papier
+        </button>
+      </section>
+    `;
+  }
+
+  renderPaperDimensionRow(moduleId, paperIndex, dimension, dimensionIndex) {
+    return `
+      <div class="paper-dimension-row" data-paper-dimension-row="${moduleId}-${paperIndex}-${dimensionIndex}">
+        <input class="mini-input" data-paper-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-paper-dimension-field="label" value="${dimension.label || ''}" placeholder="Ex: 8.5x11">
+        <input class="mini-input" type="number" step="0.01" min="0" data-paper-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-paper-dimension-field="price" value="${dimension.price ?? 0}" placeholder="Prix">
+        <label class="check">
+          <input type="checkbox" data-paper-dimension-module="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}" data-paper-dimension-field="enabled" ${dimension.enabled ? 'checked' : ''}>
+          <span>Actif</span>
+        </label>
+        <button class="btn-danger" type="button" data-remove-paper-dimension="${moduleId}" data-paper-index="${paperIndex}" data-dimension-index="${dimensionIndex}">Retirer</button>
+      </div>
     `;
   }
 
@@ -802,33 +890,6 @@ class PrintingDashboard {
       </label>
       <p class="hint">Le calcul public n'est pas active ici. Ce module reste sur un workflow de brief et devis manuel, comme prevu dans le plan.</p>
     `;
-  }
-
-  renderOptionRow(moduleId, listKey, item, index) {
-    return `
-      <div class="option-row" data-option-row="${moduleId}-${listKey}-${index}">
-        <input class="mini-input" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="label" value="${item.label || ''}" placeholder="Label">
-        <input class="mini-input" type="number" step="0.01" min="0" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="price" value="${item.price ?? 0}" placeholder="Prix">
-        <label class="check">
-          <input type="checkbox" data-list-module="${moduleId}" data-list-key="${listKey}" data-list-index="${index}" data-list-field="enabled" ${item.enabled ? 'checked' : ''}>
-          <span>Actif</span>
-        </label>
-        <button class="btn-danger" type="button" data-remove-option="${moduleId}" data-remove-list="${listKey}" data-remove-index="${index}">Retirer</button>
-      </div>
-    `;
-  }
-
-  getPricingLabel(key) {
-    const labels = {
-      basePrice: 'Prix de base',
-      perPagePrice: 'Prix / page',
-      perCopyPrice: 'Prix / copie',
-      perUnitPrice: 'Prix / tirage',
-      rushPrice: 'Supplement urgence',
-      perSheetPrice: 'Prix / plan',
-      oversizedPrice: 'Supplement grand format'
-    };
-    return labels[key] || key;
   }
 
   attachEvents() {
@@ -857,16 +918,9 @@ class PrintingDashboard {
       button.addEventListener('click', () => {
         const module = MODULES.find((entry) => entry.id === button.dataset.resetModule);
         if (!module) return;
-        this.state[module.id] = clone(module.defaults);
+        this.state[module.id] = this.mergeModuleState(module.defaults, {});
         this.render();
         this.attachEvents();
-      });
-    });
-
-    this.root.querySelectorAll('[data-add-dimension]').forEach((button) => {
-      button.addEventListener('click', () => {
-        this.syncOpenModuleDrafts();
-        this.addOption(button.dataset.addDimension, 'dimensions');
       });
     });
 
@@ -877,10 +931,31 @@ class PrintingDashboard {
       });
     });
 
+    this.root.querySelectorAll('[data-add-paper-dimension]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.addPaperDimension(
+          button.dataset.addPaperDimension,
+          Number.parseInt(button.dataset.paperIndex || '0', 10)
+        );
+      });
+    });
+
     this.root.querySelectorAll('[data-remove-option]').forEach((button) => {
       button.addEventListener('click', () => {
         this.syncOpenModuleDrafts();
         this.removeOption(button.dataset.removeOption, button.dataset.removeList, Number.parseInt(button.dataset.removeIndex || '0', 10));
+      });
+    });
+
+    this.root.querySelectorAll('[data-remove-paper-dimension]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.syncOpenModuleDrafts();
+        this.removePaperDimension(
+          button.dataset.removePaperDimension,
+          Number.parseInt(button.dataset.paperIndex || '0', 10),
+          Number.parseInt(button.dataset.dimensionIndex || '0', 10)
+        );
       });
     });
 
@@ -1125,7 +1200,9 @@ class PrintingDashboard {
     const state = this.state[moduleId];
     if (!state) return;
     state[listKey] = Array.isArray(state[listKey]) ? state[listKey] : [];
-    state[listKey].push({ label: '', enabled: true, price: 0 });
+    state[listKey].push(listKey === 'papers'
+      ? { label: '', enabled: true, dimensions: [] }
+      : { label: '', enabled: true, price: 0 });
     this.render();
     this.attachEvents();
   }
@@ -1138,14 +1215,36 @@ class PrintingDashboard {
     this.attachEvents();
   }
 
+  addPaperDimension(moduleId, paperIndex) {
+    const state = this.state[moduleId];
+    const paper = state?.papers?.[paperIndex];
+    if (!paper) return;
+    paper.dimensions = Array.isArray(paper.dimensions) ? paper.dimensions : [];
+    paper.dimensions.push({ label: '', enabled: true, price: 0 });
+    state.dimensions = collectUniqueDimensionsFromPapers(state.papers || [], state.dimensions || []);
+    this.render();
+    this.attachEvents();
+  }
+
+  removePaperDimension(moduleId, paperIndex, dimensionIndex) {
+    const state = this.state[moduleId];
+    const paper = state?.papers?.[paperIndex];
+    if (!paper || !Array.isArray(paper.dimensions)) return;
+    paper.dimensions.splice(dimensionIndex, 1);
+    state.dimensions = collectUniqueDimensionsFromPapers(state.papers || [], state.dimensions || []);
+    this.render();
+    this.attachEvents();
+  }
+
   collectModuleState(moduleId) {
     const panel = this.root.querySelector(`[data-module="${moduleId}"]`);
     const current = this.state[moduleId];
     if (!panel || !current) return current;
 
+    const enabledField = panel.querySelector('[data-field="enabled"]');
     const nextState = {
       ...clone(current),
-      enabled: !!panel.querySelector('[data-field="enabled"]')?.checked
+      enabled: enabledField ? !!enabledField.checked : current.enabled !== false
     };
 
     panel.querySelectorAll('[data-field]').forEach((field) => {
@@ -1154,31 +1253,36 @@ class PrintingDashboard {
       nextState[key] = field.value;
     });
 
-    panel.querySelectorAll('[data-pricing-module]').forEach((field) => {
-      const pricingKey = field.dataset.pricingKey;
-      nextState.pricing = nextState.pricing || {};
-      nextState.pricing[pricingKey] = Number.parseFloat(field.value || '0') || 0;
+    const paperMap = [];
+    panel.querySelectorAll('[data-paper-module]').forEach((field) => {
+      const index = Number.parseInt(field.dataset.paperIndex || '0', 10);
+      const key = field.dataset.paperField;
+      paperMap[index] = paperMap[index] || { dimensions: [] };
+      paperMap[index][key] = key === 'enabled' ? !!field.checked : field.value;
     });
 
-    const listMap = { dimensions: [], papers: [] };
-    panel.querySelectorAll('[data-list-module]').forEach((field) => {
-      const listKey = field.dataset.listKey;
-      const index = Number.parseInt(field.dataset.listIndex || '0', 10);
-      const itemField = field.dataset.listField;
-      if (!listMap[listKey]) return;
-      listMap[listKey][index] = listMap[listKey][index] || {};
-      listMap[listKey][index][itemField] = itemField === 'enabled'
+    panel.querySelectorAll('[data-paper-dimension-module]').forEach((field) => {
+      const paperIndex = Number.parseInt(field.dataset.paperIndex || '0', 10);
+      const dimensionIndex = Number.parseInt(field.dataset.dimensionIndex || '0', 10);
+      const key = field.dataset.paperDimensionField;
+      paperMap[paperIndex] = paperMap[paperIndex] || { dimensions: [] };
+      paperMap[paperIndex].dimensions = Array.isArray(paperMap[paperIndex].dimensions) ? paperMap[paperIndex].dimensions : [];
+      paperMap[paperIndex].dimensions[dimensionIndex] = paperMap[paperIndex].dimensions[dimensionIndex] || {};
+      paperMap[paperIndex].dimensions[dimensionIndex][key] = key === 'enabled'
         ? !!field.checked
-        : itemField === 'price'
+        : key === 'price'
           ? Number.parseFloat(field.value || '0') || 0
           : field.value;
     });
 
-    if (Array.isArray(current.dimensions)) {
-      nextState.dimensions = listMap.dimensions.filter(Boolean);
-    }
-    if (Array.isArray(current.papers)) {
-      nextState.papers = listMap.papers.filter(Boolean);
+    if (paperMap.length) {
+      nextState.papers = paperMap
+        .map((paper) => normalizePaperOption({
+          ...paper,
+          dimensions: (paper.dimensions || []).filter(Boolean)
+        }))
+        .filter((paper) => paper.label);
+      nextState.dimensions = collectUniqueDimensionsFromPapers(nextState.papers, nextState.dimensions || []);
     }
 
     return nextState;

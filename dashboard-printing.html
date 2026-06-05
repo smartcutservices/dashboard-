@@ -351,6 +351,60 @@
       margin-top: 0.7rem;
     }
 
+    .paper-config-list {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .paper-config-card {
+      display: grid;
+      grid-template-columns: minmax(230px, 0.78fr) minmax(360px, 1.7fr);
+      gap: 1rem;
+      align-items: start;
+      padding: 1rem;
+      border: 1px solid rgba(29, 27, 24, 0.08);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 14px 34px rgba(31, 30, 28, 0.05);
+    }
+
+    .paper-config-card__head {
+      display: grid;
+      gap: 0.7rem;
+      align-content: start;
+    }
+
+    .paper-config-card__label {
+      margin: 0;
+    }
+
+    .paper-dimension-table {
+      display: grid;
+      gap: 0.55rem;
+      min-width: 0;
+    }
+
+    .paper-dimension-table__head,
+    .paper-dimension-row {
+      display: grid;
+      grid-template-columns: minmax(160px, 1.2fr) minmax(110px, 0.65fr) minmax(82px, auto) auto;
+      gap: 0.65rem;
+      align-items: center;
+    }
+
+    .paper-dimension-table__head {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .paper-config-card > .btn-secondary {
+      grid-column: 2;
+      justify-self: start;
+    }
+
     .mini-input {
       width: 100%;
       border: 1px solid var(--border);
@@ -417,7 +471,17 @@
       .shell { padding: 1rem; }
       .config-grid,
       .field-grid,
-      .option-row { grid-template-columns: 1fr; }
+      .option-row,
+      .paper-config-card,
+      .paper-dimension-table__head,
+      .paper-dimension-row {
+        grid-template-columns: 1fr;
+      }
+
+      .paper-config-card > .btn-secondary {
+        grid-column: 1;
+        width: 100%;
+      }
 
       .delivery-module-meta,
       .delivery-pagination {
@@ -444,7 +508,7 @@
 </head>
 <body>
   <main class="shell" id="printing-dashboard-root"></main>
-  <script type="module" src="./dashboard-printing.js?v=20260602-2"></script>
+  <script type="module" src="./dashboard-printing.js?v=20260604-1"></script>
   <script type="module" src="./admin-access.js"></script>
 </body>
 </html>
