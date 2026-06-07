@@ -761,20 +761,22 @@ class PrintingDashboard {
       : `${dimensionCount} format(s) · ${paperCount} papier(s)`;
     return `
       <article class="panel module-config ${isOpen ? 'is-open' : ''}" data-module="${module.id}">
-        <button class="module-config__head" type="button" data-toggle-module-config="${module.id}" aria-expanded="${isOpen ? 'true' : 'false'}">
-          <div>
+        <div class="module-config__head">
+          <button class="module-config__summary" type="button" data-toggle-module-config="${module.id}" aria-expanded="${isOpen ? 'true' : 'false'}">
             <small>${escapeHtml(module.metric || 'module')}</small>
             <h2>${module.title}</h2>
             <p>${escapeHtml(summary)}</p>
-          </div>
+          </button>
           <div class="module-config__status">
-            <span class="status-chip ${state.enabled ? '' : 'off'}">
+            <button class="status-chip module-active-toggle ${state.enabled ? '' : 'off'}" type="button" data-toggle-module-enabled="${module.id}" aria-pressed="${state.enabled ? 'true' : 'false'}" title="${state.enabled ? 'Désactiver ce module' : 'Activer ce module'}">
               <i class="fas ${state.enabled ? 'fa-circle-check' : 'fa-circle-pause'}"></i>
-              <span>${state.enabled ? 'Actif' : 'Inactif'}</span>
-            </span>
-            <i class="fas fa-chevron-${isOpen ? 'up' : 'down'}"></i>
+              <span>${state.enabled ? 'Actif' : 'Activer'}</span>
+            </button>
+            <button class="module-config__chevron" type="button" data-toggle-module-config="${module.id}" aria-label="${isOpen ? 'Fermer le module' : 'Ouvrir le module'}">
+              <i class="fas fa-chevron-${isOpen ? 'up' : 'down'}"></i>
+            </button>
           </div>
-        </button>
+        </div>
 
         ${isOpen ? `
           <div class="module-config__body">
@@ -893,6 +895,12 @@ class PrintingDashboard {
   }
 
   attachEvents() {
+    this.root.querySelectorAll('[data-toggle-module-enabled]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.toggleModuleEnabled(button.dataset.toggleModuleEnabled);
+      });
+    });
+
     this.root.querySelectorAll('[data-toggle-module-config]').forEach((button) => {
       button.addEventListener('click', () => {
         this.syncOpenModuleDrafts();
@@ -1310,6 +1318,27 @@ class PrintingDashboard {
     this.render();
     this.attachEvents();
     this.showToast(`${module.title} enregistre dans Firebase.`);
+  }
+
+  async toggleModuleEnabled(moduleId) {
+    const module = MODULES.find((entry) => entry.id === moduleId);
+    if (!module) return;
+    this.syncOpenModuleDrafts();
+    const currentState = this.state[moduleId] || this.mergeModuleState(module.defaults, {});
+    const nextState = {
+      ...clone(currentState),
+      enabled: currentState.enabled === false
+    };
+    const payload = {
+      ...nextState,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard_admin'
+    };
+    await setDoc(doc(db, 'printingSettings', moduleId), payload, { merge: true });
+    this.state[moduleId] = nextState;
+    this.render();
+    this.attachEvents();
+    this.showToast(`${module.title} ${nextState.enabled ? 'active' : 'desactive'} dans Firebase.`);
   }
 
   showToast(message) {
