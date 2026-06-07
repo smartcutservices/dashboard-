@@ -260,13 +260,28 @@
     }
 
     .module-active-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
       border: 0;
+      border-radius: 999px;
+      background: rgba(15, 159, 110, 0.12);
+      color: var(--success);
       cursor: pointer;
+      font-weight: 800;
+      padding: 0.55rem 0.85rem;
     }
 
     .module-active-toggle.off {
       background: rgba(217, 119, 6, 0.12);
       color: var(--warning);
+    }
+
+    .module-active-toggle input {
+      width: 20px;
+      height: 20px;
+      accent-color: #c6a75e;
+      cursor: pointer;
     }
 
     .module-config__chevron {
@@ -543,7 +558,7 @@
 </head>
 <body>
   <main class="shell" id="printing-dashboard-root"></main>
-  <script type="module" src="./dashboard-printing.js?v=20260607-1"></script>
+  <script type="module" src="./dashboard-printing.js?v=20260607-2"></script>
   <script type="module" src="./admin-access.js"></script>
 </body>
 </html>

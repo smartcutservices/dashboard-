@@ -768,10 +768,10 @@ class PrintingDashboard {
             <p>${escapeHtml(summary)}</p>
           </button>
           <div class="module-config__status">
-            <button class="status-chip module-active-toggle ${state.enabled ? '' : 'off'}" type="button" data-toggle-module-enabled="${module.id}" aria-pressed="${state.enabled ? 'true' : 'false'}" title="${state.enabled ? 'Désactiver ce module' : 'Activer ce module'}">
-              <i class="fas ${state.enabled ? 'fa-circle-check' : 'fa-circle-pause'}"></i>
-              <span>${state.enabled ? 'Actif' : 'Activer'}</span>
-            </button>
+            <label class="module-active-toggle ${state.enabled ? '' : 'off'}" title="${state.enabled ? 'Désactiver ce module' : 'Activer ce module'}">
+              <input type="checkbox" data-toggle-module-enabled="${module.id}" ${state.enabled ? 'checked' : ''}>
+              <span>${state.enabled ? 'Actif' : 'Inactif'}</span>
+            </label>
             <button class="module-config__chevron" type="button" data-toggle-module-config="${module.id}" aria-label="${isOpen ? 'Fermer le module' : 'Ouvrir le module'}">
               <i class="fas fa-chevron-${isOpen ? 'up' : 'down'}"></i>
             </button>
@@ -895,9 +895,9 @@ class PrintingDashboard {
   }
 
   attachEvents() {
-    this.root.querySelectorAll('[data-toggle-module-enabled]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        await this.toggleModuleEnabled(button.dataset.toggleModuleEnabled);
+    this.root.querySelectorAll('[data-toggle-module-enabled]').forEach((field) => {
+      field.addEventListener('change', async () => {
+        await this.toggleModuleEnabled(field.dataset.toggleModuleEnabled, field.checked);
       });
     });
 
@@ -1320,14 +1320,16 @@ class PrintingDashboard {
     this.showToast(`${module.title} enregistre dans Firebase.`);
   }
 
-  async toggleModuleEnabled(moduleId) {
+  async toggleModuleEnabled(moduleId, forcedEnabled = null) {
     const module = MODULES.find((entry) => entry.id === moduleId);
     if (!module) return;
     this.syncOpenModuleDrafts();
     const currentState = this.state[moduleId] || this.mergeModuleState(module.defaults, {});
     const nextState = {
       ...clone(currentState),
-      enabled: currentState.enabled === false
+      enabled: typeof forcedEnabled === 'boolean'
+        ? forcedEnabled
+        : currentState.enabled === false
     };
     const payload = {
       ...nextState,
