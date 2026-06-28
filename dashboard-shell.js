@@ -119,6 +119,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-print'
   },
   {
+    id: 'proformat',
+    label: 'Proforma',
+    description: 'Logiciel Proforma Studio pour creer, sauvegarder et imprimer les proformas.',
+    href: './logiciel%20proformat/index.html',
+    icon: 'fa-file-invoice-dollar'
+  },
+  {
     id: 'vendors',
     label: 'Vendeurs',
     description: 'Marketplace, validation des vendeurs et commissions.',
