@@ -580,7 +580,7 @@ function renderPreview() {
 
       <section class="devis-bottom">
         <div class="devis-extra">
-          <p><strong>Kondisyon peman:</strong> ${escapeHtml(qs("#paymentTerms").value || "-")}</p>
+          <p><strong>Conditions de paiement:</strong> ${escapeHtml(qs("#paymentTerms").value || "-")}</p>
           <p><strong>Incoterms:</strong> ${escapeHtml(qs("#incoterms").value || "-")}</p>
           <p><strong>HS Code:</strong> ${escapeHtml(qs("#hsCode").value || "-")}</p>
           ${dual ? `<p><strong>USD / HTG:</strong> ${money(usdValue, "USD")} | ${money(htgValue, "HTG")}</p>` : ""}
@@ -589,7 +589,7 @@ function renderPreview() {
           <div><span>Sous-total</span><strong>${money(totals.subtotal, currency)}</strong></div>
           <div><span>TOT taxe</span><strong>${money(totals.taxTotal, currency)}</strong></div>
           ${totals.shipping ? `<div><span>Shipping</span><strong>${money(totals.shipping, currency)}</strong></div>` : ""}
-          ${totals.discount ? `<div><span>Rabe (${numberFr(totals.discountPercent)}%)</span><strong>- ${money(totals.discount, currency)}</strong></div>` : ""}
+          ${totals.discount ? `<div><span>Remise (${numberFr(totals.discountPercent)}%)</span><strong>- ${money(totals.discount, currency)}</strong></div>` : ""}
           <div class="final"><span>Total</span><strong>${money(totals.finalTotal, currency)}</strong></div>
         </div>
       </section>
