@@ -21,6 +21,9 @@
         <button class="nav-btn active" data-tab="builder" title="Proforma">
           <span>Proforma</span>
         </button>
+        <button class="nav-btn" data-tab="clients" title="Kliyan">
+          <span>Kliyan</span>
+        </button>
         <button class="nav-btn" data-tab="company" title="Antet konpayi">
           <span>Konpayi</span>
         </button>
@@ -32,6 +35,9 @@
         </button>
         <button class="nav-btn" data-tab="records" title="Achiv proforma">
           <span>Achiv</span>
+        </button>
+        <button class="nav-btn" data-tab="invoices" title="Factures">
+          <span>Factures</span>
         </button>
         <button class="nav-btn" data-tab="reports" title="Rapo">
           <span>Rapo</span>
@@ -70,8 +76,16 @@
             </div>
 
             <div class="form-grid">
-              <label>Nom kliyan / antrepriz
-                <input id="clientName" type="text" placeholder="Ex: Jean Services SA">
+              <label>Kliyan sove
+                <select id="clientPicker">
+                  <option value="">Chwazi yon kliyan...</option>
+                </select>
+              </label>
+              <label>Nom kliyan
+                <input id="clientName" type="text" placeholder="Ex: Jean Marlon">
+              </label>
+              <label>Nom antrepriz
+                <input id="clientCompany" type="text" placeholder="Ex: Jean Services SA">
               </label>
               <label>Email kliyan
                 <input id="clientEmail" type="email" placeholder="client@email.com">
@@ -136,8 +150,8 @@
               <label>Shipping
                 <input id="shipping" type="number" min="0" step="0.01" value="0">
               </label>
-              <label>Rabè global
-                <input id="globalDiscount" type="number" min="0" step="0.01" value="0">
+              <label>Rabè global (%)
+                <input id="globalDiscount" type="number" min="0" max="100" step="0.01" value="0" placeholder="Ex: 10">
               </label>
               <label>Kondisyon peman
                 <input id="paymentTerms" type="text" placeholder="Ex: 50% avan, 50% sou livrezon">
@@ -160,6 +174,46 @@
 
           <section class="preview-panel">
             <div id="invoicePreview" class="invoice-preview"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="clients" class="tab-panel">
+        <div class="split-grid">
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Kliyan sove</h2>
+              <input id="clientSearch" type="search" placeholder="Rechercher par nom, entreprise, email...">
+            </div>
+            <div id="clientList" class="item-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Ajoute / modifye kliyan</h2>
+              <button id="clearClientBtn" class="ghost-btn" type="button">Netwaye</button>
+            </div>
+            <input id="savedClientId" type="hidden">
+            <div class="form-grid compact">
+              <label>Nom kliyan
+                <input id="savedClientName" type="text" placeholder="Ex: Marlon Maurrasse">
+              </label>
+              <label>Nom antrepriz
+                <input id="savedClientCompany" type="text" placeholder="Ex: Smart Cut Services">
+              </label>
+              <label>Email
+                <input id="savedClientEmail" type="email" placeholder="client@email.com">
+              </label>
+              <label>Telephone
+                <input id="savedClientPhone" type="text" placeholder="+509...">
+              </label>
+              <label>Adresse
+                <textarea id="savedClientAddress" rows="3" placeholder="Adresse complete"></textarea>
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="saveClientBtn" class="primary-btn" type="button">Sove kliyan</button>
+            </div>
           </section>
         </div>
       </section>
@@ -270,9 +324,19 @@
         <section class="panel">
           <div class="panel-heading">
             <h2>Proforma sove</h2>
-            <input id="recordSearch" type="search" placeholder="Filtre pa kliyan, dat, lajan, montan...">
+            <input id="recordSearch" type="search" placeholder="Rechercher une proforma par client, date, devise, montant...">
           </div>
           <div id="recordsList" class="records-list"></div>
+        </section>
+      </section>
+
+      <section id="invoices" class="tab-panel">
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Factures</h2>
+            <input id="invoiceSearch" type="search" placeholder="Rechercher une facture par client, date, devise, montant...">
+          </div>
+          <div id="invoicesList" class="records-list"></div>
         </section>
       </section>
 

@@ -586,8 +586,14 @@ textarea:focus {
   padding: 8px 10px;
 }
 
+.mini-actions .danger-action {
+  border-color: rgba(185, 28, 28, .25);
+  background: rgba(185, 28, 28, .08);
+  color: var(--danger);
+}
+
 .report-grid {
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .report-card strong {
@@ -693,8 +699,20 @@ textarea:focus {
 }
 
 @media print {
+  @page {
+    size: Letter portrait;
+    margin: 0;
+  }
+
+  html,
   body {
     background: #fff;
+    margin: 0;
+    padding: 0;
+    width: 8.5in;
+    min-height: 11in;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .sidebar,
@@ -709,24 +727,56 @@ textarea:focus {
   .work-grid {
     display: block;
     padding: 0;
+    margin: 0;
+    width: 8.5in;
+    min-width: 0;
+    max-width: none;
+    overflow: visible;
   }
 
   .preview-panel {
     position: static;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    width: 8.5in;
+    overflow: visible;
   }
 
   .invoice-preview {
     box-shadow: none;
     border-radius: 0;
     padding: 0;
-    width: 816px;
-    min-height: 1056px;
-    overflow: visible;
+    margin: 0;
+    width: 8.5in;
+    min-height: auto;
+    overflow: visible !important;
   }
 
   .devis-page {
     transform: none !important;
-    width: 816px;
-    min-height: 1056px;
+    margin: 0;
+    width: 8.5in;
+    min-height: 11in;
+    overflow: visible !important;
+    box-shadow: none;
+    box-sizing: border-box;
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .devis-head,
+  .devis-band,
+  .devis-bottom,
+  .devis-signatures,
+  .invoice-notes {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .devis-items tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

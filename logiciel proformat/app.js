@@ -44,9 +44,12 @@ const defaults = {
       discount: 0
     }
   ],
+  clients: [],
   proformas: [],
+  invoices: [],
   settings: {
     sequence: 1,
+    invoiceSequence: 1,
     exchangeRate: 132,
     dark: false
   }
@@ -54,6 +57,8 @@ const defaults = {
 
 const state = loadState();
 let currentProformaId = null;
+let currentInvoiceId = null;
+let currentDocumentType = "proforma";
 
 function loadState() {
   try {
@@ -69,7 +74,9 @@ function mergeState(base, saved) {
     company: { ...base.company, ...(saved.company || {}) },
     taxes: saved.taxes?.length ? saved.taxes : base.taxes,
     products: saved.products?.length ? saved.products : base.products,
+    clients: saved.clients || [],
     proformas: saved.proformas || [],
+    invoices: saved.invoices || [],
     settings: { ...base.settings, ...(saved.settings || {}) }
   };
 }
@@ -124,11 +131,83 @@ function nextProformaNumber() {
   return `PF-${new Date().getFullYear()}-${String(state.settings.sequence).padStart(5, "0")}`;
 }
 
+function nextInvoiceNumber() {
+  return `FAC-${new Date().getFullYear()}-${String(state.settings.invoiceSequence || 1).padStart(5, "0")}`;
+}
+
+function documentLabel() {
+  return currentDocumentType === "invoice" ? "FACTURE" : "PROFORMA";
+}
+
+function sanitizeFilePart(value) {
+  return String(value || "")
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatDocumentFileNumber(number, label = documentLabel()) {
+  const raw = String(number || "");
+  const match = raw.match(/(\d+)\s*$/);
+  if (!match) return sanitizeFilePart(raw) || `${label} 0001`;
+  return `${label} ${match[1].slice(-4).padStart(4, "0")}`;
+}
+
+function buildPdfTitle() {
+  const clientName = sanitizeFilePart(qs("#clientName").value || "CLIENT");
+  const clientCompany = sanitizeFilePart(qs("#clientCompany").value);
+  const fallbackNumber = currentDocumentType === "invoice" ? nextInvoiceNumber() : nextProformaNumber();
+  const documentNumber = formatDocumentFileNumber(qs("#proformaNumber").value || fallbackNumber);
+  return [clientName, clientCompany, documentNumber].filter(Boolean).join(" - ");
+}
+
+function printProforma() {
+  const previousTitle = document.title;
+  const restoreTitle = () => {
+    document.title = previousTitle;
+    window.removeEventListener("afterprint", restoreTitle);
+  };
+
+  document.title = buildPdfTitle();
+  window.addEventListener("afterprint", restoreTitle, { once: true });
+  window.print();
+  window.setTimeout(() => {
+    if (document.title !== previousTitle) restoreTitle();
+  }, 30000);
+}
+
+function openPreparedEmail(item) {
+  const subject = encodeURIComponent(`${buildPdfTitle()} - ${state.company.name}`);
+  const documentName = currentDocumentType === "invoice" ? "facture" : "proforma";
+  const body = encodeURIComponent(
+    `Bonjour,\n\nVeuillez trouver en piece jointe la ${documentName} ${item.number} d'un montant de ${money(item.total, item.currency)}.\n\nCordialement,\n${state.company.name}`
+  );
+  window.location.href = `mailto:${item.clientEmail || ""}?subject=${subject}&body=${body}`;
+}
+
+function printThenEmailProforma(item) {
+  const previousTitle = document.title;
+  let emailOpened = false;
+  const openEmailOnce = () => {
+    if (emailOpened) return;
+    emailOpened = true;
+    document.title = previousTitle;
+    window.removeEventListener("afterprint", openEmailOnce);
+    openPreparedEmail(item);
+  };
+
+  document.title = buildPdfTitle();
+  window.addEventListener("afterprint", openEmailOnce, { once: true });
+  window.print();
+  window.setTimeout(openEmailOnce, 30000);
+}
+
 function init() {
   document.body.classList.toggle("dark", Boolean(state.settings.dark));
   bindNavigation();
   bindBuilder();
   bindCompany();
+  bindClients();
   bindCatalog();
   bindTaxes();
   bindRecords();
@@ -148,13 +227,14 @@ function bindNavigation() {
       qs(`#${btn.dataset.tab}`).classList.add("active");
       qs("#pageTitle").textContent = btn.textContent.trim();
       if (btn.dataset.tab === "reports") renderReports();
+      if (btn.dataset.tab === "invoices") renderInvoices();
     });
   });
 }
 
 function bindBuilder() {
   [
-    "#clientName", "#clientEmail", "#clientAddress", "#proformaDate", "#validityDays",
+    "#clientName", "#clientCompany", "#clientEmail", "#clientAddress", "#clientPicker", "#proformaDate", "#validityDays",
     "#currency", "#exchangeRate", "#showDualCurrency", "#shipping", "#globalDiscount",
     "#paymentTerms", "#incoterms", "#hsCode", "#notes"
   ].forEach((selector) => {
@@ -171,9 +251,9 @@ function bindBuilder() {
     if (product) addLineFromProduct(product);
   });
   qs("#addCustomLineBtn").addEventListener("click", () => addLine());
-  qs("#saveProformaBtn").addEventListener("click", saveProforma);
+  qs("#saveProformaBtn").addEventListener("click", saveCurrentDocument);
   qs("#newProformaBtn").addEventListener("click", newProforma);
-  qs("#printBtn").addEventListener("click", () => window.print());
+  qs("#printBtn").addEventListener("click", printProforma);
 }
 
 function bindCompany() {
@@ -212,6 +292,13 @@ function bindCatalog() {
   qs("#csvInput").addEventListener("change", importCsv);
 }
 
+function bindClients() {
+  qs("#saveClientBtn").addEventListener("click", saveClient);
+  qs("#clearClientBtn").addEventListener("click", clearClientForm);
+  qs("#clientSearch").addEventListener("input", renderClients);
+  qs("#clientPicker").addEventListener("change", () => applyClientToProforma(qs("#clientPicker").value));
+}
+
 function bindTaxes() {
   qs("#addTaxBtn").addEventListener("click", () => {
     state.taxes.push({
@@ -227,6 +314,7 @@ function bindTaxes() {
 
 function bindRecords() {
   qs("#recordSearch").addEventListener("input", renderRecords);
+  qs("#invoiceSearch").addEventListener("input", renderInvoices);
 }
 
 function bindUtilities() {
@@ -270,18 +358,25 @@ function fillCompanyForm() {
 }
 
 function refreshAll() {
+  renderClientPicker();
+  renderClients();
   renderProductPicker();
   renderTaxSelects();
   renderProducts();
   renderTaxes();
   renderRecords();
+  renderInvoices();
   renderReports();
 }
 
 function newProforma() {
   currentProformaId = null;
+  currentInvoiceId = null;
+  currentDocumentType = "proforma";
   qs("#statusPill").textContent = "Draft";
+  qs("#clientPicker").value = "";
   qs("#clientName").value = "";
+  qs("#clientCompany").value = "";
   qs("#clientEmail").value = "";
   qs("#clientAddress").value = "";
   qs("#proformaDate").value = todayISO();
@@ -312,6 +407,8 @@ function addLine(data = {}) {
   qs(".line-price", row).value = data.price ?? 0;
   qs(".line-tax", row).value = data.taxId || "none";
   qs(".remove-line", row).addEventListener("click", () => {
+    const confirmed = window.confirm("Voulez-vous vraiment supprimer cette ligne de la proforma ?");
+    if (!confirmed) return;
     row.remove();
     recalcLines();
     renderPreview();
@@ -371,9 +468,11 @@ function calculateTotals() {
     return { ...line, base, taxAmount, total: base + taxAmount };
   });
   const shipping = Number(qs("#shipping").value || 0);
-  const discount = Number(qs("#globalDiscount").value || 0);
-  const finalTotal = Math.max(0, subtotal + taxTotal + shipping - discount);
-  return { lines: calculatedLines, subtotal, taxTotal, shipping, discount, finalTotal };
+  const discountPercent = Math.min(100, Math.max(0, Number(qs("#globalDiscount").value || 0)));
+  const totalBeforeDiscount = subtotal + taxTotal + shipping;
+  const discount = totalBeforeDiscount * (discountPercent / 100);
+  const finalTotal = Math.max(0, totalBeforeDiscount - discount);
+  return { lines: calculatedLines, subtotal, taxTotal, shipping, discount, discountPercent, finalTotal };
 }
 
 function recalcLines() {
@@ -390,6 +489,8 @@ function recalcLines() {
 function renderPreview() {
   const totals = calculateTotals();
   const currency = getCurrency();
+  const previewTitle = currentDocumentType === "invoice" ? "FACTURE" : "DEVIS";
+  const previewLabel = currentDocumentType === "invoice" ? "Facture" : "Devis";
   const date = qs("#proformaDate").value || todayISO();
   const validity = addDays(date, qs("#validityDays").value);
   const exchange = Number(qs("#exchangeRate").value || 1);
@@ -397,14 +498,16 @@ function renderPreview() {
   const htgValue = currency === "HTG" ? totals.finalTotal : totals.finalTotal * exchange;
   const usdValue = currency === "USD" ? totals.finalTotal : totals.finalTotal / exchange;
   const clientName = qs("#clientName").value || "Nom client";
+  const clientCompany = qs("#clientCompany").value.trim();
   const clientAddress = qs("#clientAddress").value || "Adresse client";
   const logo = state.company.logo || "../logo.png";
+  const clientCompanyLine = clientCompany ? `<p>${escapeHtml(clientCompany)}</p>` : "";
 
   qs("#invoicePreview").innerHTML = `
     <div class="devis-page">
       <header class="devis-head">
         <div class="devis-company">
-          <h2>DEVIS</h2>
+          <h2>${previewTitle}</h2>
           <strong>${escapeHtml(state.company.name)}</strong>
           ${escapeLines(state.company.address)}
         </div>
@@ -420,20 +523,22 @@ function renderPreview() {
         <div>
           <strong>Adresse de facturation</strong>
           <p>${escapeHtml(clientName)}</p>
+          ${clientCompanyLine}
           ${escapeLines(clientAddress)}
         </div>
         <div>
           <strong>Adresse de livraison</strong>
           <p>${escapeHtml(clientName)}</p>
+          ${clientCompanyLine}
           ${escapeLines(clientAddress)}
         </div>
       </section>
 
       <section class="devis-band fiscal-band">
         <div>
-          <strong>Infos sur l'organisme fiscal (Devis)</strong>
-          <p>No de Devis: ${escapeHtml(qs("#proformaNumber").value.replace("PF-", ""))}</p>
-          <p>Date Devis: ${escapeHtml(formatDate(date))}</p>
+          <strong>Infos sur l'organisme fiscal (${previewLabel})</strong>
+          <p>No de ${previewLabel}: ${escapeHtml(qs("#proformaNumber").value.replace(/^PF-/, "").replace(/^FAC-/, ""))}</p>
+          <p>Date ${previewLabel}: ${escapeHtml(formatDate(date))}</p>
           <p>Validite: ${escapeHtml(formatDate(validity))}</p>
           <p>Devise: ${escapeHtml(currency)}</p>
         </div>
@@ -484,7 +589,7 @@ function renderPreview() {
           <div><span>Sous-total</span><strong>${money(totals.subtotal, currency)}</strong></div>
           <div><span>TOT taxe</span><strong>${money(totals.taxTotal, currency)}</strong></div>
           ${totals.shipping ? `<div><span>Shipping</span><strong>${money(totals.shipping, currency)}</strong></div>` : ""}
-          ${totals.discount ? `<div><span>Rabe</span><strong>- ${money(totals.discount, currency)}</strong></div>` : ""}
+          ${totals.discount ? `<div><span>Rabe (${numberFr(totals.discountPercent)}%)</span><strong>- ${money(totals.discount, currency)}</strong></div>` : ""}
           <div class="final"><span>Total</span><strong>${money(totals.finalTotal, currency)}</strong></div>
         </div>
       </section>
@@ -519,12 +624,15 @@ function fitPreview() {
   preview.style.minHeight = `${pageHeight * scale}px`;
 }
 
-function saveProforma() {
+function buildDocumentPayload(id, type = "proforma") {
   const totals = calculateTotals();
-  const proforma = {
-    id: currentProformaId || crypto.randomUUID(),
+  return {
+    id,
+    type,
+    clientId: qs("#clientPicker").value || "",
     number: qs("#proformaNumber").value,
     clientName: qs("#clientName").value,
+    clientCompany: qs("#clientCompany").value,
     clientEmail: qs("#clientEmail").value,
     clientAddress: qs("#clientAddress").value,
     date: qs("#proformaDate").value,
@@ -542,6 +650,18 @@ function saveProforma() {
     total: totals.finalTotal,
     updatedAt: new Date().toISOString()
   };
+}
+
+function saveCurrentDocument() {
+  if (currentDocumentType === "invoice") {
+    saveInvoice();
+    return;
+  }
+  saveProforma();
+}
+
+function saveProforma() {
+  const proforma = buildDocumentPayload(currentProformaId || crypto.randomUUID(), "proforma");
 
   const existingIndex = state.proformas.findIndex((item) => item.id === proforma.id);
   if (existingIndex >= 0) {
@@ -551,6 +671,8 @@ function saveProforma() {
     state.settings.sequence += 1;
   }
   currentProformaId = proforma.id;
+  currentInvoiceId = null;
+  currentDocumentType = "proforma";
   qs("#statusPill").textContent = "Sove";
   persist();
   renderRecords();
@@ -558,12 +680,35 @@ function saveProforma() {
   toast("Proforma a sove.");
 }
 
+function saveInvoice() {
+  const invoice = buildDocumentPayload(currentInvoiceId || crypto.randomUUID(), "invoice");
+  const existingIndex = state.invoices.findIndex((item) => item.id === invoice.id);
+  if (existingIndex >= 0) {
+    state.invoices[existingIndex] = invoice;
+  } else {
+    state.invoices.unshift(invoice);
+    state.settings.invoiceSequence = (state.settings.invoiceSequence || 1) + 1;
+  }
+  currentInvoiceId = invoice.id;
+  currentProformaId = null;
+  currentDocumentType = "invoice";
+  qs("#statusPill").textContent = "Facture";
+  persist();
+  renderInvoices();
+  renderReports();
+  toast("Facture a sove.");
+}
+
 function loadProforma(id, duplicate = false) {
   const proforma = state.proformas.find((item) => item.id === id);
   if (!proforma) return;
   currentProformaId = duplicate ? null : proforma.id;
+  currentInvoiceId = null;
+  currentDocumentType = "proforma";
   qs("#statusPill").textContent = duplicate ? "Copie" : "Sove";
+  qs("#clientPicker").value = proforma.clientId || "";
   qs("#clientName").value = proforma.clientName;
+  qs("#clientCompany").value = proforma.clientCompany || "";
   qs("#clientEmail").value = proforma.clientEmail;
   qs("#clientAddress").value = proforma.clientAddress;
   qs("#proformaDate").value = duplicate ? todayISO() : proforma.date;
@@ -584,8 +729,144 @@ function loadProforma(id, duplicate = false) {
   renderPreview();
 }
 
+function loadInvoice(id) {
+  const invoice = state.invoices.find((item) => item.id === id);
+  if (!invoice) return;
+  currentInvoiceId = invoice.id;
+  currentProformaId = null;
+  currentDocumentType = "invoice";
+  qs("#statusPill").textContent = "Facture";
+  qs("#clientPicker").value = invoice.clientId || "";
+  qs("#clientName").value = invoice.clientName;
+  qs("#clientCompany").value = invoice.clientCompany || "";
+  qs("#clientEmail").value = invoice.clientEmail;
+  qs("#clientAddress").value = invoice.clientAddress;
+  qs("#proformaDate").value = invoice.date;
+  qs("#validityDays").value = invoice.validityDays;
+  qs("#currency").value = invoice.currency;
+  qs("#exchangeRate").value = invoice.exchangeRate;
+  qs("#showDualCurrency").checked = invoice.showDualCurrency;
+  qs("#shipping").value = invoice.shipping;
+  qs("#globalDiscount").value = invoice.globalDiscount;
+  qs("#paymentTerms").value = invoice.paymentTerms;
+  qs("#incoterms").value = invoice.incoterms;
+  qs("#hsCode").value = invoice.hsCode;
+  qs("#notes").value = invoice.notes;
+  qs("#proformaNumber").value = invoice.number;
+  qs("#lineItems").innerHTML = "";
+  invoice.lines.forEach((line) => addLine(line));
+  activateTab("builder");
+  renderPreview();
+}
+
 function activateTab(tab) {
   qs(`.nav-btn[data-tab="${tab}"]`).click();
+}
+
+function renderClientPicker() {
+  const picker = qs("#clientPicker");
+  const current = picker.value;
+  picker.innerHTML = `<option value="">Chwazi yon kliyan...</option>`;
+  state.clients.forEach((client) => {
+    const label = client.company ? `${client.name} - ${client.company}` : client.name;
+    picker.add(new Option(label || "Kliyan san non", client.id));
+  });
+  picker.value = current;
+}
+
+function applyClientToProforma(id) {
+  const client = state.clients.find((item) => item.id === id);
+  if (!client) return;
+  qs("#clientName").value = client.name || "";
+  qs("#clientCompany").value = client.company || "";
+  qs("#clientEmail").value = client.email || "";
+  qs("#clientAddress").value = client.address || "";
+  renderPreview();
+}
+
+function saveClient() {
+  const id = qs("#savedClientId").value || crypto.randomUUID();
+  const client = {
+    id,
+    name: qs("#savedClientName").value.trim(),
+    company: qs("#savedClientCompany").value.trim(),
+    email: qs("#savedClientEmail").value.trim(),
+    phone: qs("#savedClientPhone").value.trim(),
+    address: qs("#savedClientAddress").value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  if (!client.name && !client.company && !client.email) {
+    toast("Ranpli omwen non, antrepriz oswa email kliyan an.");
+    return;
+  }
+
+  const index = state.clients.findIndex((item) => item.id === id);
+  if (index >= 0) state.clients[index] = client;
+  else state.clients.unshift(client);
+  persist();
+  clearClientForm();
+  renderClients();
+  renderClientPicker();
+  toast("Kliyan an sove.");
+}
+
+function clearClientForm() {
+  ["#savedClientId", "#savedClientName", "#savedClientCompany", "#savedClientEmail", "#savedClientPhone", "#savedClientAddress"].forEach((selector) => {
+    qs(selector).value = "";
+  });
+}
+
+function editClient(id) {
+  const client = state.clients.find((item) => item.id === id);
+  if (!client) return;
+  qs("#savedClientId").value = client.id;
+  qs("#savedClientName").value = client.name || "";
+  qs("#savedClientCompany").value = client.company || "";
+  qs("#savedClientEmail").value = client.email || "";
+  qs("#savedClientPhone").value = client.phone || "";
+  qs("#savedClientAddress").value = client.address || "";
+}
+
+function deleteClient(id) {
+  const client = state.clients.find((item) => item.id === id);
+  if (!client) return;
+  const confirmed = window.confirm(`Voulez-vous vraiment supprimer ce client ?\n\n${client.name || client.company || "Client"}`);
+  if (!confirmed) return;
+
+  state.clients = state.clients.filter((item) => item.id !== id);
+  if (qs("#clientPicker").value === id) qs("#clientPicker").value = "";
+  persist();
+  clearClientForm();
+  renderClients();
+  renderClientPicker();
+  toast("Kliyan an supprime.");
+}
+
+function renderClients() {
+  const search = qs("#clientSearch")?.value?.toLowerCase() || "";
+  const clients = state.clients.filter((client) => JSON.stringify(client).toLowerCase().includes(search));
+  qs("#clientList").innerHTML = clients.length ? clients.map((client) => `
+    <article class="item-card">
+      <div>
+        <strong>${escapeHtml(client.name || "Kliyan san non")}</strong>
+        <p>${escapeHtml(client.company || "-")} · ${escapeHtml(client.email || "-")}</p>
+        <p>${escapeHtml(client.phone || "")}${client.phone && client.address ? " · " : ""}${escapeHtml(client.address || "")}</p>
+      </div>
+      <div class="mini-actions">
+        <button type="button" data-use-client="${client.id}">Itilize</button>
+        <button type="button" data-edit-client="${client.id}">Edit</button>
+        <button type="button" class="danger-action" data-delete-client="${client.id}">Supprimer</button>
+      </div>
+    </article>
+  `).join("") : `<p>Aucun kliyan sove pou kounye a.</p>`;
+
+  qsa("[data-use-client]").forEach((btn) => btn.addEventListener("click", () => {
+    qs("#clientPicker").value = btn.dataset.useClient;
+    applyClientToProforma(btn.dataset.useClient);
+    activateTab("builder");
+  }));
+  qsa("[data-edit-client]").forEach((btn) => btn.addEventListener("click", () => editClient(btn.dataset.editClient)));
+  qsa("[data-delete-client]").forEach((btn) => btn.addEventListener("click", () => deleteClient(btn.dataset.deleteClient)));
 }
 
 function renderProductPicker() {
@@ -652,10 +933,16 @@ function editProduct(id) {
 }
 
 function deleteProduct(id) {
+  const product = state.products.find((item) => item.id === id);
+  if (!product) return;
+  const confirmed = window.confirm(`Voulez-vous vraiment supprimer ce produit ?\n\n${product.name || "Produit"}`);
+  if (!confirmed) return;
+
   state.products = state.products.filter((item) => item.id !== id);
   persist();
   renderProducts();
   renderProductPicker();
+  toast("Produit supprime.");
 }
 
 function renderProducts() {
@@ -700,10 +987,16 @@ function renderTaxes() {
   });
   qsa("[data-delete-tax]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const tax = state.taxes.find((item) => item.id === btn.dataset.deleteTax);
+      if (!tax) return;
+      const confirmed = window.confirm(`Voulez-vous vraiment supprimer cette taxe ?\n\n${tax.name || "Taxe"}`);
+      if (!confirmed) return;
+
       state.taxes = state.taxes.filter((tax) => tax.id !== btn.dataset.deleteTax);
       persist();
       refreshAll();
       renderPreview();
+      toast("Taxe supprimee.");
     });
   });
 }
@@ -725,43 +1018,201 @@ function renderRecords() {
   const search = qs("#recordSearch")?.value?.toLowerCase() || "";
   const records = state.proformas.filter((item) => JSON.stringify(item).toLowerCase().includes(search));
   qs("#recordsList").innerHTML = records.length ? records.map((item) => `
+    ${(() => {
+      const invoice = state.invoices.find((record) => record.originalProformaId === item.id);
+      const convertButton = invoice
+        ? `<button type="button" disabled>Facture creee</button>`
+        : `<button type="button" data-convert-record="${item.id}">Convertir en Facture</button>`;
+      return `
     <article class="record-card">
       <div>
         <strong>${escapeHtml(item.number)} · ${escapeHtml(item.clientName || "Client")}</strong>
         <p>${escapeHtml(item.date)} · ${escapeHtml(item.currency)} · ${money(item.total, item.currency)}</p>
       </div>
       <div class="mini-actions">
+        ${convertButton}
         <button type="button" data-open-record="${item.id}">Ouvri</button>
         <button type="button" data-duplicate-record="${item.id}">Duplike</button>
         <button type="button" data-email-record="${item.id}">Email</button>
+        <button type="button" class="danger-action" data-delete-record="${item.id}">Supprimer</button>
       </div>
     </article>
+      `;
+    })()}
   `).join("") : `<p>Aucun proforma sove pou kounye a.</p>`;
 
   qsa("[data-open-record]").forEach((btn) => btn.addEventListener("click", () => loadProforma(btn.dataset.openRecord)));
   qsa("[data-duplicate-record]").forEach((btn) => btn.addEventListener("click", () => loadProforma(btn.dataset.duplicateRecord, true)));
   qsa("[data-email-record]").forEach((btn) => btn.addEventListener("click", () => emailProforma(btn.dataset.emailRecord)));
+  qsa("[data-convert-record]").forEach((btn) => btn.addEventListener("click", () => convertProformaToInvoice(btn.dataset.convertRecord)));
+  qsa("[data-delete-record]").forEach((btn) => btn.addEventListener("click", () => deleteProforma(btn.dataset.deleteRecord)));
+}
+
+function convertProformaToInvoice(id) {
+  const proforma = state.proformas.find((record) => record.id === id);
+  if (!proforma) return;
+  const existingInvoice = state.invoices.find((record) => record.originalProformaId === id);
+  if (existingInvoice) {
+    loadInvoice(existingInvoice.id);
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Voulez-vous convertir cette proforma en facture ?\n\n${proforma.number || "Proforma"} - ${proforma.clientName || "Client"}`
+  );
+  if (!confirmed) return;
+
+  const invoice = {
+    ...structuredClone(proforma),
+    id: crypto.randomUUID(),
+    type: "invoice",
+    number: nextInvoiceNumber(),
+    originalProformaId: proforma.id,
+    originalProformaNumber: proforma.number,
+    convertedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  state.invoices.unshift(invoice);
+  state.settings.invoiceSequence = (state.settings.invoiceSequence || 1) + 1;
+  persist();
+  renderRecords();
+  renderInvoices();
+  renderReports();
+  loadInvoice(invoice.id);
+  toast("Proforma convertie en facture.");
+}
+
+function deleteProforma(id) {
+  const item = state.proformas.find((record) => record.id === id);
+  if (!item) return;
+
+  const label = `${item.number || "Proforma"} - ${item.clientName || "Client"}`;
+  const confirmed = window.confirm(`Voulez-vous vraiment supprimer definitivement cette proforma ?\n\n${label}`);
+  if (!confirmed) return;
+
+  state.proformas = state.proformas.filter((record) => record.id !== id);
+  if (currentProformaId === id) {
+    currentProformaId = null;
+    newProforma();
+  }
+  persist();
+  renderRecords();
+  renderReports();
+  toast("Proforma supprimee definitivement.");
+}
+
+function renderInvoices() {
+  const search = qs("#invoiceSearch")?.value?.toLowerCase() || "";
+  const invoices = state.invoices.filter((item) => JSON.stringify(item).toLowerCase().includes(search));
+  qs("#invoicesList").innerHTML = invoices.length ? invoices.map((item) => `
+    <article class="record-card">
+      <div>
+        <strong>${escapeHtml(item.number)} · ${escapeHtml(item.clientName || "Client")}</strong>
+        <p>${escapeHtml(item.date)} · ${escapeHtml(item.currency)} · ${money(item.total, item.currency)}</p>
+        ${item.originalProformaNumber ? `<p>Depuis: ${escapeHtml(item.originalProformaNumber)}</p>` : ""}
+      </div>
+      <div class="mini-actions">
+        <button type="button" data-open-invoice="${item.id}">Ouvri</button>
+        <button type="button" data-email-invoice="${item.id}">Email</button>
+        <button type="button" class="danger-action" data-delete-invoice="${item.id}">Supprimer</button>
+      </div>
+    </article>
+  `).join("") : `<p>Aucune facture pou kounye a.</p>`;
+
+  qsa("[data-open-invoice]").forEach((btn) => btn.addEventListener("click", () => loadInvoice(btn.dataset.openInvoice)));
+  qsa("[data-email-invoice]").forEach((btn) => btn.addEventListener("click", () => emailInvoice(btn.dataset.emailInvoice)));
+  qsa("[data-delete-invoice]").forEach((btn) => btn.addEventListener("click", () => deleteInvoice(btn.dataset.deleteInvoice)));
+}
+
+function deleteInvoice(id) {
+  const item = state.invoices.find((record) => record.id === id);
+  if (!item) return;
+
+  const label = `${item.number || "Facture"} - ${item.clientName || "Client"}`;
+  const confirmed = window.confirm(`Voulez-vous vraiment supprimer definitivement cette facture ?\n\n${label}`);
+  if (!confirmed) return;
+
+  state.invoices = state.invoices.filter((record) => record.id !== id);
+  if (currentInvoiceId === id) {
+    currentInvoiceId = null;
+    newProforma();
+  }
+  persist();
+  renderRecords();
+  renderInvoices();
+  renderReports();
+  toast("Facture supprimee definitivement.");
 }
 
 function emailProforma(id) {
   const item = state.proformas.find((record) => record.id === id);
   if (!item) return;
-  const subject = encodeURIComponent(`Proforma ${item.number} - ${state.company.name}`);
-  const body = encodeURIComponent(`Bonjour,\n\nVeuillez trouver la proforma ${item.number} d'un montant de ${money(item.total, item.currency)}.\n\nCordialement,\n${state.company.name}`);
-  window.location.href = `mailto:${item.clientEmail || ""}?subject=${subject}&body=${body}`;
+
+  const confirmed = window.confirm(
+    "Le navigateur ne peut pas attacher un PDF automatiquement dans un email.\n\n" +
+    "Le systeme va d'abord ouvrir la fenetre PDF pour enregistrer la proforma avec le bon nom. Ensuite, votre email va s'ouvrir et vous pourrez attacher ce PDF.\n\n" +
+    "Continuer ?"
+  );
+  if (!confirmed) return;
+
+  loadProforma(id);
+  window.setTimeout(() => printThenEmailProforma(item), 250);
+}
+
+function emailInvoice(id) {
+  const item = state.invoices.find((record) => record.id === id);
+  if (!item) return;
+
+  const confirmed = window.confirm(
+    "Le navigateur ne peut pas attacher un PDF automatiquement dans un email.\n\n" +
+    "Le systeme va d'abord ouvrir la fenetre PDF pour enregistrer la facture avec le bon nom. Ensuite, votre email va s'ouvrir et vous pourrez attacher ce PDF.\n\n" +
+    "Continuer ?"
+  );
+  if (!confirmed) return;
+
+  loadInvoice(id);
+  window.setTimeout(() => printThenEmailProforma(item), 250);
 }
 
 function renderReports() {
-  const total = state.proformas.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const count = state.proformas.length;
+  const totalsByCurrency = sumTotalsByCurrency(state.proformas);
   const topClient = topBy(state.proformas, "clientName");
-  const topCurrency = topBy(state.proformas, "currency");
+  const topCurrency = topCurrencyByActivity(state.proformas);
   qs("#reportsGrid").innerHTML = `
     <article class="report-card"><span>Proforma total</span><strong>${count}</strong></article>
-    <article class="report-card"><span>Montan total</span><strong>${money(total, "USD")}</strong></article>
+    <article class="report-card"><span>Montan total an goud</span><strong>${money(totalsByCurrency.HTG, "HTG")}</strong></article>
+    <article class="report-card"><span>Montan total an $US</span><strong>${money(totalsByCurrency.USD, "USD")}</strong></article>
     <article class="report-card"><span>Top kliyan</span><strong>${escapeHtml(topClient || "-")}</strong></article>
-    <article class="report-card"><span>Lajan plis itilize</span><strong>${escapeHtml(topCurrency || "-")}</strong></article>
+    <article class="report-card"><span>Lajan plis itilize</span><strong>${escapeHtml(formatCurrencyLabel(topCurrency))}</strong></article>
   `;
+}
+
+function sumTotalsByCurrency(items) {
+  return items.reduce((totals, item) => {
+    const currency = item.currency === "HTG" ? "HTG" : "USD";
+    totals[currency] += Number(item.total || 0);
+    return totals;
+  }, { HTG: 0, USD: 0 });
+}
+
+function topCurrencyByActivity(items) {
+  const map = new Map();
+  items.forEach((item) => {
+    const currency = item.currency === "HTG" ? "HTG" : "USD";
+    const total = Number(item.total || 0);
+    if (!total) return;
+    const current = map.get(currency) || { count: 0, total: 0 };
+    map.set(currency, { count: current.count + 1, total: current.total + total });
+  });
+  return [...map.entries()]
+    .sort((a, b) => b[1].count - a[1].count || b[1].total - a[1].total)[0]?.[0] || "";
+}
+
+function formatCurrencyLabel(currency) {
+  if (currency === "HTG") return "Gourdes (HTG)";
+  if (currency === "USD") return "Dollar US (USD)";
+  return "-";
 }
 
 function topBy(items, key) {
