@@ -15,6 +15,7 @@ const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
 const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
 const VENDOR_SERVICE_FEES_COLLECTION = 'vendorServiceFees';
+const VENDOR_PLAN_BONUSES_COLLECTION = 'vendorPlanBonuses';
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 const REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorServiceFee';
 const DEFAULT_FORM_SETTINGS = {
@@ -48,7 +49,12 @@ function mergeRequiredVendorFields(fields = []) {
 const DEFAULT_PLAN_SETTINGS = {
   proPrice: 1750,
   currency: 'HTG',
-  payoutDelayDays: 30
+  payoutDelayDays: 30,
+  firstActivationBonus: {
+    enabled: false,
+    amount: 0,
+    durationMonths: 1
+  }
 };
 
 class VendorsDashboard {
@@ -64,6 +70,7 @@ class VendorsDashboard {
     this.vendorSalesSummaries = [];
     this.vendorPayouts = [];
     this.vendorServiceFees = [];
+    this.vendorPlanBonuses = [];
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
@@ -78,7 +85,7 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot, bonusSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
@@ -88,7 +95,8 @@ class VendorsDashboard {
       getDoc(doc(db, ...FORM_SETTINGS_REF)),
       getDoc(doc(db, ...PLAN_SETTINGS_REF)),
       getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc'))),
-      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc')))
+      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc'))),
+      getDocs(query(collection(db, VENDOR_PLAN_BONUSES_COLLECTION), orderBy('updatedAt', 'desc')))
     ]);
     this.applications = applicationSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendorProducts = productSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -105,6 +113,9 @@ class VendorsDashboard {
     this.vendorServiceFees = serviceFeeSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((a, b) => Date.parse(String(b.createdAt || b.requestedAt || b.paidAt || '')) - Date.parse(String(a.createdAt || a.requestedAt || a.paidAt || '')));
+    this.vendorPlanBonuses = bonusSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => Date.parse(String(b.updatedAt || b.createdAt || '')) - Date.parse(String(a.updatedAt || a.createdAt || '')));
     this.formSettings = formSettingsSnap.exists()
       ? {
           ...DEFAULT_FORM_SETTINGS,
@@ -693,6 +704,27 @@ class VendorsDashboard {
     return map[id] || id;
   }
 
+  getVendorNameById(vendorId) {
+    const id = String(vendorId || '').trim();
+    const vendor = this.allVendors.find((item) => String(item.vendorId || item.uid || item.id) === id);
+    return vendor?.vendorName || vendor?.shopName || vendor?.email || '';
+  }
+
+  getVendorPlanBonusStatus(bonus = {}) {
+    if (bonus.enabled === false || String(bonus.status || '').toLowerCase() === 'disabled') return 'desactivee';
+    const now = Date.now();
+    const startMs = Date.parse(String(bonus.startAt || ''));
+    const endMs = Date.parse(String(bonus.endAt || ''));
+    if (Number.isFinite(startMs) && startMs > now) return 'programmee';
+    if (Number.isFinite(endMs) && endMs <= now) return 'expiree';
+    return 'active';
+  }
+
+  toIsoFromLocalInput(value = '') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+  }
+
   renderFormBuilder() {
     return `
       <div class="applications" style="margin-top:1.2rem;">
@@ -722,6 +754,10 @@ class VendorsDashboard {
   }
 
   renderPlanSettings() {
+    const firstBonus = {
+      ...DEFAULT_PLAN_SETTINGS.firstActivationBonus,
+      ...(this.planSettings.firstActivationBonus || {})
+    };
     return `
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -742,6 +778,120 @@ class VendorsDashboard {
         <div class="actions">
           <button type="button" data-save-plan-settings class="approve">Enregistrer les plans</button>
         </div>
+      </div>
+      <div class="application-card" style="margin-top:1.2rem;">
+        <div class="application-top">
+          <div>
+            <h3>Bonification de premiere activation</h3>
+            <p>Offre globale appliquee une seule fois aux vendeurs qui activent le Plan Pro pour la premiere fois.</p>
+          </div>
+          <div class="badge" style="color:${firstBonus.enabled ? '#14532D' : '#7F1D1D'};background:${firstBonus.enabled ? 'rgba(20,83,45,.12)' : 'rgba(127,29,29,.12)'};">${firstBonus.enabled ? 'Activee' : 'Desactivee'}</div>
+        </div>
+        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
+          <label>
+            <strong>Etat</strong>
+            <select id="vendorFirstBonusEnabled" style="${this.adminInputStyle()}">
+              <option value="false" ${firstBonus.enabled ? '' : 'selected'}>Desactivee</option>
+              <option value="true" ${firstBonus.enabled ? 'selected' : ''}>Activee</option>
+            </select>
+          </label>
+          <label>
+            <strong>Montant promotionnel</strong>
+            <input id="vendorFirstBonusAmount" type="number" min="0" step="1" value="${this.escape(firstBonus.amount || 0)}" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Duree</strong>
+            <select id="vendorFirstBonusDuration" style="${this.adminInputStyle()}">
+              ${[1, 3, 6].map((months) => `<option value="${months}" ${Number(firstBonus.durationMonths || 1) === months ? 'selected' : ''}>${months} mois</option>`).join('')}
+            </select>
+          </label>
+          <div>
+            <strong>Prix normal</strong>
+            <span style="display:block;margin-top:.75rem;font-weight:800;">${this.formatPrice(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span>
+          </div>
+        </div>
+        <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. La desactivation ne retire pas une bonification deja payee.</p>
+      </div>
+      <div class="application-card" style="margin-top:1.2rem;">
+        <div class="application-top">
+          <div>
+            <h3>Bonifications speciales</h3>
+            <p>Accordez un prix Plan Pro temporaire a un store precis. Une offre speciale active passe avant l offre globale.</p>
+          </div>
+        </div>
+        <div class="application-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;">
+          <label>
+            <strong>Vendeur</strong>
+            <select id="vendorSpecialBonusVendor" style="${this.adminInputStyle()}">
+              <option value="">Selectionner...</option>
+              ${this.allVendors.map((vendor) => {
+                const vendorId = vendor.vendorId || vendor.uid || vendor.id;
+                const label = vendor.vendorName || vendor.shopName || vendor.email || vendorId;
+                return `<option value="${this.escape(vendorId)}">${this.escape(label)}</option>`;
+              }).join('')}
+            </select>
+          </label>
+          <label>
+            <strong>Montant special</strong>
+            <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Date debut</strong>
+            <input id="vendorSpecialBonusStart" type="datetime-local" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Date fin</strong>
+            <input id="vendorSpecialBonusEnd" type="datetime-local" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Etat</strong>
+            <select id="vendorSpecialBonusEnabled" style="${this.adminInputStyle()}">
+              <option value="true">Activee</option>
+              <option value="false">Desactivee</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" data-save-special-bonus class="approve">Enregistrer la bonification speciale</button>
+        </div>
+        ${this.renderVendorPlanBonusesTable()}
+      </div>
+    `;
+  }
+
+  renderVendorPlanBonusesTable() {
+    if (!this.vendorPlanBonuses.length) {
+      return '<p class="application-copy" style="margin-top:1rem;">Aucune bonification speciale enregistree pour le moment.</p>';
+    }
+
+    return `
+      <div class="applications" style="margin-top:1rem;">
+        ${this.vendorPlanBonuses.map((bonus) => {
+          const status = this.getVendorPlanBonusStatus(bonus);
+          const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || bonus.vendorId || 'Vendeur';
+          return `
+            <div class="application-card" style="box-shadow:none;">
+              <div class="application-top">
+                <div>
+                  <h3>${this.escape(vendorName)}</h3>
+                  <p>${this.escape(this.formatDateTime(bonus.startAt))} - ${this.escape(this.formatDateTime(bonus.endAt))}</p>
+                </div>
+                <div class="badge">${this.escape(status)}</div>
+              </div>
+              <div class="application-grid">
+                <div><strong>Montant</strong><span>${this.formatPrice(bonus.amount || 0)}</span></div>
+                <div><strong>Prix normal</strong><span>${this.formatPrice(bonus.normalAmount || this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span></div>
+                <div><strong>Etat</strong><span>${bonus.enabled === false ? 'Desactivee' : 'Activee'}</span></div>
+                <div><strong>Derniere mise a jour</strong><span>${this.escape(this.formatDateTime(bonus.updatedAt))}</span></div>
+              </div>
+              <div class="actions">
+                <button type="button" data-toggle-special-bonus="${this.escape(bonus.id)}" data-next-enabled="${bonus.enabled === false ? 'true' : 'false'}">
+                  ${bonus.enabled === false ? 'Activer' : 'Desactiver'}
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -1206,6 +1356,16 @@ class VendorsDashboard {
     this.root.querySelector('[data-save-plan-settings]')?.addEventListener('click', async () => {
       await this.savePlanSettings();
     });
+
+    this.root.querySelector('[data-save-special-bonus]')?.addEventListener('click', async () => {
+      await this.saveSpecialVendorBonus();
+    });
+
+    this.root.querySelectorAll('[data-toggle-special-bonus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.toggleSpecialVendorBonus(button.dataset.toggleSpecialBonus, button.dataset.nextEnabled === 'true');
+      });
+    });
   }
 
   getApplicationEditControl(fieldId) {
@@ -1654,16 +1814,107 @@ class VendorsDashboard {
   }
 
   async savePlanSettings() {
+    const firstBonusEnabled = this.root.querySelector('#vendorFirstBonusEnabled')?.value === 'true';
+    const firstBonusAmount = Number(this.root.querySelector('#vendorFirstBonusAmount')?.value || 0);
+    const firstBonusDuration = Number(this.root.querySelector('#vendorFirstBonusDuration')?.value || 1);
+    if (firstBonusEnabled && firstBonusAmount <= 0) {
+      window.alert('Montant promotionnel invalide.');
+      return;
+    }
+
     const payload = {
       proPrice: Number(this.root.querySelector('#vendorPlanProPrice')?.value || DEFAULT_PLAN_SETTINGS.proPrice),
       currency: String(this.root.querySelector('#vendorPlanCurrency')?.value || DEFAULT_PLAN_SETTINGS.currency).trim() || 'HTG',
       payoutDelayDays: Number(this.root.querySelector('#vendorPlanPayoutDelay')?.value || DEFAULT_PLAN_SETTINGS.payoutDelayDays),
+      firstActivationBonus: {
+        enabled: firstBonusEnabled,
+        amount: Math.max(0, firstBonusAmount),
+        durationMonths: [1, 3, 6].includes(firstBonusDuration) ? firstBonusDuration : 1
+      },
       updatedAt: new Date().toISOString(),
       updatedBy: 'dashboard_admin'
     };
 
     await setDoc(doc(db, ...PLAN_SETTINGS_REF), payload, { merge: true });
     this.planSettings = { ...DEFAULT_PLAN_SETTINGS, ...payload };
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async saveSpecialVendorBonus() {
+    const vendorId = String(this.root.querySelector('#vendorSpecialBonusVendor')?.value || '').trim();
+    const amount = Number(this.root.querySelector('#vendorSpecialBonusAmount')?.value || 0);
+    const startAt = this.toIsoFromLocalInput(this.root.querySelector('#vendorSpecialBonusStart')?.value || '');
+    const endAt = this.toIsoFromLocalInput(this.root.querySelector('#vendorSpecialBonusEnd')?.value || '');
+    const enabled = this.root.querySelector('#vendorSpecialBonusEnabled')?.value !== 'false';
+    const vendorName = this.getVendorNameById(vendorId);
+
+    if (!vendorId) {
+      window.alert('Selectionnez un vendeur.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      window.alert('Montant special invalide.');
+      return;
+    }
+    if (!startAt || !endAt || Date.parse(endAt) <= Date.parse(startAt)) {
+      window.alert('La date de fin doit etre posterieure a la date de debut.');
+      return;
+    }
+
+    const hasOverlap = this.vendorPlanBonuses.some((bonus) => {
+      if (String(bonus.vendorId || '') !== vendorId) return false;
+      if (bonus.enabled === false) return false;
+      const status = this.getVendorPlanBonusStatus(bonus);
+      if (!['active', 'programmee'].includes(status)) return false;
+      const existingStart = Date.parse(String(bonus.startAt || ''));
+      const existingEnd = Date.parse(String(bonus.endAt || ''));
+      return Date.parse(startAt) < existingEnd && Date.parse(endAt) > existingStart;
+    });
+    if (hasOverlap) {
+      window.alert('Une bonification active ou programmee chevauche deja cette periode pour ce vendeur.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const id = `bonus-${vendorId}-${Date.now()}`;
+    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
+      id,
+      type: 'special_vendor',
+      vendorId,
+      vendorName,
+      amount,
+      normalAmount: Number(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice),
+      currency: this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency,
+      startAt,
+      endAt,
+      enabled,
+      status: enabled ? this.getVendorPlanBonusStatus({ startAt, endAt, enabled }) : 'disabled',
+      createdAt: now,
+      updatedAt: now,
+      updatedBy: 'dashboard_admin'
+    }, { merge: true });
+
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+    window.alert('Bonification speciale enregistree.');
+  }
+
+  async toggleSpecialVendorBonus(id, enabled) {
+    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
+    if (!bonus) return;
+    const confirmed = window.confirm(`${enabled ? 'Activer' : 'Desactiver'} cette bonification speciale ?`);
+    if (!confirmed) return;
+
+    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
+      enabled,
+      status: enabled ? this.getVendorPlanBonusStatus({ ...bonus, enabled }) : 'disabled',
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard_admin'
+    }, { merge: true });
+
     await this.loadData();
     this.render();
     this.attachEvents();
