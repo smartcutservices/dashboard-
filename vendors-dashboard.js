@@ -1398,8 +1398,10 @@ class VendorsDashboard {
       await this.saveFormSettings();
     });
 
-    this.root.querySelector('[data-save-plan-settings]')?.addEventListener('click', async () => {
-      await this.savePlanSettings();
+    this.root.querySelectorAll('[data-save-plan-settings]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.savePlanSettings();
+      });
     });
 
     this.root.querySelector('[data-save-special-bonus]')?.addEventListener('click', async () => {
