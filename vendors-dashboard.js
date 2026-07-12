@@ -2,6 +2,7 @@ import { db, auth } from './firebase-init.js';
 import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -71,6 +72,7 @@ class VendorsDashboard {
     this.vendorPayouts = [];
     this.vendorServiceFees = [];
     this.vendorPlanBonuses = [];
+    this.editingSpecialBonusId = '';
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
@@ -80,6 +82,8 @@ class VendorsDashboard {
 
   async init() {
     await this.loadData();
+    const removedExpiredBonuses = await this.cleanupExpiredVendorPlanBonuses();
+    if (removedExpiredBonuses) await this.loadData();
     this.render();
     this.attachEvents();
   }
@@ -134,6 +138,14 @@ class VendorsDashboard {
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id)),
       payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id)
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);
+  }
+
+  async cleanupExpiredVendorPlanBonuses() {
+    const expiredBonuses = (this.vendorPlanBonuses || []).filter((bonus) => this.getVendorPlanBonusStatus(bonus) === 'expiree');
+    if (!expiredBonuses.length) return 0;
+    await Promise.all(expiredBonuses.map((bonus) => deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, bonus.id))));
+    this.vendorPlanBonuses = this.vendorPlanBonuses.filter((bonus) => this.getVendorPlanBonusStatus(bonus) !== 'expiree');
+    return expiredBonuses.length;
   }
 
   normalizeCategory(value) {
@@ -782,6 +794,9 @@ class VendorsDashboard {
       ...(this.planSettings.firstActivationBonus || {})
     };
     const firstBonusDurationDays = this.normalizeBonusDurationDays(this.planSettings.firstActivationBonus || firstBonus);
+    const editingSpecialBonus = this.vendorPlanBonuses.find((bonus) => String(bonus.id) === String(this.editingSpecialBonusId)) || null;
+    const editingVendorId = editingSpecialBonus?.vendorId || '';
+    const editingDurationDays = editingSpecialBonus ? this.normalizeBonusDurationDays(editingSpecialBonus) : 30;
     return `
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -854,30 +869,31 @@ class VendorsDashboard {
               ${this.allVendors.map((vendor) => {
                 const vendorId = vendor.vendorId || vendor.uid || vendor.id;
                 const label = vendor.vendorName || vendor.shopName || vendor.email || vendorId;
-                return `<option value="${this.escape(vendorId)}">${this.escape(label)}</option>`;
+                return `<option value="${this.escape(vendorId)}" ${String(editingVendorId) === String(vendorId) ? 'selected' : ''}>${this.escape(label)}</option>`;
               }).join('')}
             </select>
           </label>
           <label>
             <strong>Montant mensuel special</strong>
-            <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" style="${this.adminInputStyle()}">
+            <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" value="${this.escape(editingSpecialBonus?.amount || '')}" style="${this.adminInputStyle()}">
           </label>
           <label>
             <strong>Duree</strong>
             <select id="vendorSpecialBonusDuration" style="${this.adminInputStyle()}">
-              ${[30, 90, 180].map((days) => `<option value="${days}">${days} jours</option>`).join('')}
+              ${[30, 90, 180].map((days) => `<option value="${days}" ${editingDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
             </select>
           </label>
           <label>
             <strong>Etat</strong>
             <select id="vendorSpecialBonusEnabled" style="${this.adminInputStyle()}">
-              <option value="true">Activee</option>
-              <option value="false">Desactivee</option>
+              <option value="true" ${editingSpecialBonus?.enabled === false ? '' : 'selected'}>Activee</option>
+              <option value="false" ${editingSpecialBonus?.enabled === false ? 'selected' : ''}>Desactivee</option>
             </select>
           </label>
         </div>
         <div class="actions">
-          <button type="button" data-save-special-bonus class="approve">Enregistrer la bonification speciale</button>
+          <button type="button" data-save-special-bonus class="approve">${editingSpecialBonus ? 'Mettre a jour la bonification speciale' : 'Enregistrer la bonification speciale'}</button>
+          ${editingSpecialBonus ? '<button type="button" data-cancel-special-bonus-edit>Annuler la modification</button>' : ''}
         </div>
         ${this.renderVendorPlanBonusesTable()}
       </div>
@@ -912,9 +928,11 @@ class VendorsDashboard {
                 <div><strong>Derniere mise a jour</strong><span>${this.escape(this.formatDateTime(bonus.updatedAt))}</span></div>
               </div>
               <div class="actions">
+                <button type="button" data-edit-special-bonus="${this.escape(bonus.id)}">Modifier</button>
                 <button type="button" data-toggle-special-bonus="${this.escape(bonus.id)}" data-next-enabled="${bonus.enabled === false ? 'true' : 'false'}">
                   ${bonus.enabled === false ? 'Activer' : 'Desactiver'}
                 </button>
+                <button type="button" class="reject" data-delete-special-bonus="${this.escape(bonus.id)}">Supprimer</button>
               </div>
             </div>
           `;
@@ -1388,9 +1406,29 @@ class VendorsDashboard {
       await this.saveSpecialVendorBonus();
     });
 
+    this.root.querySelector('[data-cancel-special-bonus-edit]')?.addEventListener('click', () => {
+      this.editingSpecialBonusId = '';
+      this.render();
+      this.attachEvents();
+    });
+
+    this.root.querySelectorAll('[data-edit-special-bonus]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.editingSpecialBonusId = button.dataset.editSpecialBonus || '';
+        this.render();
+        this.attachEvents();
+      });
+    });
+
     this.root.querySelectorAll('[data-toggle-special-bonus]').forEach((button) => {
       button.addEventListener('click', async () => {
         await this.toggleSpecialVendorBonus(button.dataset.toggleSpecialBonus, button.dataset.nextEnabled === 'true');
+      });
+    });
+
+    this.root.querySelectorAll('[data-delete-special-bonus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.deleteSpecialVendorBonus(button.dataset.deleteSpecialBonus);
       });
     });
   }
@@ -1887,7 +1925,10 @@ class VendorsDashboard {
       window.alert('Montant special invalide.');
       return;
     }
+    const editingId = String(this.editingSpecialBonusId || '').trim();
+    const existingBonus = editingId ? this.vendorPlanBonuses.find((bonus) => String(bonus.id) === editingId) : null;
     const hasOverlap = this.vendorPlanBonuses.some((bonus) => {
+      if (editingId && String(bonus.id) === editingId) return false;
       if (String(bonus.vendorId || '') !== vendorId) return false;
       if (bonus.enabled === false) return false;
       const status = this.getVendorPlanBonusStatus(bonus);
@@ -1902,7 +1943,7 @@ class VendorsDashboard {
     }
 
     const now = new Date().toISOString();
-    const id = `bonus-${vendorId}-${Date.now()}`;
+    const id = editingId || `bonus-${vendorId}-${Date.now()}`;
     await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
       id,
       type: 'special_vendor',
@@ -1917,15 +1958,16 @@ class VendorsDashboard {
       endAt,
       enabled,
       status: enabled ? this.getVendorPlanBonusStatus({ startAt, endAt, enabled }) : 'disabled',
-      createdAt: now,
+      createdAt: existingBonus?.createdAt || now,
       updatedAt: now,
       updatedBy: 'dashboard_admin'
     }, { merge: true });
 
+    this.editingSpecialBonusId = '';
     await this.loadData();
     this.render();
     this.attachEvents();
-    window.alert('Bonification speciale enregistree.');
+    window.alert(editingId ? 'Bonification speciale mise a jour.' : 'Bonification speciale enregistree.');
   }
 
   async toggleSpecialVendorBonus(id, enabled) {
@@ -1941,6 +1983,20 @@ class VendorsDashboard {
       updatedBy: 'dashboard_admin'
     }, { merge: true });
 
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async deleteSpecialVendorBonus(id) {
+    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
+    if (!bonus) return;
+    const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || 'ce vendeur';
+    const confirmed = window.confirm(`Supprimer definitivement la bonification speciale de ${vendorName} ?`);
+    if (!confirmed) return;
+
+    await deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id));
+    if (this.editingSpecialBonusId === id) this.editingSpecialBonusId = '';
     await this.loadData();
     this.render();
     this.attachEvents();
