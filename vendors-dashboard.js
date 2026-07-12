@@ -723,6 +723,7 @@ class VendorsDashboard {
   }
 
   getVendorPlanBonusStatus(bonus = {}) {
+    if (String(bonus.status || '').toLowerCase() === 'consumed') return 'consommee';
     if (bonus.enabled === false || String(bonus.status || '').toLowerCase() === 'disabled') return 'desactivee';
     const now = Date.now();
     const startMs = Date.parse(String(bonus.startAt || ''));
@@ -916,7 +917,7 @@ class VendorsDashboard {
               <div class="application-top">
                 <div>
                   <h3>${this.escape(vendorName)}</h3>
-                  <p>${this.escape(this.formatDateTime(bonus.startAt))} - ${this.escape(this.formatDateTime(bonus.endAt))}</p>
+                  <p>Duree activee a partir du paiement confirme.</p>
                 </div>
                 <div class="badge">${this.escape(status)}</div>
               </div>
@@ -1914,8 +1915,6 @@ class VendorsDashboard {
     const amount = Number(this.root.querySelector('#vendorSpecialBonusAmount')?.value || 0);
     const durationDays = Number(this.root.querySelector('#vendorSpecialBonusDuration')?.value || 30);
     const normalizedDurationDays = [30, 90, 180].includes(durationDays) ? durationDays : 30;
-    const startAt = new Date().toISOString();
-    const endAt = new Date(Date.parse(startAt) + normalizedDurationDays * 24 * 60 * 60 * 1000).toISOString();
     const enabled = this.root.querySelector('#vendorSpecialBonusEnabled')?.value !== 'false';
     const vendorName = this.getVendorNameById(vendorId);
 
@@ -1934,13 +1933,10 @@ class VendorsDashboard {
       if (String(bonus.vendorId || '') !== vendorId) return false;
       if (bonus.enabled === false) return false;
       const status = this.getVendorPlanBonusStatus(bonus);
-      if (!['active', 'programmee'].includes(status)) return false;
-      const existingStart = Date.parse(String(bonus.startAt || ''));
-      const existingEnd = Date.parse(String(bonus.endAt || ''));
-      return Date.parse(startAt) < existingEnd && Date.parse(endAt) > existingStart;
+      return ['active', 'programmee'].includes(status);
     });
     if (hasOverlap) {
-      window.alert('Une bonification active ou programmee chevauche deja cette periode pour ce vendeur.');
+      window.alert('Une bonification active ou programmee existe deja pour ce vendeur.');
       return;
     }
 
@@ -1956,10 +1952,10 @@ class VendorsDashboard {
       currency: this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency,
       durationDays: normalizedDurationDays,
       durationMonths: this.bonusDurationMonthsLabel(normalizedDurationDays),
-      startAt,
-      endAt,
+      startAt: '',
+      endAt: '',
       enabled,
-      status: enabled ? this.getVendorPlanBonusStatus({ startAt, endAt, enabled }) : 'disabled',
+      status: enabled ? 'active' : 'disabled',
       createdAt: existingBonus?.createdAt || now,
       updatedAt: now,
       updatedBy: 'dashboard_admin'
