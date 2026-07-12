@@ -53,7 +53,7 @@ const DEFAULT_PLAN_SETTINGS = {
   firstActivationBonus: {
     enabled: false,
     amount: 0,
-    durationMonths: 1
+    durationDays: 30
   }
 };
 
@@ -720,6 +720,29 @@ class VendorsDashboard {
     return 'active';
   }
 
+  normalizeBonusDurationDays(source = {}) {
+    const days = Number(source.durationDays || source.bonusDurationDays || source.offerDurationDays || 0);
+    if ([30, 90, 180].includes(days)) return days;
+    const months = Number(source.durationMonths || source.bonusDurationMonths || source.offerDurationMonths || 0);
+    if (months === 1) return 30;
+    if (months === 3) return 90;
+    if (months === 6) return 180;
+    const startMs = Date.parse(String(source.startAt || source.bonusStartAt || source.offerStartAt || source.startDate || ''));
+    const endMs = Date.parse(String(source.endAt || source.bonusEndAt || source.offerEndAt || source.endDate || ''));
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs) {
+      const diffDays = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000));
+      if (diffDays >= 150) return 180;
+      if (diffDays >= 60) return 90;
+      return 30;
+    }
+    return 30;
+  }
+
+  bonusDurationMonthsLabel(days = 30) {
+    const durationDays = this.normalizeBonusDurationDays({ durationDays: days });
+    return durationDays === 180 ? 6 : durationDays === 90 ? 3 : 1;
+  }
+
   toIsoFromLocalInput(value = '') {
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
@@ -758,6 +781,7 @@ class VendorsDashboard {
       ...DEFAULT_PLAN_SETTINGS.firstActivationBonus,
       ...(this.planSettings.firstActivationBonus || {})
     };
+    const firstBonusDurationDays = this.normalizeBonusDurationDays(this.planSettings.firstActivationBonus || firstBonus);
     return `
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -783,7 +807,7 @@ class VendorsDashboard {
         <div class="application-top">
           <div>
             <h3>Bonification de premiere activation</h3>
-            <p>Offre globale appliquee une seule fois aux vendeurs qui activent le Plan Pro pour la premiere fois.</p>
+            <p>Offre globale appliquee aux vendeurs admissibles. Le montant est un prix bonifie par periode de 30 jours.</p>
           </div>
           <div class="badge" style="color:${firstBonus.enabled ? '#14532D' : '#7F1D1D'};background:${firstBonus.enabled ? 'rgba(20,83,45,.12)' : 'rgba(127,29,29,.12)'};">${firstBonus.enabled ? 'Activee' : 'Desactivee'}</div>
         </div>
@@ -796,13 +820,13 @@ class VendorsDashboard {
             </select>
           </label>
           <label>
-            <strong>Montant promotionnel</strong>
+            <strong>Montant mensuel bonifie</strong>
             <input id="vendorFirstBonusAmount" type="number" min="0" step="1" value="${this.escape(firstBonus.amount || 0)}" style="${this.adminInputStyle()}">
           </label>
           <label>
             <strong>Duree</strong>
             <select id="vendorFirstBonusDuration" style="${this.adminInputStyle()}">
-              ${[1, 3, 6].map((months) => `<option value="${months}" ${Number(firstBonus.durationMonths || 1) === months ? 'selected' : ''}>${months} mois</option>`).join('')}
+              ${[30, 90, 180].map((days) => `<option value="${days}" ${firstBonusDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
             </select>
           </label>
           <div>
@@ -810,16 +834,16 @@ class VendorsDashboard {
             <span style="display:block;margin-top:.75rem;font-weight:800;">${this.formatPrice(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span>
           </div>
         </div>
-        <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. La desactivation ne retire pas une bonification deja payee.</p>
+        <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. Chaque paiement donne uniquement 30 jours de Plan Pro; la duree indique seulement la fenetre pendant laquelle le prix bonifie reste disponible.</p>
       </div>
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-top">
           <div>
             <h3>Bonifications speciales</h3>
-            <p>Accordez un prix Plan Pro temporaire a un store precis. Une offre speciale active passe avant l offre globale.</p>
+            <p>Accordez un prix Plan Pro temporaire a un store precis. Le montant est paye tous les 30 jours; une offre speciale active passe avant l offre globale.</p>
           </div>
         </div>
-        <div class="application-grid" style="grid-template-columns:repeat(5,minmax(0,1fr));align-items:end;">
+        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
           <label>
             <strong>Vendeur</strong>
             <select id="vendorSpecialBonusVendor" style="${this.adminInputStyle()}">
@@ -832,16 +856,14 @@ class VendorsDashboard {
             </select>
           </label>
           <label>
-            <strong>Montant special</strong>
+            <strong>Montant mensuel special</strong>
             <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" style="${this.adminInputStyle()}">
           </label>
           <label>
-            <strong>Date debut</strong>
-            <input id="vendorSpecialBonusStart" type="datetime-local" style="${this.adminInputStyle()}">
-          </label>
-          <label>
-            <strong>Date fin</strong>
-            <input id="vendorSpecialBonusEnd" type="datetime-local" style="${this.adminInputStyle()}">
+            <strong>Duree</strong>
+            <select id="vendorSpecialBonusDuration" style="${this.adminInputStyle()}">
+              ${[30, 90, 180].map((days) => `<option value="${days}">${days} jours</option>`).join('')}
+            </select>
           </label>
           <label>
             <strong>Etat</strong>
@@ -869,6 +891,7 @@ class VendorsDashboard {
         ${this.vendorPlanBonuses.map((bonus) => {
           const status = this.getVendorPlanBonusStatus(bonus);
           const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || bonus.vendorId || 'Vendeur';
+          const durationDays = this.normalizeBonusDurationDays(bonus);
           return `
             <div class="application-card" style="box-shadow:none;">
               <div class="application-top">
@@ -879,7 +902,8 @@ class VendorsDashboard {
                 <div class="badge">${this.escape(status)}</div>
               </div>
               <div class="application-grid">
-                <div><strong>Montant</strong><span>${this.formatPrice(bonus.amount || 0)}</span></div>
+                <div><strong>Montant / 30 jours</strong><span>${this.formatPrice(bonus.amount || 0)}</span></div>
+                <div><strong>Duree</strong><span>${durationDays} jours</span></div>
                 <div><strong>Prix normal</strong><span>${this.formatPrice(bonus.normalAmount || this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span></div>
                 <div><strong>Etat</strong><span>${bonus.enabled === false ? 'Desactivee' : 'Activee'}</span></div>
                 <div><strong>Derniere mise a jour</strong><span>${this.escape(this.formatDateTime(bonus.updatedAt))}</span></div>
@@ -1816,7 +1840,7 @@ class VendorsDashboard {
   async savePlanSettings() {
     const firstBonusEnabled = this.root.querySelector('#vendorFirstBonusEnabled')?.value === 'true';
     const firstBonusAmount = Number(this.root.querySelector('#vendorFirstBonusAmount')?.value || 0);
-    const firstBonusDuration = Number(this.root.querySelector('#vendorFirstBonusDuration')?.value || 1);
+    const firstBonusDuration = Number(this.root.querySelector('#vendorFirstBonusDuration')?.value || 30);
     if (firstBonusEnabled && firstBonusAmount <= 0) {
       window.alert('Montant promotionnel invalide.');
       return;
@@ -1829,7 +1853,7 @@ class VendorsDashboard {
       firstActivationBonus: {
         enabled: firstBonusEnabled,
         amount: Math.max(0, firstBonusAmount),
-        durationMonths: [1, 3, 6].includes(firstBonusDuration) ? firstBonusDuration : 1
+        durationDays: [30, 90, 180].includes(firstBonusDuration) ? firstBonusDuration : 30
       },
       updatedAt: new Date().toISOString(),
       updatedBy: 'dashboard_admin'
@@ -1845,8 +1869,10 @@ class VendorsDashboard {
   async saveSpecialVendorBonus() {
     const vendorId = String(this.root.querySelector('#vendorSpecialBonusVendor')?.value || '').trim();
     const amount = Number(this.root.querySelector('#vendorSpecialBonusAmount')?.value || 0);
-    const startAt = this.toIsoFromLocalInput(this.root.querySelector('#vendorSpecialBonusStart')?.value || '');
-    const endAt = this.toIsoFromLocalInput(this.root.querySelector('#vendorSpecialBonusEnd')?.value || '');
+    const durationDays = Number(this.root.querySelector('#vendorSpecialBonusDuration')?.value || 30);
+    const normalizedDurationDays = [30, 90, 180].includes(durationDays) ? durationDays : 30;
+    const startAt = new Date().toISOString();
+    const endAt = new Date(Date.parse(startAt) + normalizedDurationDays * 24 * 60 * 60 * 1000).toISOString();
     const enabled = this.root.querySelector('#vendorSpecialBonusEnabled')?.value !== 'false';
     const vendorName = this.getVendorNameById(vendorId);
 
@@ -1858,11 +1884,6 @@ class VendorsDashboard {
       window.alert('Montant special invalide.');
       return;
     }
-    if (!startAt || !endAt || Date.parse(endAt) <= Date.parse(startAt)) {
-      window.alert('La date de fin doit etre posterieure a la date de debut.');
-      return;
-    }
-
     const hasOverlap = this.vendorPlanBonuses.some((bonus) => {
       if (String(bonus.vendorId || '') !== vendorId) return false;
       if (bonus.enabled === false) return false;
@@ -1887,6 +1908,8 @@ class VendorsDashboard {
       amount,
       normalAmount: Number(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice),
       currency: this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency,
+      durationDays: normalizedDurationDays,
+      durationMonths: this.bonusDurationMonthsLabel(normalizedDurationDays),
       startAt,
       endAt,
       enabled,
