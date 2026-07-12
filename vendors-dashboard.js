@@ -835,6 +835,9 @@ class VendorsDashboard {
           </div>
         </div>
         <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. Chaque paiement donne uniquement 30 jours de Plan Pro; la duree indique seulement la fenetre pendant laquelle le prix bonifie reste disponible.</p>
+        <div class="actions">
+          <button type="button" data-save-plan-settings class="approve">Enregistrer la bonification</button>
+        </div>
       </div>
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-top">
