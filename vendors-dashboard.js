@@ -1,7 +1,8 @@
 import { db, auth } from './firebase-init.js';
-import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js';
+import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js?v=20260805-1';
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -15,6 +16,7 @@ const FORM_SETTINGS_REF = ['vendorApplicationSettings', 'form'];
 const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
 const VENDOR_SERVICE_FEES_COLLECTION = 'vendorServiceFees';
+const VENDOR_PLAN_BONUSES_COLLECTION = 'vendorPlanBonuses';
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 const REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorServiceFee';
 const DEFAULT_FORM_SETTINGS = {
@@ -48,7 +50,12 @@ function mergeRequiredVendorFields(fields = []) {
 const DEFAULT_PLAN_SETTINGS = {
   proPrice: 1750,
   currency: 'HTG',
-  payoutDelayDays: 30
+  payoutDelayDays: 30,
+  firstActivationBonus: {
+    enabled: false,
+    amount: 0,
+    durationDays: 30
+  }
 };
 
 class VendorsDashboard {
@@ -64,6 +71,8 @@ class VendorsDashboard {
     this.vendorSalesSummaries = [];
     this.vendorPayouts = [];
     this.vendorServiceFees = [];
+    this.vendorPlanBonuses = [];
+    this.editingSpecialBonusId = '';
     this.formSettings = DEFAULT_FORM_SETTINGS;
     this.planSettings = DEFAULT_PLAN_SETTINGS;
     this.activeSection = 'applications';
@@ -73,12 +82,14 @@ class VendorsDashboard {
 
   async init() {
     await this.loadData();
+    const removedExpiredBonuses = await this.cleanupExpiredVendorPlanBonuses();
+    if (removedExpiredBonuses) await this.loadData();
     this.render();
     this.attachEvents();
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot, bonusSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
@@ -88,7 +99,8 @@ class VendorsDashboard {
       getDoc(doc(db, ...FORM_SETTINGS_REF)),
       getDoc(doc(db, ...PLAN_SETTINGS_REF)),
       getDocs(query(collection(db, VENDOR_PAYOUTS_COLLECTION), orderBy('createdAt', 'desc'))),
-      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc')))
+      getDocs(query(collection(db, VENDOR_SERVICE_FEES_COLLECTION), orderBy('createdAt', 'desc'))),
+      getDocs(query(collection(db, VENDOR_PLAN_BONUSES_COLLECTION), orderBy('updatedAt', 'desc')))
     ]);
     this.applications = applicationSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendorProducts = productSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -105,6 +117,9 @@ class VendorsDashboard {
     this.vendorServiceFees = serviceFeeSnapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((a, b) => Date.parse(String(b.createdAt || b.requestedAt || b.paidAt || '')) - Date.parse(String(a.createdAt || a.requestedAt || a.paidAt || '')));
+    this.vendorPlanBonuses = bonusSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => Date.parse(String(b.updatedAt || b.createdAt || '')) - Date.parse(String(a.updatedAt || a.createdAt || '')));
     this.formSettings = formSettingsSnap.exists()
       ? {
           ...DEFAULT_FORM_SETTINGS,
@@ -123,6 +138,14 @@ class VendorsDashboard {
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id)),
       payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id)
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);
+  }
+
+  async cleanupExpiredVendorPlanBonuses() {
+    const expiredBonuses = (this.vendorPlanBonuses || []).filter((bonus) => this.getVendorPlanBonusStatus(bonus) === 'expiree');
+    if (!expiredBonuses.length) return 0;
+    await Promise.all(expiredBonuses.map((bonus) => deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, bonus.id))));
+    this.vendorPlanBonuses = this.vendorPlanBonuses.filter((bonus) => this.getVendorPlanBonusStatus(bonus) !== 'expiree');
+    return expiredBonuses.length;
   }
 
   normalizeCategory(value) {
@@ -693,6 +716,51 @@ class VendorsDashboard {
     return map[id] || id;
   }
 
+  getVendorNameById(vendorId) {
+    const id = String(vendorId || '').trim();
+    const vendor = this.allVendors.find((item) => String(item.vendorId || item.uid || item.id) === id);
+    return vendor?.vendorName || vendor?.shopName || vendor?.email || '';
+  }
+
+  getVendorPlanBonusStatus(bonus = {}) {
+    if (String(bonus.status || '').toLowerCase() === 'consumed') return 'consommee';
+    if (bonus.enabled === false || String(bonus.status || '').toLowerCase() === 'disabled') return 'desactivee';
+    const now = Date.now();
+    const startMs = Date.parse(String(bonus.startAt || ''));
+    const endMs = Date.parse(String(bonus.endAt || ''));
+    if (Number.isFinite(startMs) && startMs > now) return 'programmee';
+    if (Number.isFinite(endMs) && endMs <= now) return 'expiree';
+    return 'active';
+  }
+
+  normalizeBonusDurationDays(source = {}) {
+    const days = Number(source.durationDays || source.bonusDurationDays || source.offerDurationDays || 0);
+    if ([30, 90, 180].includes(days)) return days;
+    const months = Number(source.durationMonths || source.bonusDurationMonths || source.offerDurationMonths || 0);
+    if (months === 1) return 30;
+    if (months === 3) return 90;
+    if (months === 6) return 180;
+    const startMs = Date.parse(String(source.startAt || source.bonusStartAt || source.offerStartAt || source.startDate || ''));
+    const endMs = Date.parse(String(source.endAt || source.bonusEndAt || source.offerEndAt || source.endDate || ''));
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs > startMs) {
+      const diffDays = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000));
+      if (diffDays >= 150) return 180;
+      if (diffDays >= 60) return 90;
+      return 30;
+    }
+    return 30;
+  }
+
+  bonusDurationMonthsLabel(days = 30) {
+    const durationDays = this.normalizeBonusDurationDays({ durationDays: days });
+    return durationDays === 180 ? 6 : durationDays === 90 ? 3 : 1;
+  }
+
+  toIsoFromLocalInput(value = '') {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString();
+  }
+
   renderFormBuilder() {
     return `
       <div class="applications" style="margin-top:1.2rem;">
@@ -722,6 +790,14 @@ class VendorsDashboard {
   }
 
   renderPlanSettings() {
+    const firstBonus = {
+      ...DEFAULT_PLAN_SETTINGS.firstActivationBonus,
+      ...(this.planSettings.firstActivationBonus || {})
+    };
+    const firstBonusDurationDays = this.normalizeBonusDurationDays(this.planSettings.firstActivationBonus || firstBonus);
+    const editingSpecialBonus = this.vendorPlanBonuses.find((bonus) => String(bonus.id) === String(this.editingSpecialBonusId)) || null;
+    const editingVendorId = editingSpecialBonus?.vendorId || '';
+    const editingDurationDays = editingSpecialBonus ? this.normalizeBonusDurationDays(editingSpecialBonus) : 30;
     return `
       <div class="application-card" style="margin-top:1.2rem;">
         <div class="application-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
@@ -742,6 +818,126 @@ class VendorsDashboard {
         <div class="actions">
           <button type="button" data-save-plan-settings class="approve">Enregistrer les plans</button>
         </div>
+      </div>
+      <div class="application-card" style="margin-top:1.2rem;">
+        <div class="application-top">
+          <div>
+            <h3>Bonification de premiere activation</h3>
+            <p>Offre globale appliquee aux vendeurs admissibles. Le montant est un prix bonifie par periode de 30 jours.</p>
+          </div>
+          <div class="badge" style="color:${firstBonus.enabled ? '#14532D' : '#7F1D1D'};background:${firstBonus.enabled ? 'rgba(20,83,45,.12)' : 'rgba(127,29,29,.12)'};">${firstBonus.enabled ? 'Activee' : 'Desactivee'}</div>
+        </div>
+        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
+          <label>
+            <strong>Etat</strong>
+            <select id="vendorFirstBonusEnabled" style="${this.adminInputStyle()}">
+              <option value="false" ${firstBonus.enabled ? '' : 'selected'}>Desactivee</option>
+              <option value="true" ${firstBonus.enabled ? 'selected' : ''}>Activee</option>
+            </select>
+          </label>
+          <label>
+            <strong>Montant mensuel bonifie</strong>
+            <input id="vendorFirstBonusAmount" type="number" min="0" step="1" value="${this.escape(firstBonus.amount || 0)}" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Duree</strong>
+            <select id="vendorFirstBonusDuration" style="${this.adminInputStyle()}">
+              ${[30, 90, 180].map((days) => `<option value="${days}" ${firstBonusDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
+            </select>
+          </label>
+          <div>
+            <strong>Prix normal</strong>
+            <span style="display:block;margin-top:.75rem;font-weight:800;">${this.formatPrice(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span>
+          </div>
+        </div>
+        <p class="application-copy" style="margin-top:.8rem;">Le backend verifie l historique des paiements Pro avant d appliquer cette offre. Chaque paiement donne uniquement 30 jours de Plan Pro; la duree indique seulement la fenetre pendant laquelle le prix bonifie reste disponible.</p>
+        <div class="actions">
+          <button type="button" data-save-plan-settings class="approve">Enregistrer la bonification</button>
+        </div>
+      </div>
+      <div class="application-card" style="margin-top:1.2rem;">
+        <div class="application-top">
+          <div>
+            <h3>Bonifications speciales</h3>
+            <p>Accordez un prix Plan Pro temporaire a un store precis. Le montant est paye tous les 30 jours; une offre speciale active passe avant l offre globale.</p>
+          </div>
+        </div>
+        <div class="application-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));align-items:end;">
+          <label>
+            <strong>Vendeur</strong>
+            <select id="vendorSpecialBonusVendor" style="${this.adminInputStyle()}">
+              <option value="">Selectionner...</option>
+              ${this.allVendors.map((vendor) => {
+                const vendorId = vendor.vendorId || vendor.uid || vendor.id;
+                const label = vendor.vendorName || vendor.shopName || vendor.email || vendorId;
+                return `<option value="${this.escape(vendorId)}" ${String(editingVendorId) === String(vendorId) ? 'selected' : ''}>${this.escape(label)}</option>`;
+              }).join('')}
+            </select>
+          </label>
+          <label>
+            <strong>Montant mensuel special</strong>
+            <input id="vendorSpecialBonusAmount" type="number" min="0" step="1" value="${this.escape(editingSpecialBonus?.amount || '')}" style="${this.adminInputStyle()}">
+          </label>
+          <label>
+            <strong>Duree</strong>
+            <select id="vendorSpecialBonusDuration" style="${this.adminInputStyle()}">
+              ${[30, 90, 180].map((days) => `<option value="${days}" ${editingDurationDays === days ? 'selected' : ''}>${days} jours</option>`).join('')}
+            </select>
+          </label>
+          <label>
+            <strong>Etat</strong>
+            <select id="vendorSpecialBonusEnabled" style="${this.adminInputStyle()}">
+              <option value="true" ${editingSpecialBonus?.enabled === false ? '' : 'selected'}>Activee</option>
+              <option value="false" ${editingSpecialBonus?.enabled === false ? 'selected' : ''}>Desactivee</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" data-save-special-bonus class="approve">${editingSpecialBonus ? 'Mettre a jour la bonification speciale' : 'Enregistrer la bonification speciale'}</button>
+          ${editingSpecialBonus ? '<button type="button" data-cancel-special-bonus-edit>Annuler la modification</button>' : ''}
+        </div>
+        ${this.renderVendorPlanBonusesTable()}
+      </div>
+    `;
+  }
+
+  renderVendorPlanBonusesTable() {
+    if (!this.vendorPlanBonuses.length) {
+      return '<p class="application-copy" style="margin-top:1rem;">Aucune bonification speciale enregistree pour le moment.</p>';
+    }
+
+    return `
+      <div class="applications" style="margin-top:1rem;">
+        ${this.vendorPlanBonuses.map((bonus) => {
+          const status = this.getVendorPlanBonusStatus(bonus);
+          const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || bonus.vendorId || 'Vendeur';
+          const durationDays = this.normalizeBonusDurationDays(bonus);
+          return `
+            <div class="application-card" style="box-shadow:none;">
+              <div class="application-top">
+                <div>
+                  <h3>${this.escape(vendorName)}</h3>
+                  <p>Duree activee a partir du paiement confirme.</p>
+                </div>
+                <div class="badge">${this.escape(status)}</div>
+              </div>
+              <div class="application-grid">
+                <div><strong>Montant / 30 jours</strong><span>${this.formatPrice(bonus.amount || 0)}</span></div>
+                <div><strong>Duree</strong><span>${durationDays} jours</span></div>
+                <div><strong>Prix normal</strong><span>${this.formatPrice(bonus.normalAmount || this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice)}</span></div>
+                <div><strong>Etat</strong><span>${bonus.enabled === false ? 'Desactivee' : 'Activee'}</span></div>
+                <div><strong>Derniere mise a jour</strong><span>${this.escape(this.formatDateTime(bonus.updatedAt))}</span></div>
+              </div>
+              <div class="actions">
+                <button type="button" data-edit-special-bonus="${this.escape(bonus.id)}">Modifier</button>
+                <button type="button" data-toggle-special-bonus="${this.escape(bonus.id)}" data-next-enabled="${bonus.enabled === false ? 'true' : 'false'}">
+                  ${bonus.enabled === false ? 'Activer' : 'Desactiver'}
+                </button>
+                <button type="button" class="reject" data-delete-special-bonus="${this.escape(bonus.id)}">Supprimer</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -855,12 +1051,16 @@ class VendorsDashboard {
           <div class="badge" style="color:#14532D; background:rgba(20, 83, 45, 0.12);">A payer ${this.formatPrice(pendingPayout)}</div>
         </div>
         <div class="application-grid">
-          <div><strong>Brut</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
+          <div><strong>Base commission (produits)</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
+          <div><strong>Livraison vendeur</strong><span>${this.formatPrice(summary.deliveryAmount)}</span></div>
           <div><strong>Commission</strong><span>${this.formatPrice(summary.commissionAmount)}</span></div>
           <div><strong>Net vendeur</strong><span>${this.formatPrice(summary.vendorNetAmount)}</span></div>
           <div><strong>Commandes</strong><span>${summary.totalOrders}</span></div>
           <div><strong>Deja decaisse</strong><span>${this.formatPrice(settledAmount)}</span></div>
           <div><strong>Solde a payer</strong><span>${this.formatPrice(pendingPayout)}</span></div>
+        </div>
+        <div class="application-copy">
+          <p>La commission est calculée uniquement sur le prix des produits. Les frais de livraison sont ajoutés intégralement au net du vendeur.</p>
         </div>
         <div class="actions">
           <button type="button" data-create-payout="${summary.vendorId}" class="approve" ${pendingPayout <= 0 ? 'disabled' : ''}>Payer le vendeur</button>
@@ -881,7 +1081,8 @@ class VendorsDashboard {
           <div class="badge" style="color:#14532D; background:rgba(20, 83, 45, 0.12);">${this.formatPrice(payout.netAmount)}</div>
         </div>
         <div class="application-grid">
-          <div><strong>Brut couvert</strong><span>${this.formatPrice(payout.grossAmount)}</span></div>
+          <div><strong>Brut produits</strong><span>${this.formatPrice(payout.productGrossAmount ?? payout.grossAmount)}</span></div>
+          <div><strong>Livraison vendeur</strong><span>${this.formatPrice(payout.deliveryAmount)}</span></div>
           <div><strong>Commission</strong><span>${this.formatPrice(payout.commissionAmount)}</span></div>
           <div><strong>Net verse</strong><span>${this.formatPrice(payout.netAmount)}</span></div>
           <div><strong>Date</strong><span>${payout.createdAt ? new Date(payout.createdAt).toLocaleString('fr-FR') : '-'}</span></div>
@@ -1064,7 +1265,8 @@ class VendorsDashboard {
       y += 12;
 
       [
-        `Brut couvert: ${this.formatPrice(payout?.grossAmount)}`,
+        `Brut produits: ${this.formatPrice(payout?.productGrossAmount ?? payout?.grossAmount)}`,
+        `Livraison vendeur: ${this.formatPrice(payout?.deliveryAmount)}`,
         `Commission Smart Cut Services: ${this.formatPrice(payout?.commissionAmount)}`,
         `Net verse au vendeur: ${this.formatPrice(payout?.netAmount)}`,
         `Nombre de commandes: ${coveredOrders.length}`
@@ -1203,8 +1405,40 @@ class VendorsDashboard {
       await this.saveFormSettings();
     });
 
-    this.root.querySelector('[data-save-plan-settings]')?.addEventListener('click', async () => {
-      await this.savePlanSettings();
+    this.root.querySelectorAll('[data-save-plan-settings]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.savePlanSettings();
+      });
+    });
+
+    this.root.querySelector('[data-save-special-bonus]')?.addEventListener('click', async () => {
+      await this.saveSpecialVendorBonus();
+    });
+
+    this.root.querySelector('[data-cancel-special-bonus-edit]')?.addEventListener('click', () => {
+      this.editingSpecialBonusId = '';
+      this.render();
+      this.attachEvents();
+    });
+
+    this.root.querySelectorAll('[data-edit-special-bonus]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.editingSpecialBonusId = button.dataset.editSpecialBonus || '';
+        this.render();
+        this.attachEvents();
+      });
+    });
+
+    this.root.querySelectorAll('[data-toggle-special-bonus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.toggleSpecialVendorBonus(button.dataset.toggleSpecialBonus, button.dataset.nextEnabled === 'true');
+      });
+    });
+
+    this.root.querySelectorAll('[data-delete-special-bonus]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        await this.deleteSpecialVendorBonus(button.dataset.deleteSpecialBonus);
+      });
     });
   }
 
@@ -1654,16 +1888,119 @@ class VendorsDashboard {
   }
 
   async savePlanSettings() {
+    const firstBonusEnabled = this.root.querySelector('#vendorFirstBonusEnabled')?.value === 'true';
+    const firstBonusAmount = Number(this.root.querySelector('#vendorFirstBonusAmount')?.value || 0);
+    const firstBonusDuration = Number(this.root.querySelector('#vendorFirstBonusDuration')?.value || 30);
+    if (firstBonusEnabled && firstBonusAmount <= 0) {
+      window.alert('Montant promotionnel invalide.');
+      return;
+    }
+
     const payload = {
       proPrice: Number(this.root.querySelector('#vendorPlanProPrice')?.value || DEFAULT_PLAN_SETTINGS.proPrice),
       currency: String(this.root.querySelector('#vendorPlanCurrency')?.value || DEFAULT_PLAN_SETTINGS.currency).trim() || 'HTG',
       payoutDelayDays: Number(this.root.querySelector('#vendorPlanPayoutDelay')?.value || DEFAULT_PLAN_SETTINGS.payoutDelayDays),
+      firstActivationBonus: {
+        enabled: firstBonusEnabled,
+        amount: Math.max(0, firstBonusAmount),
+        durationDays: [30, 90, 180].includes(firstBonusDuration) ? firstBonusDuration : 30
+      },
       updatedAt: new Date().toISOString(),
       updatedBy: 'dashboard_admin'
     };
 
     await setDoc(doc(db, ...PLAN_SETTINGS_REF), payload, { merge: true });
     this.planSettings = { ...DEFAULT_PLAN_SETTINGS, ...payload };
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async saveSpecialVendorBonus() {
+    const vendorId = String(this.root.querySelector('#vendorSpecialBonusVendor')?.value || '').trim();
+    const amount = Number(this.root.querySelector('#vendorSpecialBonusAmount')?.value || 0);
+    const durationDays = Number(this.root.querySelector('#vendorSpecialBonusDuration')?.value || 30);
+    const normalizedDurationDays = [30, 90, 180].includes(durationDays) ? durationDays : 30;
+    const enabled = this.root.querySelector('#vendorSpecialBonusEnabled')?.value !== 'false';
+    const vendorName = this.getVendorNameById(vendorId);
+
+    if (!vendorId) {
+      window.alert('Selectionnez un vendeur.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      window.alert('Montant special invalide.');
+      return;
+    }
+    const editingId = String(this.editingSpecialBonusId || '').trim();
+    const existingBonus = editingId ? this.vendorPlanBonuses.find((bonus) => String(bonus.id) === editingId) : null;
+    const hasOverlap = this.vendorPlanBonuses.some((bonus) => {
+      if (editingId && String(bonus.id) === editingId) return false;
+      if (String(bonus.vendorId || '') !== vendorId) return false;
+      if (bonus.enabled === false) return false;
+      const status = this.getVendorPlanBonusStatus(bonus);
+      return ['active', 'programmee'].includes(status);
+    });
+    if (hasOverlap) {
+      window.alert('Une bonification active ou programmee existe deja pour ce vendeur.');
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const id = editingId || `bonus-${vendorId}-${Date.now()}`;
+    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
+      id,
+      type: 'special_vendor',
+      vendorId,
+      vendorName,
+      amount,
+      normalAmount: Number(this.planSettings.proPrice || DEFAULT_PLAN_SETTINGS.proPrice),
+      currency: this.planSettings.currency || DEFAULT_PLAN_SETTINGS.currency,
+      durationDays: normalizedDurationDays,
+      durationMonths: this.bonusDurationMonthsLabel(normalizedDurationDays),
+      startAt: '',
+      endAt: '',
+      enabled,
+      status: enabled ? 'active' : 'disabled',
+      createdAt: existingBonus?.createdAt || now,
+      updatedAt: now,
+      updatedBy: 'dashboard_admin'
+    }, { merge: true });
+
+    this.editingSpecialBonusId = '';
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+    window.alert(editingId ? 'Bonification speciale mise a jour.' : 'Bonification speciale enregistree.');
+  }
+
+  async toggleSpecialVendorBonus(id, enabled) {
+    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
+    if (!bonus) return;
+    const confirmed = window.confirm(`${enabled ? 'Activer' : 'Desactiver'} cette bonification speciale ?`);
+    if (!confirmed) return;
+
+    await setDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id), {
+      enabled,
+      status: enabled ? this.getVendorPlanBonusStatus({ ...bonus, enabled }) : 'disabled',
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'dashboard_admin'
+    }, { merge: true });
+
+    await this.loadData();
+    this.render();
+    this.attachEvents();
+  }
+
+  async deleteSpecialVendorBonus(id) {
+    const bonus = this.vendorPlanBonuses.find((item) => String(item.id) === String(id));
+    if (!bonus) return;
+    const vendorName = bonus.vendorName || this.getVendorNameById(bonus.vendorId) || 'ce vendeur';
+    const confirmed = window.confirm(`Supprimer definitivement la bonification speciale de ${vendorName} ?`);
+    if (!confirmed) return;
+
+    await deleteDoc(doc(db, VENDOR_PLAN_BONUSES_COLLECTION, id));
+    if (this.editingSpecialBonusId === id) this.editingSpecialBonusId = '';
     await this.loadData();
     this.render();
     this.attachEvents();
