@@ -29,6 +29,71 @@ function getPaymentState(order = {}) {
   return String(order?.paymentStatus || order?.status || '').trim().toLowerCase();
 }
 
+function normalizeText(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getOrderDeliveryDetails(order = {}) {
+  const delivery = order?.delivery || {};
+  const productDetails = Array.isArray(delivery.productDeliveryDetails)
+    ? delivery.productDeliveryDetails
+    : [];
+  const vendorDetails = Array.isArray(delivery.vendorDeliveryDetails)
+    ? delivery.vendorDeliveryDetails
+    : [];
+  const details = productDetails.length ? productDetails : vendorDetails;
+  return details.map((entry) => ({
+    ownerType: normalizeText(entry?.ownerType),
+    vendorId: String(entry?.vendorId || '').trim(),
+    productId: String(entry?.productId || '').trim(),
+    productName: String(entry?.productName || '').trim(),
+    quantity: Number(entry?.quantity) || 1,
+    fee: Number(entry?.fee) || 0,
+    unitFee: Number(entry?.unitFee) || 0
+  }));
+}
+
+function getOrderVendorDeliveryFee(order = {}, details = getOrderDeliveryDetails(order)) {
+  const delivery = order?.delivery || {};
+  const detailedFee = details
+    .filter((entry) => !entry.ownerType || entry.ownerType === 'vendor')
+    .reduce((sum, entry) => {
+      const fee = Number(entry.fee) || 0;
+      return sum + (fee > 0 ? fee : (Number(entry.unitFee) || 0) * (Number(entry.quantity) || 1));
+    }, 0);
+  if (detailedFee > 0) return detailedFee;
+
+  const storedFee = Number(delivery.vendorDeliveryFee ?? delivery.vendorDeliveryAmount);
+  return Number.isFinite(storedFee) && storedFee > 0 ? storedFee : 0;
+}
+
+function getLineDeliveryFee(item = {}, order = {}) {
+  const quantity = Math.max(1, Number(item?.quantity) || 1);
+  const explicitFee = Number(
+    item?.deliveryFee ??
+    item?.deliveryAmount ??
+    item?.shippingFee ??
+    item?.delivery?.fee
+  );
+  if (Number.isFinite(explicitFee) && explicitFee > 0) return explicitFee;
+
+  const details = getOrderDeliveryDetails(order);
+  if (!details.length) return 0;
+
+  const productId = String(item?.productId || '').trim();
+  const vendorId = String(item?.vendorId || '').trim();
+  const itemName = normalizeText(item?.name);
+  const matched = details.find((entry) => {
+    if (entry.ownerType && entry.ownerType !== 'vendor') return false;
+    if (productId && entry.productId && entry.productId === productId) return true;
+    return Boolean(vendorId && entry.vendorId && entry.vendorId === vendorId && itemName && normalizeText(entry.productName) === itemName);
+  });
+  if (!matched) return 0;
+
+  const totalFee = Number(matched.fee) || 0;
+  return totalFee > 0 ? totalFee : (Number(matched.unitFee) || 0) * quantity;
+}
+
 export function isConfirmedOrder(order = {}) {
   return CONFIRMED_ORDER_STATUSES.has(getPaymentState(order));
 }
@@ -61,6 +126,7 @@ function normalizeItems(order) {
     vendorName: item?.vendorName || '',
     commissionRule: item?.commissionRule || null,
     category: item?.category || '',
+    deliveryFee: Number(item?.deliveryFee ?? item?.deliveryAmount ?? item?.shippingFee ?? item?.delivery?.fee) || 0,
     deliveryMode: item?.deliveryMode || '',
     selectedOptions: Array.isArray(item?.selectedOptions) ? item.selectedOptions : []
   }));
@@ -229,6 +295,7 @@ export function buildVendorSalesSummary({
 }) {
   const orderMap = new Map();
   let grossAmount = 0;
+  let deliveryAmount = 0;
   let commissionAmount = 0;
   let vendorNetAmount = 0;
   let itemCount = 0;
@@ -257,23 +324,47 @@ export function buildVendorSalesSummary({
 
     if (matchingLines.length === 0) return;
 
+    const deliveryDetails = getOrderDeliveryDetails(order);
+    const storedVendorDeliveryFee = getOrderVendorDeliveryFee(order, deliveryDetails);
     const normalizedLines = matchingLines.map((item) => {
       const gross = (Number(item.price) || 0) * (Number(item.quantity) || 1);
+      const deliveryFee = getLineDeliveryFee(item, order);
       const rate = normalizeRate(item.commissionRule);
       const commission = gross * (rate / 100);
-      const net = gross - commission;
+      const net = (gross - commission) + deliveryFee;
       grossAmount += gross;
+      deliveryAmount += deliveryFee;
       commissionAmount += commission;
       vendorNetAmount += net;
       itemCount += Number(item.quantity) || 1;
       return {
         ...item,
         grossAmount: gross,
+        deliveryFee,
         commissionAmount: commission,
         vendorNetAmount: net,
         commissionRate: rate
       };
     });
+
+    // Older orders can store one vendor-level delivery amount instead of one
+    // fee per product. Allocate the remaining amount without changing base commission.
+    const knownDeliveryFee = normalizedLines.reduce((sum, item) => sum + Math.max(0, item.deliveryFee), 0);
+    const unresolvedLines = normalizedLines.filter((item) => item.deliveryFee <= 0);
+    const remainingDeliveryFee = Math.max(0, storedVendorDeliveryFee - knownDeliveryFee);
+    const unresolvedGross = unresolvedLines.reduce((sum, item) => sum + Math.max(0, item.grossAmount), 0);
+    if (remainingDeliveryFee > 0 && unresolvedLines.length) {
+      normalizedLines.forEach((item) => {
+        if (item.deliveryFee > 0) return;
+        const share = unresolvedGross > 0
+          ? remainingDeliveryFee * (Math.max(0, item.grossAmount) / unresolvedGross)
+          : remainingDeliveryFee / unresolvedLines.length;
+        item.deliveryFee = share;
+        item.vendorNetAmount += share;
+      });
+      deliveryAmount += remainingDeliveryFee;
+      vendorNetAmount += remainingDeliveryFee;
+    }
 
     normalizedLines.forEach((item) => {
       const key = item.productId || item.name || `product-${productMap.size + 1}`;
@@ -298,6 +389,7 @@ export function buildVendorSalesSummary({
       status: order.status || 'pending',
       fulfillmentStatus: order.fulfillmentStatus || 'ordered',
       grossAmount: normalizedLines.reduce((sum, item) => sum + item.grossAmount, 0),
+      deliveryAmount: normalizedLines.reduce((sum, item) => sum + item.deliveryFee, 0),
       commissionAmount: normalizedLines.reduce((sum, item) => sum + item.commissionAmount, 0),
       vendorNetAmount: normalizedLines.reduce((sum, item) => sum + item.vendorNetAmount, 0),
       items: normalizedLines
@@ -324,6 +416,7 @@ export function buildVendorSalesSummary({
     totalOrders: orderMap.size,
     paidOrders: orderMap.size,
     grossAmount,
+    deliveryAmount,
     commissionAmount,
     vendorNetAmount,
     settledNetAmount,

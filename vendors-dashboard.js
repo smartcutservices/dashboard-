@@ -1,5 +1,5 @@
 import { db, auth } from './firebase-init.js';
-import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js';
+import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js?v=20260805-1';
 import {
   collection,
   deleteDoc,
@@ -1051,12 +1051,16 @@ class VendorsDashboard {
           <div class="badge" style="color:#14532D; background:rgba(20, 83, 45, 0.12);">A payer ${this.formatPrice(pendingPayout)}</div>
         </div>
         <div class="application-grid">
-          <div><strong>Brut</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
+          <div><strong>Base commission (produits)</strong><span>${this.formatPrice(summary.grossAmount)}</span></div>
+          <div><strong>Livraison vendeur</strong><span>${this.formatPrice(summary.deliveryAmount)}</span></div>
           <div><strong>Commission</strong><span>${this.formatPrice(summary.commissionAmount)}</span></div>
           <div><strong>Net vendeur</strong><span>${this.formatPrice(summary.vendorNetAmount)}</span></div>
           <div><strong>Commandes</strong><span>${summary.totalOrders}</span></div>
           <div><strong>Deja decaisse</strong><span>${this.formatPrice(settledAmount)}</span></div>
           <div><strong>Solde a payer</strong><span>${this.formatPrice(pendingPayout)}</span></div>
+        </div>
+        <div class="application-copy">
+          <p>La commission est calculée uniquement sur le prix des produits. Les frais de livraison sont ajoutés intégralement au net du vendeur.</p>
         </div>
         <div class="actions">
           <button type="button" data-create-payout="${summary.vendorId}" class="approve" ${pendingPayout <= 0 ? 'disabled' : ''}>Payer le vendeur</button>
