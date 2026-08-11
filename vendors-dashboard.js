@@ -17,6 +17,7 @@ const PLAN_SETTINGS_REF = ['vendorPlanSettings', 'main'];
 const VENDOR_PAYOUTS_COLLECTION = 'vendorPayouts';
 const VENDOR_SERVICE_FEES_COLLECTION = 'vendorServiceFees';
 const VENDOR_PLAN_BONUSES_COLLECTION = 'vendorPlanBonuses';
+const PRO_VENDOR_COMMISSION_RATE = 10;
 const CREATE_VENDOR_PAYOUT_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createVendorPayout';
 const REQUEST_VENDOR_SERVICE_FEE_FUNCTION_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/requestVendorServiceFee';
 const DEFAULT_FORM_SETTINGS = {
@@ -136,7 +137,8 @@ class VendorsDashboard {
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
       orders: ordersData.orders,
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id)),
-      payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id)
+      payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id),
+      vendorPlanActive: this.isVendorProPlanActive(vendor)
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);
   }
 
@@ -630,6 +632,21 @@ class VendorsDashboard {
     return 0;
   }
 
+  isVendorProPlanActive(vendor = {}) {
+    const planId = String(vendor?.planId || '').trim().toLowerCase();
+    const planLabel = String(vendor?.planLabel || '').trim().toLowerCase();
+    if (planId !== 'pro' && !planLabel.includes('pro')) return false;
+
+    const serviceStatus = String(vendor?.serviceFeeStatus || '').trim().toLowerCase();
+    if (['basic_limited', 'expired', 'unpaid'].includes(serviceStatus)) return false;
+
+    const nextDueValue = vendor?.serviceFeeNextDueAt || vendor?.serviceFeePaidPeriodEndAt || '';
+    const nextDueMs = nextDueValue
+      ? (typeof nextDueValue?.toDate === 'function' ? nextDueValue.toDate().getTime() : Date.parse(String(nextDueValue)))
+      : 0;
+    return !Number.isFinite(nextDueMs) || nextDueMs <= 0 || nextDueMs > Date.now();
+  }
+
   getMonthlyServiceVendors() {
     return this.allVendors
       .filter((vendor) => this.getVendorServiceFeeAmount(vendor) > 0)
@@ -991,12 +1008,16 @@ class VendorsDashboard {
     const meta = this.productStatusMeta(item.status);
     const image = Array.isArray(item.images) && item.images[0] ? `<img src="${item.images[0]}" alt="${item.name || 'Produit vendeur'}" style="width:74px;height:74px;border-radius:18px;object-fit:cover;border:1px solid rgba(255,255,255,0.08);">` : '<div style="width:74px;height:74px;border-radius:18px;background:rgba(198,167,94,0.1);display:flex;align-items:center;justify-content:center;color:#c6a75e;font-weight:800;">IMG</div>';
     const { resolvedCategory, categoryRule, effectiveRate, effectiveRule } = this.resolveProductCommissionState(item);
+    const vendor = this.allVendors.find((entry) => String(entry.vendorId || entry.uid || entry.id) === String(item.vendorId || '')) || {};
+    const vendorProActive = this.isVendorProPlanActive(vendor);
     const stockLabel = this.getProductStockLabel(item);
-    const commissionValue = effectiveRate ?? '';
+    const commissionValue = vendorProActive ? PRO_VENDOR_COMMISSION_RATE : (effectiveRate ?? '');
     const commissionLabel = commissionValue !== '' ? `${commissionValue}%` : 'A definir';
-    const commissionHint = effectiveRule?.source === 'product_override'
+    const commissionHint = vendorProActive
+      ? 'Plan Pro actif : commission uniforme de 10% sur toutes les categories'
+      : (effectiveRule?.source === 'product_override'
       ? 'Commission specifique a ce produit'
-      : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee');
+      : (categoryRule ? `Regle categorie: ${Number(categoryRule.rate) || 0}%` : 'Aucune regle de categorie trouvee'));
     return `
       <div class="application-card">
         <div style="display:grid;grid-template-columns:auto 1fr;gap:1rem;align-items:start;">
@@ -1026,7 +1047,7 @@ class VendorsDashboard {
             <div class="actions" style="align-items:center;">
               <label style="display:flex;align-items:center;gap:.55rem;color:rgba(246,241,232,0.75);font-size:.85rem;">
                 <span>Commission %</span>
-                <input id="productCommission-${item.id}" type="number" min="0" max="100" step="0.01" value="${commissionValue}" style="width:92px;border:1px solid rgba(198,167,94,0.18);background:rgba(255,255,255,0.04);color:#f6f1e8;border-radius:999px;padding:.65rem .9rem;font:inherit;">
+                <input id="productCommission-${item.id}" type="number" min="0" max="100" step="0.01" value="${commissionValue}" ${vendorProActive ? 'disabled title="Le Plan Pro applique automatiquement 10% a toutes les categories"' : ''} style="width:92px;border:1px solid rgba(198,167,94,0.18);background:rgba(255,255,255,0.04);color:#f6f1e8;border-radius:999px;padding:.65rem .9rem;font:inherit;">
               </label>
               <button type="button" data-product-action="pending_review" data-product-id="${item.id}">Repasser en revue</button>
               <button type="button" data-product-action="active" data-product-id="${item.id}" class="approve">Approuver</button>
@@ -1649,7 +1670,19 @@ class VendorsDashboard {
     const commissionInput = document.getElementById(`productCommission-${id}`);
     const commissionRate = Number.parseFloat(commissionInput?.value || '');
     const { resolvedCategory, categoryRule, effectiveRule } = this.resolveProductCommissionState(current);
-    const normalizedCommission = Number.isFinite(commissionRate)
+    const vendor = this.allVendors.find((entry) => String(entry.vendorId || entry.uid || entry.id) === String(current.vendorId || '')) || {};
+    const vendorProActive = this.isVendorProPlanActive(vendor);
+    const normalizedCommission = vendorProActive
+      ? (categoryRule
+          ? {
+              category: categoryRule.category || resolvedCategory || '',
+              categoryRate: Number(categoryRule.rate) || 0,
+              source: 'vendorCommissionRules',
+              updatedAt: now,
+              updatedBy: 'dashboard_admin'
+            }
+          : null)
+      : Number.isFinite(commissionRate)
       ? {
           ...(effectiveRule || {}),
           category: resolvedCategory || effectiveRule?.category || '',
@@ -1658,7 +1691,7 @@ class VendorsDashboard {
           updatedAt: now,
           updatedBy: 'dashboard_admin'
         }
-      : (effectiveRule || current.commissionRule || (
+        : (effectiveRule || current.commissionRule || (
           categoryRule
             ? {
                 category: categoryRule.category || resolvedCategory || '',

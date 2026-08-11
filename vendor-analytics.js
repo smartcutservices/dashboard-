@@ -7,6 +7,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
 const CONFIRMED_ORDER_STATUSES = new Set(['approved', 'paid']);
+const PRO_VENDOR_COMMISSION_RATE = 10;
 const ORDER_STATUS_BUCKETS = [
   { key: 'confirmed', label: 'Confirmees', color: '#0f9f6e' },
   { key: 'pending', label: 'En attente', color: '#d97706' },
@@ -291,7 +292,8 @@ export function buildVendorSalesSummary({
   vendorName = '',
   orders = [],
   vendorProductIds = new Set(),
-  payouts = []
+  payouts = [],
+  vendorPlanActive = false
 }) {
   const orderMap = new Map();
   let grossAmount = 0;
@@ -329,7 +331,7 @@ export function buildVendorSalesSummary({
     const normalizedLines = matchingLines.map((item) => {
       const gross = (Number(item.price) || 0) * (Number(item.quantity) || 1);
       const deliveryFee = getLineDeliveryFee(item, order);
-      const rate = normalizeRate(item.commissionRule);
+      const rate = vendorPlanActive ? PRO_VENDOR_COMMISSION_RATE : normalizeRate(item.commissionRule);
       const commission = gross * (rate / 100);
       const net = (gross - commission) + deliveryFee;
       grossAmount += gross;
