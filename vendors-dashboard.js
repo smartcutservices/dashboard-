@@ -1,5 +1,5 @@
 import { db, auth } from './firebase-init.js';
-import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js?v=20260805-1';
+import { buildVendorSalesSummary, loadAllOrdersWithClients } from './vendor-analytics.js?v=20260812-1';
 import {
   collection,
   deleteDoc,

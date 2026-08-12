@@ -126,6 +126,14 @@ function normalizeItems(order) {
     vendorId: item?.vendorId || '',
     vendorName: item?.vendorName || '',
     commissionRule: item?.commissionRule || null,
+    commissionRate: Number.isFinite(Number(item?.commissionRate)) ? Number(item.commissionRate) : null,
+    commissionSnapshot: item?.commissionSnapshot && typeof item.commissionSnapshot === 'object'
+      ? {
+          rate: Number.isFinite(Number(item.commissionSnapshot.rate)) ? Number(item.commissionSnapshot.rate) : null,
+          source: String(item.commissionSnapshot.source || '').trim(),
+          appliedAt: String(item.commissionSnapshot.appliedAt || '').trim()
+        }
+      : null,
     category: item?.category || '',
     deliveryFee: Number(item?.deliveryFee ?? item?.deliveryAmount ?? item?.shippingFee ?? item?.delivery?.fee) || 0,
     deliveryMode: item?.deliveryMode || '',
@@ -331,7 +339,12 @@ export function buildVendorSalesSummary({
     const normalizedLines = matchingLines.map((item) => {
       const gross = (Number(item.price) || 0) * (Number(item.quantity) || 1);
       const deliveryFee = getLineDeliveryFee(item, order);
-      const rate = vendorPlanActive ? PRO_VENDOR_COMMISSION_RATE : normalizeRate(item.commissionRule);
+      // A sale keeps the rate that was active when it was paid. Never
+      // recalculate historical orders from the vendor's current plan.
+      const snapshotRate = Number(item?.commissionSnapshot?.rate ?? item?.commissionRate);
+      const rate = Number.isFinite(snapshotRate)
+        ? Math.max(0, snapshotRate)
+        : normalizeRate(item.commissionRule);
       const commission = gross * (rate / 100);
       const net = (gross - commission) + deliveryFee;
       grossAmount += gross;
