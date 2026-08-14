@@ -137,6 +137,8 @@ class VendorsDashboard {
       vendorName: vendor.vendorName || vendor.shopName || 'Vendeur',
       orders: ordersData.orders,
       vendorProductIds: new Set(this.vendorProducts.filter((item) => item.vendorId === vendor.id).map((item) => item.id)),
+      vendorProducts: this.vendorProducts.filter((item) => item.vendorId === vendor.id),
+      commissionRules: this.commissionRules,
       payouts: this.vendorPayouts.filter((item) => item.vendorId === vendor.id),
       vendorPlanActive: this.isVendorProPlanActive(vendor)
     })).sort((a, b) => b.vendorNetAmount - a.vendorNetAmount);

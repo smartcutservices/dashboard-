@@ -18,7 +18,7 @@ const ORDER_STATUS_BUCKETS = [
 
 function normalizeRate(rule) {
   const direct = Number(rule?.categoryRate ?? rule?.rate);
-  return Number.isFinite(direct) ? direct : 0;
+  return Number.isFinite(direct) ? Math.max(0, direct) : null;
 }
 
 function getOrderMs(value) {
@@ -32,6 +32,40 @@ function getPaymentState(order = {}) {
 
 function normalizeText(value = '') {
   return String(value || '').trim().toLowerCase();
+}
+
+function normalizeCategoryKey(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+function resolveCommissionRate(item = {}, commissionRules = [], productRules = new Map()) {
+  const storedRate = Number(item?.commissionSnapshot?.rate ?? item?.commissionRate);
+  if (Number.isFinite(storedRate)) return Math.max(0, storedRate);
+
+  const directRate = normalizeRate(item?.commissionRule);
+  if (directRate !== null) return directRate;
+
+  const productData = productRules.get(String(item?.productId || '').trim()) || {};
+  const productRate = normalizeRate(productData?.commissionRule);
+  if (productRate !== null) return productRate;
+
+  const values = [
+    item?.category,
+    item?.categoryName,
+    item?.categoryId,
+    productData?.category,
+    productData?.categoryName,
+    productData?.categoryId
+  ];
+  const matchedRule = commissionRules.find((rule) => values.some((value) => (
+    normalizeCategoryKey(value) && normalizeCategoryKey(value) === normalizeCategoryKey(rule?.category || rule?.categoryId)
+  )));
+  return normalizeRate(matchedRule) ?? 0;
 }
 
 function getOrderDeliveryDetails(order = {}) {
@@ -135,6 +169,8 @@ function normalizeItems(order) {
         }
       : null,
     category: item?.category || '',
+    categoryName: item?.categoryName || '',
+    categoryId: item?.categoryId || '',
     deliveryFee: Number(item?.deliveryFee ?? item?.deliveryAmount ?? item?.shippingFee ?? item?.delivery?.fee) || 0,
     deliveryMode: item?.deliveryMode || '',
     selectedOptions: Array.isArray(item?.selectedOptions) ? item.selectedOptions : []
@@ -301,7 +337,9 @@ export function buildVendorSalesSummary({
   orders = [],
   vendorProductIds = new Set(),
   payouts = [],
-  vendorPlanActive = false
+  vendorPlanActive = false,
+  commissionRules = [],
+  vendorProducts = []
 }) {
   const orderMap = new Map();
   let grossAmount = 0;
@@ -324,6 +362,11 @@ export function buildVendorSalesSummary({
   });
 
   let pendingPayoutAmount = 0;
+  const productRules = new Map(
+    (Array.isArray(vendorProducts) ? vendorProducts : [])
+      .map((product) => [String(product?.id || '').trim(), product || {}])
+      .filter(([id]) => id)
+  );
 
   orders.forEach((order) => {
     if (!isConfirmedOrder(order)) return;
@@ -342,9 +385,7 @@ export function buildVendorSalesSummary({
       // A sale keeps the rate that was active when it was paid. Never
       // recalculate historical orders from the vendor's current plan.
       const snapshotRate = Number(item?.commissionSnapshot?.rate ?? item?.commissionRate);
-      const rate = Number.isFinite(snapshotRate)
-        ? Math.max(0, snapshotRate)
-        : normalizeRate(item.commissionRule);
+      const rate = resolveCommissionRate(item, commissionRules, productRules);
       const commission = gross * (rate / 100);
       const net = (gross - commission) + deliveryFee;
       grossAmount += gross;
