@@ -44,8 +44,16 @@ function normalizeCategoryKey(value = '') {
 }
 
 function resolveCommissionRate(item = {}, commissionRules = [], productRules = new Map()) {
-  const storedRate = Number(item?.commissionSnapshot?.rate ?? item?.commissionRate);
-  if (Number.isFinite(storedRate)) return Math.max(0, storedRate);
+  const snapshot = item?.commissionSnapshot || {};
+  const snapshotRate = Number(snapshot?.rate);
+  const snapshotSource = normalizeText(snapshot?.source).toLowerCase();
+  if (Number.isFinite(snapshotRate) && (
+    snapshotRate > 0 ||
+    ['vendor_pro_plan', 'product_override'].includes(snapshotSource)
+  )) return Math.max(0, snapshotRate);
+
+  const storedRate = Number(item?.commissionRate);
+  if (Number.isFinite(storedRate) && storedRate > 0) return Math.max(0, storedRate);
 
   const directRate = normalizeRate(item?.commissionRule);
   if (directRate !== null) return directRate;
