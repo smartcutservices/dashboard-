@@ -1076,25 +1076,39 @@
             <div id="tab-category" class="tab-content hidden">
               <div class="content-card">
                 <div class="card-header">
-                  <span>S&eacute;lection des cat&eacute;gories et lignes</span>
+                  <span>Classement du produit</span>
                 </div>
-                <div class="card-body">
-                  <div class="mb-4">
-                    <label class="block text-sm text-text-secondary mb-2">Cat&eacute;gorie</label>
-                    <select id="categorySelect" class="form-select">
-                      <option value="">Choisir une cat&eacute;gorie</option>
-                    </select>
-                  </div>
-                  
-                  <div id="categoryAttributesContainer" class="category-tree">
-                    <!-- Injecté dynamiquement -->
-                  </div>
-                  
-                  <div id="selectedLinesContainer" class="mt-4 p-4 bg-background rounded-lg">
-                    <h4 class="font-medium mb-2">Lignes sélectionnées</h4>
-                    <div id="selectedLinesList" class="flex flex-wrap gap-2">
-                      <!-- Injecté dynamiquement -->
+                <div class="card-body space-y-5">
+                  <div class="rounded-2xl border border-[rgba(198,167,94,0.18)] bg-[rgba(198,167,94,0.06)] p-4">
+                    <p class="font-semibold text-text-primary">D&eacute;partement, cat&eacute;gorie et sous-cat&eacute;gorie</p>
+                    <p class="mt-1 text-sm text-text-secondary">Ces choix d&eacute;finissent la commission et les informations adapt&eacute;es &agrave; votre produit.</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-2" for="departmentSelect">D&eacute;partement *</label>
+                        <select id="departmentSelect" class="form-select">
+                          <option value="">Choisir un d&eacute;partement</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-2" for="categorySelect">Cat&eacute;gorie *</label>
+                        <select id="categorySelect" class="form-select" disabled>
+                          <option value="">Choisir d'abord un d&eacute;partement</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-sm text-text-secondary mb-2" for="subcategorySelect">Sous-cat&eacute;gorie</label>
+                        <select id="subcategorySelect" class="form-select" disabled>
+                          <option value="">Choisir d'abord une cat&eacute;gorie</option>
+                        </select>
+                      </div>
                     </div>
+                  </div>
+                  <div id="classificationSummary" class="hidden rounded-xl border border-border bg-background px-4 py-3 text-sm text-text-secondary"></div>
+                  <div id="categoryAttributesContainer" class="category-tree">
+                    <div class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-text-secondary">Choisissez un d&eacute;partement puis une cat&eacute;gorie pour afficher le formulaire dynamique.</div>
+                  </div>
+                  <div id="selectedLinesContainer" class="hidden">
+                    <div id="selectedLinesList"></div>
                   </div>
                 </div>
               </div>
@@ -1330,6 +1344,11 @@
     
     const PRODUCTS_COLLECTION = "products";
     const CATEGORIES_COLLECTION = "categories_list";
+    const PRODUCT_TAXONOMY_URLS = [
+      'https://smartcutservices.com/product-taxonomy.json',
+      'https://smartcutservices.com/auto-parts-taxonomy.json',
+      'https://smartcutservices.com/digital-download-taxonomy.json'
+    ];
     const HAITI_DEPARTMENTS = {
       'Artibonite': ['Dessalines', 'Desdunes', 'Ennery', 'Gonaives', 'Gros-Morne', 'L Estere', 'Marmelade', 'Saint-Marc', 'Verrettes'],
       'Centre': ['Belladere', 'Cerca-Carvajal', 'Cerca-la-Source', 'Hinche', 'Lascahobas', 'Mirebalais', 'Saut-d Eau'],
@@ -1348,6 +1367,8 @@
       constructor() {
         this.products = [];
         this.categories = [];
+        this.productTaxonomy = { departments: [] };
+        this.dynamicAttributes = {};
         this.productLikes = new Map();
         this.likesModal = null;
         this.likesUnsubscribe = null;
@@ -1371,7 +1392,8 @@
         this.setupModalEvents(); // Configuration spécifique de la modale
         await Promise.all([
           this.loadProducts(),
-          this.loadCategories()
+          this.loadCategories(),
+          this.loadProductTaxonomy()
         ]);
         this.setupRealtimeListener();
         this.setupLikesListener();
@@ -1436,7 +1458,10 @@
           productStatus: document.getElementById('productStatus'),
           
           // Category tab
+          departmentSelect: document.getElementById('departmentSelect'),
           categorySelect: document.getElementById('categorySelect'),
+          subcategorySelect: document.getElementById('subcategorySelect'),
+          classificationSummary: document.getElementById('classificationSummary'),
           categoryAttributesContainer: document.getElementById('categoryAttributesContainer'),
           selectedLinesContainer: document.getElementById('selectedLinesContainer'),
           selectedLinesList: document.getElementById('selectedLinesList'),
@@ -1526,8 +1551,10 @@
           step.addEventListener('click', () => this.switchEditorTab(step.dataset.editorStep));
         });
         
-        // Catégorie select
-        this.elements.categorySelect.addEventListener('change', () => this.loadCategoryAttributes());
+        // Nouveau classement : Département -> Catégorie -> Sous-catégorie.
+        this.elements.departmentSelect?.addEventListener('change', () => this.handleDepartmentChange());
+        this.elements.categorySelect.addEventListener('change', () => this.handleCategoryChange());
+        this.elements.subcategorySelect?.addEventListener('change', () => this.handleSubcategoryChange());
         
         // Variation
         this.elements.addVariationBtn.addEventListener('click', () => this.openVariationModal());
@@ -1928,62 +1955,152 @@
         return date.toLocaleString('fr-FR');
       }
       
-      async loadCategoryAttributes() {
-        const categoryId = this.elements.categorySelect.value;
-        if (!categoryId) {
-          this.elements.categoryAttributesContainer.innerHTML = '<p class="text-text-secondary">Sélectionnez une catégorie</p>';
+      async loadProductTaxonomy() {
+        try {
+          const responses = await Promise.all(PRODUCT_TAXONOMY_URLS.map(async (url) => {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`Taxonomie indisponible (${response.status})`);
+            return response.json();
+          }));
+          const [mainTaxonomy, ...specializedDepartments] = responses;
+          const departments = Array.isArray(mainTaxonomy?.departments) ? [...mainTaxonomy.departments] : [];
+          specializedDepartments.forEach((department) => {
+            if (!department?.id) return;
+            const index = departments.findIndex((entry) => entry.id === department.id);
+            if (index === -1) departments.push(department);
+            else departments[index] = { ...departments[index], ...department };
+          });
+          this.productTaxonomy = { departments };
+        } catch (error) {
+          console.error('Erreur chargement taxonomie produit:', error);
+          this.productTaxonomy = { departments: [] };
+          this.showToast('La nouvelle taxonomie est temporairement indisponible.', 'error');
+        }
+        this.renderDepartmentOptions();
+        this.handleDepartmentChange();
+      }
+
+      getSelectedDepartment() {
+        const id = this.elements.departmentSelect?.value || '';
+        return this.productTaxonomy.departments.find((department) => department.id === id) || null;
+      }
+
+      getSelectedCategory() {
+        const department = this.getSelectedDepartment();
+        const id = this.elements.categorySelect.value || '';
+        return department?.categories?.find((category) => category.id === id) || null;
+      }
+
+      renderDepartmentOptions(selectedId = '') {
+        const select = this.elements.departmentSelect;
+        if (!select) return;
+        select.innerHTML = '<option value="">Choisir un département</option>';
+        this.productTaxonomy.departments
+          .slice()
+          .sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.label || '').localeCompare(String(b.label || '')))
+          .forEach((department) => {
+            const option = document.createElement('option');
+            option.value = department.id;
+            option.textContent = department.label || department.id;
+            option.selected = department.id === selectedId;
+            select.appendChild(option);
+          });
+      }
+
+      handleDepartmentChange(categoryId = '', subcategoryId = '') {
+        const department = this.getSelectedDepartment();
+        const categorySelect = this.elements.categorySelect;
+        const subcategorySelect = this.elements.subcategorySelect;
+        categorySelect.innerHTML = '<option value="">Choisir une catégorie</option>';
+        subcategorySelect.innerHTML = '<option value="">Choisir d’abord une catégorie</option>';
+        categorySelect.disabled = !department;
+        subcategorySelect.disabled = true;
+        this.dynamicAttributes = {};
+        if (department) {
+          (department.categories || []).forEach((category) => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.label || category.id;
+            option.selected = category.id === categoryId;
+            categorySelect.appendChild(option);
+          });
+        }
+        this.renderDynamicClassificationForm();
+        if (categoryId && department) this.handleCategoryChange(subcategoryId);
+      }
+
+      handleCategoryChange(subcategoryId = '') {
+        const category = this.getSelectedCategory();
+        const select = this.elements.subcategorySelect;
+        select.innerHTML = '<option value="">Aucune sous-catégorie</option>';
+        select.disabled = !category;
+        if (category) {
+          (category.subcategories || []).forEach((entry) => {
+            const subcategory = typeof entry === 'string' ? { id: entry, label: entry } : entry;
+            const option = document.createElement('option');
+            option.value = subcategory.id || subcategory.label;
+            option.textContent = subcategory.label || subcategory.id;
+            option.selected = option.value === subcategoryId;
+            select.appendChild(option);
+          });
+        }
+        this.renderDynamicClassificationForm();
+      }
+
+      handleSubcategoryChange() {
+        this.renderDynamicClassificationForm();
+      }
+
+      renderDynamicClassificationForm() {
+        const department = this.getSelectedDepartment();
+        const category = this.getSelectedCategory();
+        const container = this.elements.categoryAttributesContainer;
+        const summary = this.elements.classificationSummary;
+        if (!department || !category) {
+          summary.classList.add('hidden');
+          container.innerHTML = '<div class="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-text-secondary">Choisissez un département puis une catégorie pour afficher le formulaire dynamique.</div>';
           return;
         }
-        
-        const columns = await this.loadColumns(categoryId);
-        let html = '';
-        
-        for (const column of columns) {
-          const lines = await this.loadLines(categoryId, column.id);
-          
-          html += `
-            <div class="column-item">
-              <div class="column-header">${column.columnName || 'Sans nom'}</div>
-          `;
-          
-          lines.forEach(line => {
-            const isSelected = this.categorySelections.some(s => s.columnId === column.id && s.lineId === line.id);
-            html += `
-              <div class="line-checkbox ${isSelected ? 'selected' : ''}" 
-                   data-column="${column.id}" 
-                   data-line="${line.id}"
-                   data-name="${line.lineName || 'Ligne'}">
-                <i class="fas fa-${isSelected ? 'check-square' : 'square'} text-secondary"></i>
-                <span>${line.lineName || 'Sans nom'}</span>
-                ${line.image ? '<i class="fas fa-image text-xs ml-1 text-text-secondary"></i>' : ''}
-              </div>
-            `;
-          });
-          
-          html += `</div>`;
+
+        const subcategory = this.elements.subcategorySelect?.selectedOptions?.[0]?.textContent || '';
+        const rate = Number(department.commissionRate);
+        summary.classList.remove('hidden');
+        summary.innerHTML = `<strong class="text-text-primary">${this.escape(department.label || department.id)}</strong><span class="mx-2">/</span>${this.escape(category.label || category.id)}${subcategory && this.elements.subcategorySelect.value ? `<span class="mx-2">/</span>${this.escape(subcategory)}` : ''}${Number.isFinite(rate) ? `<span class="ml-3 font-semibold text-[#8a6e2f]">Commission : ${rate}%</span>` : ''}`;
+
+        const fields = Array.isArray(category.dynamicFields) ? category.dynamicFields : [];
+        if (!fields.length) {
+          container.innerHTML = '<div class="rounded-xl border border-border bg-background px-4 py-6 text-sm text-text-secondary">Cette catégorie ne demande pas de caractéristique supplémentaire.</div>';
+          return;
         }
-        
-        this.elements.categoryAttributesContainer.innerHTML = html || '<p class="text-text-secondary">Aucune colonne dans cette catégorie</p>';
-        
-        // Attacher événements
-        document.querySelectorAll('.line-checkbox').forEach(el => {
-          el.addEventListener('click', () => {
-            const columnId = el.dataset.column;
-            const lineId = el.dataset.line;
-            const lineName = el.dataset.name;
-            
-            const index = this.categorySelections.findIndex(s => s.columnId === columnId && s.lineId === lineId);
-            
-            if (index === -1) {
-              this.categorySelections.push({ columnId, lineId, name: lineName });
-            } else {
-              this.categorySelections.splice(index, 1);
-            }
-            
-            this.renderSelectedLines();
-            this.loadCategoryAttributes(); // Re-rendre pour mettre à jour les icônes
-          });
+
+        container.innerHTML = `
+          <div class="rounded-2xl border border-border bg-white p-5">
+            <div class="mb-5"><h4 class="font-semibold text-text-primary">Formulaire dynamique</h4><p class="mt-1 text-sm text-text-secondary">Les caractéristiques utiles pour cette catégorie apparaissent automatiquement.</p></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${fields.map((field) => this.renderDynamicField(field)).join('')}
+            </div>
+          </div>
+        `;
+        container.querySelectorAll('[data-dynamic-field]').forEach((input) => {
+          input.addEventListener('input', () => { this.dynamicAttributes[input.dataset.dynamicField] = input.value; });
+          input.addEventListener('change', () => { this.dynamicAttributes[input.dataset.dynamicField] = input.value; });
         });
+      }
+
+      renderDynamicField(field) {
+        const key = String(field.key || '').trim();
+        const value = this.dynamicAttributes[key] || '';
+        const required = field.required ? ' required' : '';
+        const label = `${this.escape(field.label || key)}${field.required ? ' *' : ''}`;
+        if (field.type === 'textarea' || field.type === 'richtext') {
+          return `<div class="md:col-span-2"><label class="block text-sm text-text-secondary mb-2">${label}</label><textarea class="form-textarea" rows="4" data-dynamic-field="${this.escape(key)}"${required}>${this.escape(value)}</textarea></div>`;
+        }
+        if (field.type === 'select') {
+          const options = Array.isArray(field.options) ? field.options : [];
+          return `<div><label class="block text-sm text-text-secondary mb-2">${label}</label><select class="form-select" data-dynamic-field="${this.escape(key)}"${required}><option value="">Choisir</option>${options.map((option) => `<option value="${this.escape(option)}" ${value === option ? 'selected' : ''}>${this.escape(option)}</option>`).join('')}</select></div>`;
+        }
+        const type = field.type === 'number' ? 'number' : 'text';
+        return `<div><label class="block text-sm text-text-secondary mb-2">${label}</label><input type="${type}" class="form-input" data-dynamic-field="${this.escape(key)}" value="${this.escape(value)}"${required}></div>`;
       }
       
       renderSelectedLines() {
@@ -2311,8 +2428,10 @@
       }
       
       updateCategorySelect() {
+        if (this.productTaxonomy.departments.length) return;
         const select = this.elements.categorySelect;
         select.innerHTML = '<option value="">Choisir une catégorie</option>';
+        select.disabled = false;
         
         this.categories.forEach(cat => {
           const option = document.createElement('option');
@@ -2440,10 +2559,13 @@
           this.populateDiscountFields(this.currentProduct);
           this.elements.productStatus.checked = this.currentProduct.status !== 'draft';
           
-          if (this.currentProduct.categoryId) {
-            this.elements.categorySelect.value = this.currentProduct.categoryId;
-            await this.loadCategoryAttributes();
-          }
+          const departmentId = this.currentProduct.departmentId || '';
+          const categoryId = this.currentProduct.categoryId || '';
+          const subcategoryId = this.currentProduct.subcategoryId || '';
+          this.renderDepartmentOptions(departmentId);
+          this.handleDepartmentChange(categoryId, subcategoryId);
+          this.dynamicAttributes = { ...(this.currentProduct.dynamicAttributes || {}) };
+          this.renderDynamicClassificationForm();
           
           this.renderVariations();
           this.renderMainImages();
@@ -2478,8 +2600,9 @@
         this.populateDiscountFields(null);
         this.elements.totalStock.value = '0';
         this.elements.productStatus.checked = true;
-        this.elements.categorySelect.value = '';
-        this.elements.categoryAttributesContainer.innerHTML = '';
+        this.dynamicAttributes = {};
+        this.renderDepartmentOptions();
+        this.handleDepartmentChange();
         this.elements.selectedLinesList.innerHTML = '';
         this.elements.variationsContainer.innerHTML = '';
         this.elements.noVariations.style.display = 'block';
@@ -2502,8 +2625,8 @@
           this.elements.isDigitalProduct.checked = true;
           this.updateDigitalProductUi();
         }
-        if (isDigitalProduct && !this.elements.categorySelect.value) {
-          this.showToast('Selectionnez une categorie pour classer ce produit digital.', 'error');
+        if (this.productTaxonomy.departments.length && (!this.elements.departmentSelect.value || !this.elements.categorySelect.value)) {
+          this.showToast('Selectionnez un departement et une categorie pour classer ce produit.', 'error');
           this.switchEditorTab('category');
           return;
         }
@@ -2535,7 +2658,13 @@
           discountStartAt: discount?.startAt || '',
           discountEndAt: discount?.endAt || '',
           status: this.elements.productStatus.checked ? 'active' : 'draft',
+          departmentId: this.elements.departmentSelect?.value || null,
+          departmentLabel: this.getSelectedDepartment()?.label || '',
           categoryId: this.elements.categorySelect.value || null,
+          categoryLabel: this.getSelectedCategory()?.label || '',
+          subcategoryId: this.elements.subcategorySelect?.value || null,
+          subcategoryLabel: this.elements.subcategorySelect?.selectedOptions?.[0]?.textContent || '',
+          dynamicAttributes: { ...this.dynamicAttributes },
           categorySelections: this.categorySelections,
           variations: isDigitalProduct ? [] : this.currentVariations.map((v, index) => ({
             ...v,
