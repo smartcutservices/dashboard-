@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Cut Services · Commentaires</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="./dashboard-comments.css?v=20260824-1">
+</head>
+<body>
+  <main class="page-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">COMMUNAUTÉ SMART CUT</p>
+        <h1>Commentaires</h1>
+        <p class="subtitle">Consultez et modérez les messages publiés depuis la page d’accueil.</p>
+      </div>
+      <button id="refresh-comments" class="secondary-button" type="button">
+        <i class="fas fa-rotate" aria-hidden="true"></i>
+        Actualiser
+      </button>
+    </header>
+
+    <section class="stats-grid" aria-label="Résumé des commentaires">
+      <article class="stat-card">
+        <span>Total enregistré</span>
+        <strong id="total-comments">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Publiés aujourd’hui</span>
+        <strong id="today-comments">0</strong>
+      </article>
+      <article class="stat-card">
+        <span>Source</span>
+        <strong>Accueil</strong>
+      </article>
+    </section>
+
+    <section class="comments-panel">
+      <div class="panel-toolbar">
+        <div>
+          <h2>Messages des visiteurs</h2>
+          <p id="result-count">Chargement...</p>
+        </div>
+        <label class="search-field" for="comment-search">
+          <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
+          <input id="comment-search" type="search" placeholder="Rechercher dans les commentaires..." autocomplete="off">
+        </label>
+      </div>
+
+      <div id="comments-list" class="comments-list" aria-live="polite">
+        <div class="empty-state"><i class="fas fa-circle-notch fa-spin"></i><span>Chargement des commentaires...</span></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./dashboard-comments.js?v=20260824-2"></script>
+  <script type="module" src="./admin-access.js"></script>
+</body>
+</html>

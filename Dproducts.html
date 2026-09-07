@@ -546,6 +546,172 @@
       border-bottom-color: var(--secondary);
       color: var(--secondary);
     }
+
+    /* The product editor is an independent workspace, matching the site editor. */
+    body.product-editor-open { overflow: hidden; }
+    body.product-editor-open .sidebar,
+    body.product-editor-open .header { display: none !important; }
+    body.product-editor-open .main-content { margin-left: 0 !important; }
+    body.product-editor-open #product-editor-view {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: block;
+      overflow-y: auto;
+      overflow-x: clip;
+      background: var(--background);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .product-editor-topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem 1rem;
+      min-height: 54px;
+      padding: 0.7rem clamp(1rem, 3vw, 2rem);
+      color: #fff;
+      background: var(--primary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
+    }
+
+    .product-editor-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex: 0 0 auto;
+      padding: 0.42rem 0.7rem 0.42rem 0.55rem;
+      color: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .product-editor-back:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+    .product-editor-back:focus-visible { outline: 2px solid var(--secondary); outline-offset: 2px; }
+    .product-editor-topbar__title {
+      min-width: 0;
+      flex: 1 1 10rem;
+      padding-left: 0.9rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    .product-editor-topbar__title p {
+      margin-bottom: 0.15rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .product-editor-topbar__title h2 {
+      overflow: hidden;
+      color: #fff;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .product-editor-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.65rem;
+      flex: 0 0 auto;
+      flex-wrap: wrap;
+    }
+    .product-editor-actions label { color: rgba(255, 255, 255, 0.75) !important; }
+
+    .product-editor-layout { display: flex; flex-direction: column; min-height: calc(100vh - 54px); }
+    .product-editor-aside {
+      position: sticky;
+      top: 54px;
+      z-index: 19;
+      display: flex;
+      gap: 0.4rem;
+      padding: 0.5rem clamp(1rem, 3vw, 2rem);
+      overflow-x: auto;
+      background: var(--primary-light);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      scrollbar-width: none;
+    }
+    .product-editor-aside::-webkit-scrollbar { display: none; }
+    .product-editor-aside__label { display: none; }
+    .product-editor-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 0 0 auto;
+      padding: 0.4rem 0.8rem;
+      color: rgba(255, 255, 255, 0.78);
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s;
+    }
+    .product-editor-step:hover { color: #fff; background: rgba(255, 255, 255, 0.16); }
+    .product-editor-step.active { color: var(--primary); background: var(--secondary); }
+    .product-editor-step i { width: 1rem; text-align: center; }
+    .product-editor-main { min-width: 0; padding: clamp(1.25rem, 3vw, 2rem) clamp(1rem, 3vw, 3.25rem); }
+    .product-editor-form { width: min(1040px, 100%); margin: 0 auto; }
+    body.product-editor-open .section-tabs { display: none; }
+
+    @media (min-width: 1024px) {
+      .product-editor-layout {
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        align-items: stretch;
+      }
+      .product-editor-aside {
+        align-self: stretch;
+        flex-direction: column;
+        gap: 0.15rem;
+        padding: 1rem 0.75rem;
+        overflow-y: auto;
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 0;
+      }
+      .product-editor-aside__label {
+        display: block;
+        padding: 0.2rem 0.8rem 0.7rem;
+        color: rgba(255, 255, 255, 0.45);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .product-editor-step {
+        width: 100%;
+        justify-content: flex-start;
+        border-left: 3px solid transparent;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        padding: 0.65rem 0.8rem;
+        font-size: 0.88rem;
+      }
+      .product-editor-step:hover { background: rgba(255, 255, 255, 0.08); }
+      .product-editor-step.active {
+        color: #fff;
+        border-left-color: var(--secondary);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .product-editor-main { padding: clamp(1.75rem, 2.6vw, 3rem) clamp(1.75rem, 3vw, 3.25rem); }
+    }
+
+    @media (max-width: 720px) {
+      .product-editor-topbar { align-items: flex-start; padding: 0.7rem 0.75rem; }
+      .product-editor-topbar__title { padding-left: 0; border-left: 0; }
+      .product-editor-actions { gap: 0.4rem; }
+      .product-editor-actions label { display: none; }
+      .product-editor-aside { top: 58px; padding: 0.5rem 0.75rem; }
+    }
     
     /* ========== STATUS BADGE ========== */
     .status-badge {
@@ -692,36 +858,51 @@
 
         <!-- ========== VIEW: PRODUCT EDITOR ========== -->
         <div id="product-editor-view" class="view hidden">
-          <div class="flex justify-between items-center mb-6">
-            <h2 id="editor-title" class="text-xl font-semibold">Nouveau produit</h2>
-            <div class="flex gap-3 items-center">
+          <div class="product-editor-topbar">
+            <button id="backToProducts" class="product-editor-back" type="button" aria-label="Retour aux produits">
+              <i class="fas fa-chevron-left"></i>
+              <span>Produits</span>
+            </button>
+            <div class="product-editor-topbar__title">
+              <p>&Eacute;diteur produit</p>
+              <h2 id="editor-title" class="text-xl font-semibold">Nouveau produit</h2>
+            </div>
+            <div class="product-editor-actions">
               <label class="flex items-center gap-2 text-sm text-text-secondary" title="Notifier les utilisateurs quand ce nouveau produit est publié">
                 <input type="checkbox" id="notifyUsersOnCreate" checked>
                 <span>Notifier les utilisateurs</span>
               </label>
-              <button id="backToProducts" class="btn-secondary">
-                <i class="fas fa-arrow-left"></i>
-                Retour
-              </button>
-              <button id="saveProductBtn" class="btn btn-primary">
+              <button id="saveProductBtn" class="btn btn-primary" type="button">
                 <i class="fas fa-save"></i>
                 Enregistrer
               </button>
             </div>
           </div>
 
-          <!-- Tabs de navigation -->
-          <div class="section-tabs">
-            <button class="section-tab active" data-tab="general">G&eacute;n&eacute;ral</button>
-            <button class="section-tab" data-tab="delivery">Livraison</button>
-            <button class="section-tab" data-tab="digital">Digital</button>
-            <button class="section-tab" data-tab="category">Cat&eacute;gorie & attributs</button>
-            <button class="section-tab" data-tab="variations">Variations</button>
-            <button class="section-tab" data-tab="gallery">Galerie</button>
-          </div>
+          <div class="product-editor-layout">
+            <nav class="product-editor-aside" aria-label="Modules du produit">
+              <span class="product-editor-aside__label">Configurer le produit</span>
+              <button class="product-editor-step active" type="button" data-editor-step="general"><i class="fas fa-circle-info"></i> Informations</button>
+              <button class="product-editor-step" type="button" data-editor-step="delivery"><i class="fas fa-truck"></i> Livraison</button>
+              <button class="product-editor-step" type="button" data-editor-step="digital"><i class="fas fa-bolt"></i> Produit digital</button>
+              <button class="product-editor-step" type="button" data-editor-step="category"><i class="fas fa-sitemap"></i> Classement</button>
+              <button class="product-editor-step" type="button" data-editor-step="variations"><i class="fas fa-layer-group"></i> Variations</button>
+              <button class="product-editor-step" type="button" data-editor-step="gallery"><i class="fas fa-images"></i> Photos</button>
+            </nav>
 
-          <!-- Formulaire produit -->
-          <form id="productForm">
+            <div class="product-editor-main">
+              <!-- Existing tabs remain the source of truth for editor mode and validation. -->
+              <div class="section-tabs" aria-hidden="true">
+                <button class="section-tab active" data-tab="general" tabindex="-1">G&eacute;n&eacute;ral</button>
+                <button class="section-tab" data-tab="delivery" tabindex="-1">Livraison</button>
+                <button class="section-tab" data-tab="digital" tabindex="-1">Digital</button>
+                <button class="section-tab" data-tab="category" tabindex="-1">Cat&eacute;gorie & attributs</button>
+                <button class="section-tab" data-tab="variations" tabindex="-1">Variations</button>
+                <button class="section-tab" data-tab="gallery" tabindex="-1">Galerie</button>
+              </div>
+
+              <!-- Formulaire produit -->
+              <form id="productForm" class="product-editor-form">
             <input type="hidden" id="productId">
             
             <!-- ===== TAB 1: GÉNÉRAL ===== -->
@@ -981,7 +1162,9 @@
                 </div>
               </div>
             </div>
-          </form>
+              </form>
+            </div>
+          </div>
         </div>
 
         <!-- ========== VIEW: CATEGORIES ========== -->
@@ -1272,6 +1455,7 @@
           
           // Tabs
           sectionTabs: document.querySelectorAll('.section-tab'),
+          editorSteps: document.querySelectorAll('[data-editor-step]'),
           tabContents: document.querySelectorAll('.tab-content'),
           
           // Variation Modal
@@ -1338,6 +1522,9 @@
             this.switchEditorTab(tabName);
           });
         });
+        this.elements.editorSteps.forEach(step => {
+          step.addEventListener('click', () => this.switchEditorTab(step.dataset.editorStep));
+        });
         
         // Catégorie select
         this.elements.categorySelect.addEventListener('change', () => this.loadCategoryAttributes());
@@ -1396,6 +1583,8 @@
       }
       
       switchView(view) {
+        const isEditor = view === 'editor';
+        document.body.classList.toggle('product-editor-open', isEditor);
         this.elements.sidebarNav.forEach(btn => {
           btn.classList.remove('active', 'bg-background');
           if (btn.dataset.view === view) {
@@ -1412,6 +1601,7 @@
           categories: 'Catégories'
         };
         this.elements.currentViewTitle.textContent = titles[view] || 'Produits';
+        if (isEditor) this.elements.views.editor.scrollTo({ top: 0, behavior: 'auto' });
       }
       
       switchEditorTab(tabName) {
@@ -1420,6 +1610,9 @@
           tabName = 'general';
         }
         this.elements.sectionTabs.forEach(t => t.classList.remove('active'));
+        this.elements.editorSteps.forEach(step => {
+          step.classList.toggle('active', step.dataset.editorStep === tabName);
+        });
         this.elements.tabContents.forEach(c => c.classList.add('hidden'));
         
         document.querySelector(`.section-tab[data-tab="${tabName}"]`).classList.add('active');
@@ -1443,6 +1636,10 @@
           const tabName = tab.dataset.tab;
           tab.classList.toggle('hidden', hiddenTabs.includes(tabName));
           tab.style.display = visibleTabs.includes(tabName) ? '' : 'none';
+        });
+        this.elements.editorSteps.forEach((step) => {
+          const tabName = step.dataset.editorStep;
+          step.hidden = !visibleTabs.includes(tabName);
         });
 
         if (this.editorMode === 'digital' && this.elements.isDigitalProduct) {

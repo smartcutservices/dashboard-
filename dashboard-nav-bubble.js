@@ -19,6 +19,7 @@
     { href: './dashboard.html#orders', label: 'Commandes' },
     { href: './dashboard.html#printing', label: 'Impression' },
     { href: './dashboard.html#vendors', label: 'Vendeurs' },
+    { href: './dashboard.html#smart-akademi', label: 'Smart Akademi' },
     { href: './dashboard.html#security', label: 'Securite' },
     { href: './dashboard.html#music', label: 'Musique' },
     { href: './dashboard.html#theme', label: 'Theme' }

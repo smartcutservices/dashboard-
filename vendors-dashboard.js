@@ -65,6 +65,7 @@ class VendorsDashboard {
     this.applications = [];
     this.vendorProducts = [];
     this.commissionRules = [];
+    this.departmentCommissionRules = [];
     this.categories = [];
     this.allVendors = [];
     this.vendors = [];
@@ -89,10 +90,11 @@ class VendorsDashboard {
   }
 
   async loadData() {
-    const [applicationSnapshot, productSnapshot, commissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot, bonusSnapshot] = await Promise.all([
+    const [applicationSnapshot, productSnapshot, commissionSnapshot, departmentCommissionSnapshot, categorySnapshot, vendorSnapshot, ordersData, formSettingsSnap, planSettingsSnap, payoutSnapshot, serviceFeeSnapshot, bonusSnapshot] = await Promise.all([
       getDocs(query(collection(db, 'vendorApplications'), orderBy('updatedAt', 'desc'))),
       getDocs(query(collection(db, 'vendorProducts'), orderBy('updatedAt', 'desc'))),
       getDocs(collection(db, 'vendorCommissionRules')),
+      getDocs(collection(db, 'commissionDepartments')),
       getDocs(query(collection(db, 'categories_list'), orderBy('name'))),
       getDocs(query(collection(db, 'vendors'), orderBy('updatedAt', 'desc'))),
       loadAllOrdersWithClients(),
@@ -108,6 +110,9 @@ class VendorsDashboard {
       .map((item) => ({ id: item.id, ...item.data() }))
       .filter((item) => item.active !== false)
       .sort((a, b) => String(a.category || '').localeCompare(String(b.category || '')));
+    this.departmentCommissionRules = departmentCommissionSnapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => String(a.label || a.id).localeCompare(String(b.label || b.id)));
     this.categories = categorySnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.allVendors = vendorSnapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     this.vendors = this.allVendors.filter((item) => item.status === 'active');
@@ -361,10 +366,22 @@ class VendorsDashboard {
             <div class="panel-head">
               <div>
                 <small>Commissions</small>
-                <h2>Regles par categorie</h2>
+                <h2>Commissions par département</h2>
               </div>
             </div>
-            <p>Ces regles servent de source simple par categorie. Si un produit n'a pas de commission saisie manuellement, l'approbation reprend automatiquement le taux de sa categorie.</p>
+            <p>Le taux appliqué aux nouvelles ventes est défini par département. Les règles historiques par catégorie restent consultables, mais ne pilotent plus le calcul.</p>
+            <div class="applications" style="margin-top:1.2rem;">
+              ${this.renderDepartmentCommissionRules()}
+            </div>
+            <div class="actions">
+              <button type="button" data-save-department-commission-rules class="approve">Enregistrer les taux par département</button>
+            </div>
+            <div class="panel-head" style="margin-top:2rem;">
+              <div>
+                <small>Compatibilité historique</small>
+                <h3>Anciennes règles par catégorie</h3>
+              </div>
+            </div>
             <div class="applications" style="margin-top:1.2rem;">
               ${this.renderCommissionRules()}
             </div>
@@ -674,6 +691,25 @@ class VendorsDashboard {
             <input type="checkbox" data-commission-field="active" data-commission-index="${index}" ${rule.active !== false ? 'checked' : ''}>
             <span>Active</span>
           </label>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  renderDepartmentCommissionRules() {
+    const defaults = [
+      { id: 'telechargement-numerique', label: 'Téléchargement numérique', rate: 15, active: true },
+      { id: 'automobile-pieces-accessoires', label: 'Automobile - Pièces & Accessoires', rate: 15, active: true }
+    ];
+    const byId = new Map(defaults.map((rule) => [rule.id, rule]));
+    this.departmentCommissionRules.forEach((rule) => byId.set(rule.id, { ...byId.get(rule.id), ...rule }));
+    const rules = [...byId.values()];
+    return rules.map((rule, index) => `
+      <div class="application-card" data-department-commission-row="${index}">
+        <div class="application-grid" style="grid-template-columns:2fr 1fr auto;align-items:end;">
+          <div><strong>${this.escape(rule.label || rule.id)}</strong><small style="display:block;opacity:.7;margin-top:.25rem;">${this.escape(rule.id)}</small></div>
+          <label><strong>Taux %</strong><input type="number" min="0" max="100" step="0.01" data-department-commission-rate="${this.escape(rule.id)}" value="${Number(rule.rate ?? 15)}" style="width:100%;margin-top:.45rem;border:1px solid rgba(198,167,94,.18);background:rgba(255,255,255,.04);color:#f6f1e8;border-radius:14px;padding:.85rem .95rem;font:inherit;"></label>
+          <label class="check"><input type="checkbox" data-department-commission-active="${this.escape(rule.id)}" ${rule.active !== false ? 'checked' : ''}><span>Active</span></label>
         </div>
       </div>
     `).join('');
@@ -1381,6 +1417,10 @@ class VendorsDashboard {
       await this.saveCommissionRules();
     });
 
+    this.root.querySelector('[data-save-department-commission-rules]')?.addEventListener('click', async () => {
+      await this.saveDepartmentCommissionRules();
+    });
+
     this.root.querySelector('[data-add-form-field]')?.addEventListener('click', () => {
       this.formSettings.fields.push({
         id: `field_${Date.now()}`,
@@ -1815,6 +1855,40 @@ class VendorsDashboard {
         button.disabled = false;
         button.textContent = 'Marquer paye';
       }
+    }
+  }
+
+  async saveDepartmentCommissionRules() {
+    const rows = [...this.root.querySelectorAll('[data-department-commission-row]')];
+    const now = new Date().toISOString();
+    try {
+      await Promise.all(rows.map((row) => {
+        const rateInput = row.querySelector('[data-department-commission-rate]');
+        const activeInput = row.querySelector('[data-department-commission-active]');
+        const id = rateInput?.dataset.departmentCommissionRate;
+        const current = this.departmentCommissionRules.find((rule) => rule.id === id) || {};
+        const defaultLabels = {
+          'telechargement-numerique': 'Téléchargement numérique',
+          'automobile-pieces-accessoires': 'Automobile - Pièces & Accessoires'
+        };
+        const rate = Number(rateInput?.value);
+        if (!id || !Number.isFinite(rate) || rate < 0 || rate > 100) throw new Error(`Taux invalide pour ${id || 'département'}.`);
+        return setDoc(doc(db, 'commissionDepartments', id), {
+          id,
+          label: current.label || defaultLabels[id] || id,
+          rate,
+          active: Boolean(activeInput?.checked),
+          source: 'dashboard_admin_department_settings',
+          updatedAt: now,
+          updatedBy: 'dashboard_admin'
+        }, { merge: true });
+      }));
+      await this.loadData();
+      this.render();
+      this.attachEvents();
+      window.alert('Taux par département enregistrés.');
+    } catch (error) {
+      window.alert(error.message || 'Impossible d’enregistrer les taux.');
     }
   }
 

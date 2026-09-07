@@ -91,11 +91,25 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-box-open'
   },
   {
+    id: 'jwetpro-tickets',
+    label: 'Tickets & Championnats',
+    description: 'Ventes JwetPro, commissions, crédits et reversements.',
+    href: './dashboard-jwetpro-tickets.html',
+    icon: 'fa-trophy'
+  },
+  {
     id: 'analytics',
     label: 'Analytics',
     description: 'Visites, pages vues, appareils, sources et tendances du site.',
     href: './dashboard-analytics.html',
     icon: 'fa-chart-line'
+  },
+  {
+    id: 'comments',
+    label: 'Commentaires',
+    description: 'Messages publiés par les visiteurs et modération des avis.',
+    href: './dashboard-comments.html',
+    icon: 'fa-comments'
   },
   {
     id: 'promos',
@@ -131,6 +145,27 @@ const DASHBOARD_SECTIONS = [
     description: 'Marketplace, validation des vendeurs et commissions.',
     href: './dashboard-vendors.html',
     icon: 'fa-store'
+  },
+  {
+    id: 'health',
+    label: 'Smart Cut Health',
+    description: 'Professionnels de santé, téléconsultations, tarifs et remboursements.',
+    href: './health-admin.html',
+    icon: 'fa-heart-pulse'
+  },
+  {
+    id: 'auto-parts',
+    label: 'Auto & Parts',
+    description: 'Catégories, sous-catégories, champs dynamiques et pièces automobiles.',
+    href: './dashboard-auto-parts.html',
+    icon: 'fa-car-side'
+  },
+  {
+    id: 'smart-akademi',
+    label: 'Smart Akademi',
+    description: 'Formations, tutorats, validations et partenariats académiques.',
+    href: './smart-akademi-admin.html',
+    icon: 'fa-graduation-cap'
   },
   {
     id: 'security',

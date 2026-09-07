@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart Akademi · Administration</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root{--navy:#131921;--navy2:#1f2d3d;--gold:#f5a314;--bg:#f3f5f7;--ink:#182431;--muted:#647181;--line:#dfe5ea;--green:#168253;--red:#b42318}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,Inter,system-ui,sans-serif}a{color:inherit}
+    .ak-shell{min-height:100vh;display:grid;grid-template-columns:248px 1fr}.ak-side{position:sticky;top:0;height:100vh;padding:18px;background:var(--navy);color:#fff}.ak-brand{display:flex;align-items:center;gap:11px;padding:10px 8px 22px;border-bottom:1px solid rgba(255,255,255,.1);text-decoration:none}.ak-brand img{width:40px;height:40px;object-fit:contain;padding:5px;border-radius:9px;background:#fff}.ak-brand strong{display:block;font-size:15px}.ak-brand small{color:#aeb9c5;font-size:11px}.ak-nav{display:grid;gap:5px;margin-top:20px}.ak-nav a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:9px;color:#c9d2dc;text-decoration:none;font-size:13px;font-weight:750}.ak-nav a:hover,.ak-nav a.active{background:#29384a;color:#fff}.ak-nav i{width:17px;color:var(--gold);text-align:center}.ak-side-foot{margin-top:auto;padding:14px 8px;color:#8f9cab;font-size:11px;line-height:1.5}.ak-main{min-width:0}.ak-top{height:76px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 32px;border-bottom:1px solid var(--line);background:#fff}.ak-top h1{margin:0;font-size:21px;letter-spacing:-.03em}.ak-top span{color:var(--muted);font-size:12px}.ak-content{width:min(1180px,100%);margin:auto;padding:30px}.ak-kicker{margin:0;color:#a66b0a;font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.ak-content h2{margin:6px 0 5px;font-size:30px;letter-spacing:-.04em}.ak-intro{margin:0;color:var(--muted);font-size:14px}.ak-actions{display:flex;gap:9px;flex-wrap:wrap;margin:22px 0}.ak-btn{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:13px;font-weight:800;text-decoration:none}.ak-btn.primary{border-color:var(--gold);background:var(--gold)}.ak-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.ak-card{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px}.ak-card-label{color:var(--muted);font-size:12px}.ak-card strong{display:block;margin-top:9px;font-size:28px}.ak-card small{display:block;margin-top:4px;color:var(--muted);font-size:11px}.ak-card i{color:var(--gold);font-size:16px}.ak-panels{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-top:18px}.ak-panel{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px}.ak-panel h3{margin:0;font-size:16px}.ak-list{display:grid;gap:8px;margin-top:14px}.ak-list a,.ak-list div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid #e8edf1;border-radius:8px;text-decoration:none;font-size:13px}.ak-list a:hover{border-color:#f0c36b;background:#fffaf0}.ak-list span{color:var(--muted);font-size:11px}.ak-status{padding:4px 8px;border-radius:999px;background:#fff4da;color:#8a5900;font-size:10px;font-weight:900;text-transform:uppercase}.ak-status.ok{background:#e6f6ef;color:var(--green)}@media(max-width:900px){.ak-shell{display:block}.ak-side{position:static;height:auto;padding:10px 14px}.ak-brand{padding:4px 2px 10px}.ak-nav{display:flex;overflow:auto;margin-top:8px}.ak-nav a{white-space:nowrap}.ak-side-foot{display:none}.ak-top{height:64px;padding:0 18px}.ak-content{padding:22px 16px}.ak-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ak-panels{grid-template-columns:1fr}}@media(max-width:520px){.ak-grid{grid-template-columns:1fr}.ak-content h2{font-size:25px}}
+    .ak-queue-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid #e8edf1;border-radius:8px}.ak-queue-item small{color:var(--muted);font-size:11px}.ak-queue-actions{display:flex;align-items:center;gap:7px;flex:0 0 auto}.ak-review{border:1px solid #f0c36b;border-radius:7px;background:#fffaf0;color:#9a6106;padding:5px 8px;font-size:11px;font-weight:800;cursor:pointer}.ak-review:hover{background:#f5a314;color:#182431}.ak-review:disabled{opacity:.55;cursor:wait}.ak-empty{padding:20px 8px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+  <div class="ak-shell">
+    <aside class="ak-side">
+      <a class="ak-brand" href="./dashboard.html"><img src="../logo.png" alt="Smart Cut"><span><strong>Smart Akademi</strong><small>Administration</small></span></a>
+      <nav class="ak-nav" aria-label="Smart Akademi">
+        <a class="active" href="#overview"><i class="fas fa-chart-line"></i>Vue d’ensemble</a>
+        <a href="#formations"><i class="fas fa-graduation-cap"></i>Formations</a>
+        <a href="#tutorats"><i class="fas fa-chalkboard-user"></i>Tutorats</a>
+        <a href="#demandes"><i class="fas fa-inbox"></i>Demandes</a>
+        <a href="#partenariats"><i class="fas fa-handshake"></i>Partenariats</a>
+      </nav>
+      <div class="ak-side-foot">Les validations Smart Akademi restent séparées des dashboards des partenaires.</div>
+    </aside>
+    <main class="ak-main">
+      <header class="ak-top"><div><h1>Smart Akademi</h1><span>Centre de pilotage du module Formation & Tutorat</span></div><a class="ak-btn" href="./dashboard.html"><i class="fas fa-arrow-left"></i>Dashboard principal</a></header>
+      <section class="ak-content" id="overview">
+        <p class="ak-kicker">Administration</p><h2>Vue d’ensemble</h2><p class="ak-intro">Validez les contenus, suivez les partenaires et gardez un catalogue fiable.</p>
+        <div class="ak-actions"><a class="ak-btn primary" href="#demandes"><i class="fas fa-inbox"></i>Traiter les demandes</a><a class="ak-btn" href="http://127.0.0.1:5503/education.html" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i>Voir le catalogue public</a></div>
+        <div class="ak-grid"><article class="ak-card"><i class="fas fa-graduation-cap"></i><span class="ak-card-label">Formations actives</span><strong id="akPrograms">—</strong><small>Visibles dans le catalogue</small></article><article class="ak-card"><i class="fas fa-chalkboard-user"></i><span class="ak-card-label">Tutorats actifs</span><strong id="akTutors">—</strong><small>Profils et offres publiés</small></article><article class="ak-card"><i class="fas fa-inbox"></i><span class="ak-card-label">Demandes à examiner</span><strong id="akRequests">—</strong><small>Validation Smart Akademi</small></article><article class="ak-card"><i class="fas fa-chart-pie"></i><span class="ak-card-label">Revenus du module</span><strong id="akRevenue">—</strong><small>Calculé après connexion aux ventes</small></article></div>
+        <div class="ak-panels"><section class="ak-panel" id="demandes"><h3>Files de validation</h3><div class="ak-list"><a href="http://127.0.0.1:5503/education-pro.html" target="_blank" rel="noopener"><span><b>Demandes de publication</b><br><small>Formations Institution / Particulier</small></span><span class="ak-status">Ouvrir</span></a><a href="http://127.0.0.1:5503/education-tuteur-pro.html" target="_blank" rel="noopener"><span><b>Candidatures tuteurs</b><br><small>Profils, justificatifs et offres</small></span><span class="ak-status">Ouvrir</span></a></div></section><section class="ak-panel" id="partenariats"><h3>Accès rapides</h3><div class="ak-list"><a href="http://127.0.0.1:5503/education-formations.html" target="_blank" rel="noopener">Catalogue formations <span>Ouvrir →</span></a><a href="http://127.0.0.1:5503/education-tuteurs.html" target="_blank" rel="noopener">Catalogue tuteurs <span>Ouvrir →</span></a><div><span>Partenariats & contrats</span><span class="ak-status">Gérés dans la file</span></div></div></section></div>
+        <div class="ak-panels"><section class="ak-panel" id="tutorats"><h3>Tutorat</h3><p class="ak-intro">La file de validation tuteur sera reliée aux fonctions d’administration dédiées.</p></section><section class="ak-panel" id="formations"><h3>Formations</h3><p class="ak-intro">Les formations approuvées, suspendues et retirées seront pilotées ici.</p></section></div>
+      </section>
+    </main>
+  </div>
+  <script type="module">
+    import './admin-access.js';
+    import { auth } from './firebase-init.js';
+    const endpoint = (name) => `https://us-central1-smartcutservices-9ce54.cloudfunctions.net/${name}`;
+    const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    async function api(name, options = {}) {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Connexion admin requise.');
+      const response = await fetch(endpoint(name), { ...options, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload.ok === false) throw new Error(payload.message || payload.error || 'Action impossible.');
+      return payload;
+    }
+    const statusLabel = (item) => esc(item.publicationStatus || item.verificationStatus || 'review');
+    function queueItem(item, type, title, subtitle) {
+      const idField = type === 'program' ? 'programId' : type === 'tutor' ? 'tutorId' : type === 'service' ? 'serviceId' : type === 'certificate' ? 'certificateId' : 'documentId';
+      return `<div class="ak-queue-item"><span><b>${esc(title)}</b><br><small>${esc(subtitle)}</small></span><span class="ak-queue-actions"><span class="ak-status">${statusLabel(item)}</span><button class="ak-review" data-review-type="${type}" data-review-id="${esc(item.id)}" data-review-field="${idField}">Examiner</button></span></div>`;
+    }
+    function renderQueue(data) {
+      const programs = data.queues?.programs || [], tutors = data.queues?.tutors || [], services = data.queues?.tutorServices || [], certificates = data.queues?.certificates || [], documents = data.queues?.documents || [];
+      const root = document.querySelector('#demandes .ak-list');
+      if (!root) return;
+      const rows = [...programs.map((item) => queueItem(item, 'program', item.title || item.name || 'Formation sans titre', 'Demande de publication · Institution / Particulier')), ...tutors.map((item) => queueItem(item, 'tutor', item.displayName || item.name || 'Profil tuteur', 'Candidature tuteur · Profil professionnel')), ...services.map((item) => queueItem(item, 'service', item.title || 'Tutorat sans titre', 'Offre de tutorat')), ...certificates.map((item) => queueItem(item, 'certificate', item.studentName || 'Certificat à vérifier', 'Demande de certificat')), ...documents.map((item) => queueItem(item, 'document', item.name || 'Document à vérifier', 'Pièce de conformité'))];
+      root.innerHTML = rows.length ? rows.join('') : '<div class="ak-empty">Aucune demande en attente.</div>';
+      root.querySelectorAll('[data-review-type]').forEach((button) => button.addEventListener('click', () => review(button, data)));
+    }
+    async function review(button) {
+      const type = button.dataset.reviewType;
+      const name = type === 'program' ? 'educationReviewProgram' : type === 'tutor' ? 'educationReviewTutorProfile' : type === 'service' ? 'educationReviewTutorService' : type === 'certificate' ? 'educationReviewCertificate' : 'educationReviewDocument';
+      const decision = window.prompt(type === 'certificate' ? 'Décision : approve ou reject' : type === 'document' ? 'Décision : approve, reject ou changes' : 'Décision : approve, reject, changes ou suspend', 'approve');
+      if (!decision) return;
+      const reason = ['reject','changes','suspend'].includes(decision) ? window.prompt('Motif obligatoire') : '';
+      if (['reject','changes','suspend'].includes(decision) && !reason) return;
+      button.disabled = true;
+      const payloadDecision = type === 'document' ? ({ approve:'approved', reject:'rejected', changes:'changes_requested' }[decision] || decision) : decision;
+      const payload = type === 'certificate' ? { [button.dataset.reviewField]: button.dataset.reviewId, decision, reason } : type === 'document' ? { [button.dataset.reviewField]: button.dataset.reviewId, status: payloadDecision, reason } : { [button.dataset.reviewField]: button.dataset.reviewId, decision, reason };
+      try { await api(name, { method:'POST', body: JSON.stringify(payload) }); await load(); }
+      catch (error) { window.alert(error.message); button.disabled = false; }
+    }
+    async function load() {
+      try {
+        const data = await api('educationGetAdminDashboard');
+        const metrics = data.metrics || {};
+        [['akPrograms', metrics.activePrograms], ['akTutors', metrics.activeTutors], ['akRequests', metrics.pendingRequests]].forEach(([id, value]) => { const node = document.getElementById(id); if (node) node.textContent = Number(value || 0).toLocaleString('fr-FR'); });
+        renderQueue(data);
+      } catch (error) { console.warn('Smart Akademi admin indisponible:', error); }
+    }
+    auth.onAuthStateChanged?.((user) => { if (user) load(); });
+  </script>
+</body>
+</html>
