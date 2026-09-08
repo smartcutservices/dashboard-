@@ -122,7 +122,7 @@ const DASHBOARD_SECTIONS = [
     id: 'affiliation',
     label: 'Affiliation',
     description: 'Membres, gains automatiques et paiements du programme affiliation.',
-    href: './dashboard-affiliation.html',
+    href: './affiliate-admin.html',
     icon: 'fa-handshake'
   },
   {
@@ -295,3 +295,4 @@ function bootDashboardShell() {
 }
 
 bootDashboardShell();
+
