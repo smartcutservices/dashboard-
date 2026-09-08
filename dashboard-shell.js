@@ -70,6 +70,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-credit-card'
   },
   {
+    id: 'payment-links',
+    label: 'Liens de paiement',
+    description: 'Demandes MonCash partageables, suivi des payeurs et encaissements.',
+    href: './dashboard-payment-links.html',
+    icon: 'fa-link'
+  },
+  {
     id: 'currency',
     label: 'Devise',
     description: 'Taux HTG/USD et affichage public des prix.',
