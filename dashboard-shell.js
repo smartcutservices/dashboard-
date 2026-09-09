@@ -77,6 +77,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-link'
   },
   {
+    id: 'whatsapp',
+    label: 'WhatsApp',
+    description: 'Consentements, templates Meta, campagnes et conversations clients.',
+    href: './dashboard-whatsapp.html',
+    icon: 'fa-whatsapp'
+  },
+  {
     id: 'currency',
     label: 'Devise',
     description: 'Taux HTG/USD et affichage public des prix.',
