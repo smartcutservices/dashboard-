@@ -33,7 +33,32 @@ class WhatsAppAdmin {
   }
   bind() {
     root.querySelector('[data-refresh]')?.addEventListener('click', async () => { await this.load(); this.render(); this.bind(); });
-    root.querySelector('#wa-settings')?.addEventListener('submit', async (event) => { event.preventDefault(); const form = new FormData(event.currentTarget); try { await this.api('settings', { marketingEnabled: form.get('marketingEnabled') === 'on', language: form.get('language'), templates: { utilityOrderConfirmation: form.get('utilityOrderConfirmation'), marketingNewProduct: form.get('marketingNewProduct'), supportFollowup: form.get('supportFollowup') } }); this.toast('Configuration enregistrée.'); await this.load(); this.render(); this.bind(); } catch (error) { this.toast(error.message, true); } });
+    const settingsForm = root.querySelector('#wa-settings');
+    if (settingsForm && !settingsForm.elements.utilityOptInConfirmation) {
+      const field = document.createElement('label');
+      field.className = 'field';
+      field.innerHTML = '<span>Template confirmation d’activation WhatsApp (utility)</span><input name="utilityOptInConfirmation" placeholder="smartcut_whatsapp_activation">';
+      field.querySelector('input').value = this.data?.settings?.templates?.utilityOptInConfirmation || '';
+      settingsForm.insertBefore(field, settingsForm.querySelector('button'));
+    }
+    settingsForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      try {
+        await this.api('settings', {
+          marketingEnabled: form.get('marketingEnabled') === 'on',
+          language: form.get('language'),
+          templates: {
+            utilityOptInConfirmation: form.get('utilityOptInConfirmation'),
+            utilityOrderConfirmation: form.get('utilityOrderConfirmation'),
+            marketingNewProduct: form.get('marketingNewProduct'),
+            supportFollowup: form.get('supportFollowup')
+          }
+        });
+        this.toast('Configuration enregistrée.');
+        await this.load(); this.render(); this.bind();
+      } catch (error) { this.toast(error.message, true); }
+    });
     root.querySelectorAll('[data-reply]').forEach((button) => button.addEventListener('click', async () => { const inboxId = button.dataset.reply; const message = root.querySelector(`[data-reply-text="${CSS.escape(inboxId)}"]`)?.value?.trim(); if (!message) return this.toast('Écrivez une réponse avant l’envoi.', true); button.disabled = true; try { const result = await this.api('reply', { inboxId, message }); this.toast(result.status === 'sent' ? 'Réponse envoyée.' : 'La réponse n’a pas pu être envoyée.', result.status !== 'sent'); await this.load(); this.render(); this.bind(); } catch (error) { this.toast(error.message, true); } finally { button.disabled = false; } }));
   }
   toast(message, error = false) { const node = document.createElement('div'); node.className = 'toast'; node.style.background = error ? '#b42318' : ''; node.textContent = message; document.body.append(node); setTimeout(() => node.remove(), 3600); }
