@@ -607,6 +607,11 @@
             </div>
           </div>
 
+          <div class="content-card p-4 mb-6 flex items-center gap-3">
+            <i class="fas fa-images text-secondary text-xl"></i>
+            <p class="text-sm text-text-secondary">Gérez l’image de chaque département directement depuis cette liste. Cliquez sur « Image » pour téléverser ou remplacer une image.</p>
+          </div>
+
           <!-- Categories grid -->
           <div id="categories-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Injecté par JS -->
@@ -795,6 +800,7 @@
       addDoc, 
       getDocs, 
       doc, 
+      setDoc,
       updateDoc, 
       deleteDoc, 
       query, 
@@ -803,6 +809,7 @@
     } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
     
     const CATEGORIES_COLLECTION = "categories_list";
+    const PRODUCT_TAXONOMY_URLS = ['./product-taxonomy.json', './auto-parts-taxonomy.json', './digital-download-taxonomy.json'];
 
     // ========== CLASSE PRINCIPALE ==========
     class CategoriesDashboard {
@@ -976,10 +983,57 @@
         try {
           const q = query(collection(db, CATEGORIES_COLLECTION), orderBy('createdAt', 'desc'));
           const snapshot = await getDocs(q);
-          this.categories = snapshot.docs.map(doc => ({
+          const firestoreCategories = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           }));
+
+          // Le dashboard vendeur utilise la taxonomie JSON comme source de vérité.
+          // On l’affiche ici aussi afin que chaque département disponible soit
+          // administrable, même avant sa première écriture dans Firestore.
+          const taxonomyResponses = await Promise.all(PRODUCT_TAXONOMY_URLS.map(url => fetch(url, { cache: 'no-store' }).catch(() => null)));
+          const taxonomyDepartments = [];
+          for (const response of taxonomyResponses) {
+            if (!response?.ok) continue;
+            const data = await response.json().catch(() => null);
+            if (data?.id) taxonomyDepartments.push(data);
+            for (const department of (data?.departments || [])) taxonomyDepartments.push(department);
+          }
+          const uniqueTaxonomyDepartments = [...new Map(taxonomyDepartments
+            .filter(department => department?.id)
+            .map(department => [String(department.id), department])).values()];
+          const merged = new Map(firestoreCategories.map(category => [category.id, category]));
+          taxonomyDepartments.forEach((department) => {
+            const id = String(department.id || '').trim();
+            if (!id || merged.has(id)) return;
+            merged.set(id, {
+              id,
+              name: department.label || department.name || id,
+              description: department.description || '',
+              image: department.image || department.imageUrl || '',
+              createdAt: department.createdAt || new Date(0).toISOString(),
+              taxonomyOnly: true
+            });
+          });
+          // La vue « Départements » doit rester strictement limitée aux
+          // départements de premier niveau. Les anciens documents Firestore
+          // qui représentent des catégories ne sont donc pas ajoutés à la
+          // liste ; seuls les départements connus de la taxonomie sont affichés.
+          this.categories = uniqueTaxonomyDepartments.length
+            ? uniqueTaxonomyDepartments.map(department => {
+                const id = String(department.id || '').trim();
+                const saved = merged.get(id) || {};
+                return {
+                  ...department,
+                  ...saved,
+                  id,
+                  name: saved.name || department.label || department.name || id,
+                  description: saved.description || department.description || '',
+                  image: saved.image || department.image || department.imageUrl || '',
+                  createdAt: saved.createdAt || department.createdAt || new Date(0).toISOString()
+                };
+              })
+            : firestoreCategories;
           
           this.renderCategories();
           this.updateStats();
@@ -1082,6 +1136,9 @@
               ${cat.description ? `<p class="text-sm text-text-secondary mb-3">${cat.description.substring(0, 80)}${cat.description.length > 80 ? '...' : ''}</p>` : ''}
               <div class="flex justify-between items-center text-xs text-text-secondary">
                 <span><i class="far fa-calendar mr-1"></i>${new Date(cat.createdAt).toLocaleDateString()}</span>
+                <button class="upload-department-image text-secondary hover:text-secondary-light" data-id="${cat.id}" title="Téléverser l’image du département">
+                  <i class="fas fa-upload"></i> Image
+                </button>
                 <button class="manage-structure text-secondary hover:text-secondary-light" data-id="${cat.id}">
                   <i class="fas fa-arrow-right"></i> Gérer
                 </button>
@@ -1113,6 +1170,13 @@
             this.switchView('structure');
             this.elements.structureCategorySelect.value = btn.dataset.id;
             this.renderColumnsAndLines();
+          });
+        });
+
+        document.querySelectorAll('.upload-department-image').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.triggerFileUpload('category', btn.dataset.id);
           });
         });
       }
@@ -1666,7 +1730,7 @@
         }
       }
       
-      triggerFileUpload(type) {
+      triggerFileUpload(type, targetId = null) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
@@ -1684,6 +1748,16 @@
               image.src = value;
               image.classList.remove('hidden');
               preview.querySelector('.placeholder').classList.add('hidden');
+              if (type === 'category' && targetId) {
+                await setDoc(doc(db, CATEGORIES_COLLECTION, targetId), {
+                  image: value,
+                  name: this.categories.find(item => item.id === targetId)?.name || targetId,
+                  updatedAt: new Date().toISOString()
+                }, { merge: true });
+                const target = this.categories.find(item => item.id === targetId);
+                if (target) target.image = value;
+                this.renderCategories();
+              }
               this.showToast('Image téléversée avec succès', 'success');
             } catch (error) {
               this.showToast(error?.message || 'Échec du téléversement de l’image', 'error');
