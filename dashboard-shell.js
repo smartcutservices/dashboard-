@@ -15,8 +15,8 @@ const DASHBOARD_SECTIONS = [
   },
   {
     id: 'categories',
-    label: 'Categories',
-    description: 'Structure des familles, colonnes et lignes de navigation.',
+    label: 'Départements',
+    description: 'Départements, catégories, sous-catégories et images de navigation.',
     href: './dahboarFullCategorie.html',
     icon: 'fa-sitemap'
   },
@@ -283,7 +283,10 @@ function bootDashboardShell() {
     document.title = `Smart Cut Services · Dashboard ${section.label}`;
   };
 
-  renderNav(navRoot, (section) => updateWorkspace(section));
+  renderNav(navRoot, (section) => {
+    // Modules are dedicated workspaces: leave the dashboard shell instead of nesting them in an iframe.
+    window.location.assign(section.href);
+  });
 
   frame.addEventListener('load', () => {
     loader.classList.remove('visible');

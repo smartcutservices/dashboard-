@@ -7,7 +7,7 @@
   const pages = [
     { href: './dashboard.html#header', label: 'Header' },
     { href: './dashboard.html#hero', label: 'Hero' },
-    { href: './dashboard.html#categories', label: 'Categories' },
+    { href: './dashboard.html#categories', label: 'Départements' },
     { href: './dashboard.html#products', label: 'Produits' },
     { href: './dashboard.html#gallery', label: 'Galerie' },
     { href: './dashboard.html#news', label: 'Actualites' },
@@ -48,6 +48,7 @@
     'dashboard-orders',
     'dashboard-printing',
     'dashboard-vendors',
+    'affiliate-admin',
     'dashboard-security',
     'musique',
     'theme'
@@ -75,6 +76,7 @@
     'dashboard-orders': 'orders',
     'dashboard-printing': 'printing',
     'dashboard-vendors': 'vendors',
+    'affiliate-admin': 'affiliation',
     'dashboard-security': 'security',
     musique: 'music',
     theme: 'theme'
@@ -83,6 +85,24 @@
   const globalDashboardHref = `./dashboard.html#${currentSectionId}`;
 
   if (!isDashboard) return;
+
+  if (normalizedPath !== 'dashboard' && !document.getElementById('smartcut-dashboard-back')) {
+    const backLink = document.createElement('a');
+    backLink.id = 'smartcut-dashboard-back';
+    backLink.href = globalDashboardHref;
+    backLink.innerHTML = '<i class="fas fa-arrow-left"></i><span>Retour au dashboard</span>';
+    backLink.setAttribute('aria-label', 'Retour au dashboard principal');
+    backLink.style.cssText = [
+      'position:fixed', 'top:16px', 'left:16px', 'z-index:1000000',
+      'display:inline-flex', 'align-items:center', 'gap:.55rem',
+      'padding:.72rem 1rem', 'border-radius:999px',
+      'border:1px solid rgba(198,167,94,.42)',
+      'background:#1f1e1c', 'color:#f6f1e8', 'text-decoration:none',
+      'font:700 .82rem Manrope,system-ui,sans-serif',
+      'box-shadow:0 10px 28px rgba(0,0,0,.28)'
+    ].join(';');
+    document.body.appendChild(backLink);
+  }
 
   const style = document.createElement('style');
   style.textContent = `

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-  <title>Smart Cut Services · Dashboard Catégories</title>
+  <title>Smart Cut Services · Dashboard Départements</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -507,7 +507,7 @@
           </div>
           <div>
           <h1 class="font-semibold text-lg">Smart Cut Services</h1>
-            <p class="text-xs text-text-secondary">Catégories Manager</p>
+            <p class="text-xs text-text-secondary">Départements Manager</p>
           </div>
         </div>
         
@@ -519,7 +519,7 @@
           
           <button class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors sidebar-nav" data-view="categories">
             <i class="fas fa-folder w-5 text-text-secondary"></i>
-            <span class="flex-1">Catégories</span>
+            <span class="flex-1">Départements</span>
             <span class="text-xs bg-background px-2 py-1 rounded-full" id="categories-count">0</span>
           </button>
           
@@ -551,7 +551,7 @@
         <div class="flex items-center gap-3">
           <button id="addCategoryBtn" class="btn btn-primary">
             <i class="fas fa-plus"></i>
-            <span class="hidden sm:inline">Nouvelle catégorie</span>
+            <span class="hidden sm:inline">Nouveau département</span>
           </button>
         </div>
       </header>
@@ -563,7 +563,7 @@
           <!-- Stats -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="stat-card">
-              <p class="text-sm text-text-secondary mb-1">Total catégories</p>
+            <p class="text-sm text-text-secondary mb-1">Total départements</p>
               <p class="text-2xl font-semibold" id="stats-total-categories">0</p>
             </div>
             <div class="stat-card">
@@ -583,14 +583,14 @@
           <!-- Graphique simple -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Répartition des catégories</h3>
+              <h3 class="font-semibold mb-4">Répartition des départements</h3>
               <div id="categories-chart" class="space-y-3">
                 <!-- Dynamique -->
               </div>
             </div>
             
             <div class="content-card p-6">
-              <h3 class="font-semibold mb-4">Dernières catégories</h3>
+              <h3 class="font-semibold mb-4">Derniers départements</h3>
               <div id="recent-categories" class="space-y-3">
                 <!-- Dynamique -->
               </div>
@@ -601,7 +601,7 @@
         <!-- ========== VIEW: CATEGORIES ========== -->
         <div id="categories-view" class="view hidden">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-semibold">Toutes les catégories</h2>
+          <h2 class="text-xl font-semibold">Tous les départements</h2>
             <div class="flex gap-3">
               <input type="text" id="searchCategory" placeholder="Rechercher..." class="form-input w-64">
             </div>
@@ -635,7 +635,7 @@
   <div id="categoryModal" class="modal-overlay">
     <div class="modal-container p-6">
       <div class="flex justify-between items-center mb-6">
-        <h3 id="categoryModalTitle" class="text-xl font-semibold">Nouvelle catégorie</h3>
+        <h3 id="categoryModalTitle" class="text-xl font-semibold">Nouveau département</h3>
         <button class="close-modal btn-icon">
           <i class="fas fa-times"></i>
         </button>
@@ -650,7 +650,7 @@
         </div>
         
         <div>
-          <label class="block text-sm text-text-secondary mb-1">Image</label>
+          <label class="block text-sm text-text-secondary mb-1">Image du département</label>
           <div class="flex items-center gap-3">
             <div class="image-preview" id="categoryImagePreview">
               <img id="categoryImageImg" src="" class="hidden">
@@ -659,8 +659,8 @@
               </div>
             </div>
             <div class="flex-1">
-              <input type="text" id="categoryImage" class="form-input" placeholder="image.jpg ou URL">
-              <p class="text-xs text-text-secondary mt-1">Nom du fichier ou URL complète</p>
+              <input type="text" id="categoryImage" class="form-input" placeholder="URL ou image téléversée" readonly>
+              <p class="text-xs text-text-secondary mt-1">Cliquez sur l’aperçu pour téléverser une image.</p>
             </div>
           </div>
         </div>
@@ -697,8 +697,19 @@
         <input type="hidden" id="columnCategoryId">
         
         <div>
-          <label class="block text-sm text-text-secondary mb-1">Nom de la colonne *</label>
+          <label class="block text-sm text-text-secondary mb-1">Nom de la catégorie *</label>
           <input type="text" id="columnName" class="form-input" required>
+        </div>
+
+        <div>
+          <label class="block text-sm text-text-secondary mb-1">Image de la catégorie</label>
+          <div class="flex items-center gap-3">
+            <div class="image-preview" id="columnImagePreview">
+              <img id="columnImageImg" src="" class="hidden">
+              <div class="placeholder"><i class="fas fa-image"></i></div>
+            </div>
+            <input type="text" id="columnImage" class="form-input flex-1" placeholder="URL ou image téléversée" readonly>
+          </div>
         </div>
         
         <div>
@@ -734,12 +745,12 @@
         <input type="hidden" id="lineColumnId">
         
         <div>
-          <label class="block text-sm text-text-secondary mb-1">Nom de la ligne *</label>
+          <label class="block text-sm text-text-secondary mb-1">Nom de la sous-catégorie *</label>
           <input type="text" id="lineName" class="form-input" required>
         </div>
         
         <div>
-          <label class="block text-sm text-text-secondary mb-1">Image</label>
+          <label class="block text-sm text-text-secondary mb-1">Image de la sous-catégorie</label>
           <div class="flex items-center gap-3">
             <div class="image-preview" id="lineImagePreview">
               <img id="lineImageImg" src="" class="hidden">
@@ -748,7 +759,7 @@
               </div>
             </div>
             <div class="flex-1">
-              <input type="text" id="lineImage" class="form-input" placeholder="image.jpg ou URL">
+              <input type="text" id="lineImage" class="form-input" placeholder="URL ou image téléversée" readonly>
             </div>
           </div>
         </div>
@@ -778,6 +789,7 @@
   <script type="module">
     // ========== CONFIGURATION FIREBASE ==========
     import { db } from './firebase-init.js';
+    import { uploadImageFile } from './firebase-storage.js';
     import { 
       collection, 
       addDoc, 
@@ -858,6 +870,9 @@
           columnId: document.getElementById('columnId'),
           columnCategoryId: document.getElementById('columnCategoryId'),
           columnName: document.getElementById('columnName'),
+          columnImage: document.getElementById('columnImage'),
+          columnImageImg: document.getElementById('columnImageImg'),
+          columnImagePreview: document.getElementById('columnImagePreview'),
           columnOrder: document.getElementById('columnOrder'),
           
           lineModal: document.getElementById('lineModal'),
@@ -930,6 +945,7 @@
         
         // Upload images
         this.elements.categoryImagePreview.addEventListener('click', () => this.triggerFileUpload('category'));
+        this.elements.columnImagePreview.addEventListener('click', () => this.triggerFileUpload('column'));
         this.elements.lineImagePreview.addEventListener('click', () => this.triggerFileUpload('line'));
       }
       
@@ -946,8 +962,8 @@
         
         const titles = {
           dashboard: 'Tableau de bord',
-          categories: 'Catégories',
-          structure: 'Gestion des colonnes & lignes'
+          categories: 'Départements',
+          structure: 'Gestion des catégories & sous-catégories'
         };
         this.elements.currentViewTitle.textContent = titles[view];
         
@@ -1108,7 +1124,7 @@
           this.elements.columnsLinesContainer.innerHTML = `
             <div class="text-center py-12 bg-white rounded-lg border border-border">
               <i class="fas fa-arrow-up text-4xl text-text-tertiary mb-3"></i>
-              <p class="text-text-secondary">Sélectionnez une catégorie</p>
+              <p class="text-text-secondary">Sélectionnez un département</p>
             </div>
           `;
           return;
@@ -1121,7 +1137,7 @@
           <div class="bg-white rounded-lg border border-border p-6">
             <div class="flex justify-between items-center mb-6">
               <div>
-                <h3 class="text-xl font-semibold">${category?.name || 'Catégorie'}</h3>
+                <h3 class="text-xl font-semibold">${category?.name || 'Département'}</h3>
                 ${category?.description ? `<p class="text-sm text-text-secondary">${category.description}</p>` : ''}
               </div>
               <button class="btn btn-primary" onclick="window.dashboard.openColumnModal('${categoryId}')">
@@ -1369,7 +1385,7 @@
             this.elements.categoryName.value = category.name || '';
             this.elements.categoryImage.value = category.image || '';
             this.elements.categoryDescription.value = category.description || '';
-            this.elements.categoryModalTitle.textContent = 'Modifier la catégorie';
+            this.elements.categoryModalTitle.textContent = 'Modifier le département';
             
             if (category.image) {
               this.elements.categoryImageImg.src = this.getImagePath(category.image);
@@ -1378,7 +1394,7 @@
             }
           }
         } else {
-          this.elements.categoryModalTitle.textContent = 'Nouvelle catégorie';
+          this.elements.categoryModalTitle.textContent = 'Nouveau département';
         }
         
         this.elements.categoryModal.classList.add('active');
@@ -1449,13 +1465,22 @@
         this.elements.columnCategoryId.value = categoryId;
         this.elements.columnId.value = columnId || '';
         this.elements.columnName.value = '';
+        this.elements.columnImage.value = '';
+        this.elements.columnImageImg.classList.add('hidden');
+        this.elements.columnImagePreview.querySelector('.placeholder').classList.remove('hidden');
         this.elements.columnOrder.value = '0';
         
         if (columnId) {
-          // Mode édition - on pourrait charger les données depuis le cache
-          this.elements.columnModalTitle.textContent = 'Modifier la colonne';
+          const column = (this.columnsCache.get(categoryId) || []).find(item => item.id === columnId);
+          if (column?.image) {
+            this.elements.columnImage.value = column.image;
+            this.elements.columnImageImg.src = this.getImagePath(column.image);
+            this.elements.columnImageImg.classList.remove('hidden');
+            this.elements.columnImagePreview.querySelector('.placeholder').classList.add('hidden');
+          }
+          this.elements.columnModalTitle.textContent = 'Modifier la catégorie';
         } else {
-          this.elements.columnModalTitle.textContent = 'Nouvelle colonne';
+          this.elements.columnModalTitle.textContent = 'Nouvelle catégorie';
         }
         
         this.elements.columnModal.classList.add('active');
@@ -1466,6 +1491,7 @@
         
         const data = {
           columnName: this.elements.columnName.value.trim(),
+          image: this.elements.columnImage.value.trim() || null,
           order: parseInt(this.elements.columnOrder.value) || 0,
           updatedAt: new Date().toISOString()
         };
@@ -1528,9 +1554,9 @@
         this.elements.lineImagePreview.querySelector('.placeholder').classList.remove('hidden');
         
         if (lineId) {
-          this.elements.lineModalTitle.textContent = 'Modifier la ligne';
+          this.elements.lineModalTitle.textContent = 'Modifier la sous-catégorie';
         } else {
-          this.elements.lineModalTitle.textContent = 'Nouvelle ligne';
+          this.elements.lineModalTitle.textContent = 'Nouvelle sous-catégorie';
         }
         
         this.elements.lineModal.classList.add('active');
@@ -1644,24 +1670,24 @@
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.onchange = (e) => {
+        input.onchange = async (e) => {
           const file = e.target.files[0];
           if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              if (type === 'category') {
-                this.elements.categoryImage.value = file.name;
-                this.elements.categoryImageImg.src = e.target.result;
-                this.elements.categoryImageImg.classList.remove('hidden');
-                this.elements.categoryImagePreview.querySelector('.placeholder').classList.add('hidden');
-              } else {
-                this.elements.lineImage.value = file.name;
-                this.elements.lineImageImg.src = e.target.result;
-                this.elements.lineImageImg.classList.remove('hidden');
-                this.elements.lineImagePreview.querySelector('.placeholder').classList.add('hidden');
-              }
-            };
-            reader.readAsDataURL(file);
+            try {
+              const folder = type === 'category' ? 'departments' : (type === 'column' ? 'departments/categories' : 'departments/subcategories');
+              const uploaded = await uploadImageFile(file, folder, { maxSizeMb: 8 });
+              const value = uploaded.url || uploaded.path;
+              const imageInput = type === 'category' ? this.elements.categoryImage : (type === 'column' ? this.elements.columnImage : this.elements.lineImage);
+              const image = type === 'category' ? this.elements.categoryImageImg : (type === 'column' ? this.elements.columnImageImg : this.elements.lineImageImg);
+              const preview = type === 'category' ? this.elements.categoryImagePreview : (type === 'column' ? this.elements.columnImagePreview : this.elements.lineImagePreview);
+              imageInput.value = value;
+              image.src = value;
+              image.classList.remove('hidden');
+              preview.querySelector('.placeholder').classList.add('hidden');
+              this.showToast('Image téléversée avec succès', 'success');
+            } catch (error) {
+              this.showToast(error?.message || 'Échec du téléversement de l’image', 'error');
+            }
           }
         };
         input.click();

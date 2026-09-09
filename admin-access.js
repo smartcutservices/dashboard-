@@ -355,6 +355,29 @@ function denyAccess(mode = 'login') {
   updateGateState({ mode });
 }
 
+function mountDashboardBackLink() {
+  const params = new URLSearchParams(window.location.search);
+  const pageName = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  if (pageName === 'dashboard.html' || pageName === 'index.html' || params.get('embedded') === '1') return;
+  if (document.getElementById('smartcut-dashboard-back')) return;
+
+  const backLink = document.createElement('a');
+  backLink.id = 'smartcut-dashboard-back';
+  backLink.href = './dashboard.html';
+  backLink.innerHTML = '<i class="fas fa-arrow-left"></i><span>Retour au dashboard</span>';
+  backLink.setAttribute('aria-label', 'Retour au dashboard principal');
+  backLink.style.cssText = [
+    'position:fixed', 'top:16px', 'left:16px', 'z-index:1000000',
+    'display:inline-flex', 'align-items:center', 'gap:.55rem',
+    'padding:.72rem 1rem', 'border-radius:999px',
+    'border:1px solid rgba(198,167,94,.42)',
+    'background:#1f1e1c', 'color:#f6f1e8', 'text-decoration:none',
+    'font:700 .82rem Manrope,system-ui,sans-serif',
+    'box-shadow:0 10px 28px rgba(0,0,0,.28)'
+  ].join(';');
+  document.body.appendChild(backLink);
+}
+
 export function protectAdminPage() {
   if (!auth || !db) {
     console.error('Firebase admin non disponible pour proteger la page.');
@@ -406,4 +429,5 @@ export function protectAdminPage() {
   });
 }
 
+mountDashboardBackLink();
 protectAdminPage();
