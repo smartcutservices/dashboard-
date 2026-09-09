@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Smart Wallet | Administration</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="./dashboard-wallet.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div><p class="eyebrow">Contrôle financier</p><h1>Smart Wallet</h1><p>Suivez les soldes détenus, recherchez un utilisateur et consultez chaque mouvement sans modifier le ledger.</p></div>
+      <div class="hero-actions"><button id="refresh" class="button button-ghost"><i class="fas fa-rotate"></i> Actualiser</button><a class="button" href="./dashboard.html"><i class="fas fa-arrow-left"></i> Dashboard</a></div>
+    </header>
+    <section class="stats" aria-label="Synthèse Wallet">
+      <article><span>Solde total détenu</span><strong id="totalBalance">—</strong><small>Disponible + réservé</small></article>
+      <article><span>Disponible</span><strong id="availableBalance">—</strong><small>Utilisable par les clients</small></article>
+      <article><span>Réservé</span><strong id="reservedBalance">—</strong><small>En attente de capture ou libération</small></article>
+      <article><span>Wallets actifs</span><strong id="activeWallets">—</strong><small id="walletCount">— Wallets créés</small></article>
+    </section>
+    <section class="panel search-panel"><div><p class="eyebrow">Recherche</p><h2>Retrouver un utilisateur</h2><p>Nom, e-mail, téléphone ou UID.</p></div><form id="searchForm"><label class="search"><i class="fas fa-magnifying-glass"></i><input id="searchInput" type="search" autocomplete="off" placeholder="Ex. Marie, 509…, email ou UID"></label><button class="button" type="submit">Rechercher</button></form></section>
+    <section class="workspace">
+      <section class="panel list-panel"><div class="panel-head"><div><p class="eyebrow">Wallets</p><h2>Résultats</h2></div><span id="resultCount" class="count">—</span></div><div class="table-wrap"><table><thead><tr><th>Utilisateur</th><th>Statut</th><th>Disponible</th><th>Réservé</th><th></th></tr></thead><tbody id="walletRows"><tr><td colspan="5" class="empty">Chargement des Wallets…</td></tr></tbody></table></div></section>
+      <aside id="detailPanel" class="panel detail-panel"><div class="panel-head"><div><p class="eyebrow">Traçabilité</p><h2>Détail Wallet</h2></div></div><div class="empty">Sélectionnez un utilisateur pour voir ses dépôts, paiements, remboursements et réservations.</div></aside>
+    </section>
+  </main>
+  <script type="module" src="./dashboard-wallet.js"></script>
+</body>
+</html>

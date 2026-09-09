@@ -77,6 +77,13 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-link'
   },
   {
+    id: 'wallet',
+    label: 'Smart Wallet',
+    description: 'Soldes globaux, recherches utilisateurs et historique financier Wallet.',
+    href: './dashboard-wallet.html',
+    icon: 'fa-wallet'
+  },
+  {
     id: 'whatsapp',
     label: 'WhatsApp',
     description: 'Consentements, templates Meta, campagnes et conversations clients.',
