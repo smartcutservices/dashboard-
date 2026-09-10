@@ -9,8 +9,6 @@
     { href: './dashboard.html#hero', label: 'Hero' },
     { href: './dashboard.html#categories', label: 'Départements' },
     { href: './dashboard.html#products', label: 'Produits' },
-    { href: './dashboard.html#gallery', label: 'Galerie' },
-    { href: './dashboard.html#news', label: 'Actualites' },
     { href: './dashboard.html#footer', label: 'Footer' },
     { href: './dashboard.html#pages', label: 'Pages' },
     { href: './dashboard.html#delivery', label: 'Livraison' },

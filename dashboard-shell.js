@@ -28,20 +28,6 @@ const DASHBOARD_SECTIONS = [
     icon: 'fa-bag-shopping'
   },
   {
-    id: 'gallery',
-    label: 'Galerie',
-    description: 'Blocs galerie et visuels immersifs du site.',
-    href: './DASHfullGalerie.html',
-    icon: 'fa-images'
-  },
-  {
-    id: 'news',
-    label: 'Actualites',
-    description: 'Contenus, presentations et publication des actualites.',
-    href: './Dacctualitee.html',
-    icon: 'fa-newspaper'
-  },
-  {
     id: 'footer',
     label: 'Footer',
     description: 'Coordonnees, liens, reseaux et moyens de paiement.',
@@ -173,13 +159,6 @@ const DASHBOARD_SECTIONS = [
     description: 'Professionnels de santé, téléconsultations, tarifs et remboursements.',
     href: './health-admin.html',
     icon: 'fa-heart-pulse'
-  },
-  {
-    id: 'auto-parts',
-    label: 'Auto & Parts',
-    description: 'Catégories, sous-catégories, champs dynamiques et pièces automobiles.',
-    href: './dashboard-auto-parts.html',
-    icon: 'fa-car-side'
   },
   {
     id: 'smart-akademi',
