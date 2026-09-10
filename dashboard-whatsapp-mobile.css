@@ -1,0 +1,10 @@
+/* Mobile navigation for the WhatsApp-style conversation workspace. */
+@media (max-width: 760px) {
+  .messenger.show-list .chat-list { display: flex; border-right: 0; }
+  .messenger.show-list .chat-thread { display: none; }
+  .back-contacts { display: block; border: 0; background: transparent; color: var(--ink); font-size: 1rem; cursor: pointer; }
+}
+
+@media (min-width: 761px) {
+  .back-contacts { display: none; }
+}
