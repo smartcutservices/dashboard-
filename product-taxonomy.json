@@ -171,7 +171,9 @@
     "accessoires-et-mode": 13,
     "produits-scolaires": 10,
     "telechargement-numerique": 15,
-    "automobile-pieces-accessoires": 15
+    "automobile-pieces-accessoires": 15,
+    "tabac-vape-chicha-accessoires-fumeur": 15,
+    "boissons-alcoolisees": 15
   },
   "departments": [
     {
@@ -185,6 +187,20 @@
       "id": "automobile-pieces-accessoires",
       "label": "Automobile - Pièces & Accessoires",
       "order": 100,
+      "commissionRate": 15,
+      "categories": []
+    },
+    {
+      "id": "tabac-vape-chicha-accessoires-fumeur",
+      "label": "Tabac, Vape, Chicha & Accessoires Fumeur",
+      "order": 101,
+      "commissionRate": 15,
+      "categories": []
+    },
+    {
+      "id": "boissons-alcoolisees",
+      "label": "Boissons alcoolisées",
+      "order": 102,
       "commissionRate": 15,
       "categories": []
     },
