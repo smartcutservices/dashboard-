@@ -1,4 +1,4 @@
-import { storage } from './firebase-init.js';
+import { storage, auth } from './firebase-init.js';
 import {
   ref,
   uploadBytesResumable,
@@ -20,6 +20,34 @@ const PDF_TYPES = new Set([
 
 const DEFAULT_IMAGE_MAX_DIMENSION = 2000;
 const DEFAULT_IMAGE_QUALITY = 0.84;
+const DASHBOARD_STORAGE_ACCESS_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/bootstrapDashboardStorageAccess';
+let dashboardStorageAccessPromise = null;
+
+async function ensureDashboardStorageAccess(folderPath) {
+  if (!String(folderPath || '').startsWith('departments')) return;
+  if (dashboardStorageAccessPromise) return dashboardStorageAccessPromise;
+
+  dashboardStorageAccessPromise = (async () => {
+    const user = auth?.currentUser;
+    if (!user) throw new Error('Connexion administrateur requise avant le téléversement.');
+    const token = await user.getIdToken();
+    const response = await fetch(DASHBOARD_STORAGE_ACCESS_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.ok) {
+      throw new Error('Autorisation administrateur impossible pour le téléversement.');
+    }
+  })();
+
+  try {
+    await dashboardStorageAccessPromise;
+  } catch (error) {
+    dashboardStorageAccessPromise = null;
+    throw error;
+  }
+}
 
 function sanitizeSegment(value, fallback = 'file') {
   return String(value || fallback)
@@ -169,6 +197,7 @@ export async function uploadStorageFile(file, folder = 'misc', options = {}) {
   validateStorageFile(file, options);
 
   const folderPath = sanitizeFolderPath(folder, 'misc');
+  await ensureDashboardStorageAccess(folderPath);
   const baseName = sanitizeSegment(String(file.name || 'image').replace(/\.[^.]+$/, ''), 'image');
   const extension = getFileExtension(file);
   const uniqueName = `${baseName}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${extension}`;
