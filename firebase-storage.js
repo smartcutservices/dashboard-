@@ -21,6 +21,7 @@ const PDF_TYPES = new Set([
 const DEFAULT_IMAGE_MAX_DIMENSION = 2000;
 const DEFAULT_IMAGE_QUALITY = 0.84;
 const DASHBOARD_STORAGE_ACCESS_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/bootstrapDashboardStorageAccess';
+const DEPARTMENT_UPLOAD_URL = 'https://us-central1-smartcutservices-9ce54.cloudfunctions.net/createDepartmentImageUploadUrl';
 let dashboardStorageAccessPromise = null;
 
 async function ensureDashboardStorageAccess(folderPath) {
@@ -47,6 +48,30 @@ async function ensureDashboardStorageAccess(folderPath) {
     dashboardStorageAccessPromise = null;
     throw error;
   }
+}
+
+async function uploadDepartmentImageWithSignedUrl(file, folderPath, storagePath) {
+  const user = auth?.currentUser;
+  if (!user) throw new Error('Connexion administrateur requise avant le téléversement.');
+  const token = await user.getIdToken();
+  const response = await fetch(DEPARTMENT_UPLOAD_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder: folderPath, contentType: file.type })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.ok || !payload?.uploadUrl || !payload?.objectPath) {
+    throw new Error('Autorisation d’image département refusée. Vérifiez votre compte administrateur.');
+  }
+  const uploadResponse = await fetch(payload.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file
+  });
+  if (!uploadResponse.ok) {
+    throw new Error(`Téléversement de l’image refusé (${uploadResponse.status}).`);
+  }
+  return payload.objectPath;
 }
 
 function sanitizeSegment(value, fallback = 'file') {
@@ -205,6 +230,12 @@ export async function uploadStorageFile(file, folder = 'misc', options = {}) {
   const storageRef = ref(storage, storagePath);
 
   try {
+    if (folderPath.startsWith('departments')) {
+      const signedStoragePath = await uploadDepartmentImageWithSignedUrl(file, folderPath, storagePath);
+      const url = buildMediaUrl(signedStoragePath);
+      return { url, path: signedStoragePath, name: signedStoragePath.split('/').pop(), private: false };
+    }
+
     const uploadTask = uploadBytesResumable(storageRef, file, {
       contentType: file.type,
       cacheControl: options.exposeDownloadUrl === false
